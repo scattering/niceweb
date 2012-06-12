@@ -57,45 +57,73 @@ To go back to this python enviroment later, or in another console::
     workon niceweb
 
 
-Install the socket.IO server.   We will try with both tornadio and with
-gevent+gunicorn.
+Install the socket.IO server on the proxy.   We will try with both tornadio2
+and with gevent-socketio+gunicorn (see below).  Tornadio2 is a much easier
+install.  Note that tornado itself has a relatively simple chat application, 
+and full socket.IO support may introduce more dependencies than we need.  Check
+if it works on iphone, android, ipad, and desktop browsers.
+
+We need a ZeroC client to feed NICE status to our proxy server.  We could
+use either a Java client or a Python client for this, since both can speak
+to ZeroC.  This is only needed on the instrument computers, not on the
+proxy server.  We have our own version of a python client implemented here::
+
+    git clone git://github.com/scattering/socketIO-client.git
+    cd socketIO-client
+    python setup.py install
 
 
 tornadio
 --------
-sudo yum install python-tornado             # 2.2.1-1.el6
+
+Tornado is available in the epel repo::
+
+    sudo yum install python-tornado             # 2.2.1-1.el6
+
+TornadIO2 needs to be installed separately::
+
+    pip install tornadio2
 
 
 gevent-socketio
 ---------------
-sudo yum install libev-devel                # 4.03-3.el6.i686
-sudo yum install python-anyjson             # 0.3.1-1.el6
-sudo yum install python-greenlet            # 0.3.1-6.el6
 
-# rhel has libev but not libevent, so need prerelease of gevent
-curl http://gevent.googlecode.com/files/gevent-1.0b2.tar.gz > gevent-1.0b2.tar.gz
-tar xzf gevent-1.0b2.tar.gz
-cd gevent-1.0b2
-python setup.py build
-python setup.py test
-python setup.py install
+Use epel packages where we can::
 
-# Using "pip install" for gevent-socketio out of laziness.
-# Could pull and install the dependencies directly like we did for gevent
-pip install gevent-socketio
-# Dependencies:
-#  gevent-socketio-0.3.5-beta.tar.gz
-#  gevent-websocket-0.3.6.tar.gz
-#  anyjson already satisfied
-#  gevent already satisfied
-#  greenlet already satisfied
+    sudo yum install libev-devel                # 4.03-3.el6.i686
+    sudo yum install python-anyjson             # 0.3.1-1.el6
+    sudo yum install python-greenlet            # 0.3.1-6.el6
 
-# check that gevent-socketio works
-git clone https://github.com/abourget/gevent-socketio.git
-cd gevent-socketio/examples
-python chat.py
+rhel has libev but not libevent, so need prerelease of gevent::
 
-firefox &
-# point your browser at 127.0.0.1:8080 from a couple of different tabs and
-# chat away
+    curl http://gevent.googlecode.com/files/gevent-1.0b2.tar.gz > gevent-1.0b2.tar.gz
+    tar xzf gevent-1.0b2.tar.gz
+    cd gevent-1.0b2
+    python setup.py build
+    python setup.py test
+    python setup.py install
+
+Using "pip install" for gevent-socketio out of laziness::
+
+    pip install gevent-socketio
+
+The dependencies pulled in by pip are as follows.  We could use
+curl and install them directly like we did for gevent::
+
+    gevent-socketio-0.3.5-beta.tar.gz
+    gevent-websocket-0.3.6.tar.gz
+    anyjson already satisfied
+    gevent already satisfied
+    greenlet already satisfied
+
+Check that gevent-socketio works::
+
+    git clone https://github.com/abourget/gevent-socketio.git
+    cd gevent-socketio/examples
+    python chat.py
+
+    firefox &
+
+Point your browser at 127.0.0.1:8080 from a couple of different tabs and
+chat away
 
