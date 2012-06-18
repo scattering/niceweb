@@ -1,75 +1,92 @@
 from os import path as op
 
-import tornado
-import tornado.web
-import tornado.httpserver
-import tornadio2
-import tornadio2.router
-import tornadio2.server
-import tornadio2.conn
+SOCKETIO_CLIENT = 'static/socket.io-0.9.6/socket.io.min.js'
+from tornado import web
+import tornadio2 as sio
 
 ROOT = op.normpath(op.dirname(__file__))
 
 
-class IndexHandler(tornado.web.RequestHandler):
+class IndexHandler(web.RequestHandler):
     """Regular HTTP handler to serve the chatroom page"""
     def get(self):
         self.render('index.html')
 
 
-class SocketIOHandler(tornado.web.RequestHandler):
+class SocketIOHandler(web.RequestHandler):
     def get(self):
-        self.render('../socket.io.js')
+        self.render(SOCKETIO_CLIENT)
 
 
-class DeviceConnection(tornadio2.conn.SocketConnection):
+class DeviceConnection(sio.SocketConnection):
     # info shared across all class instances
     feeds = set() # shared across all instances
     device_model = {}
-    
+
     def on_open(self, info):
+        print "open"
         pass  # Don't want to echo back to publishers, so delay until subscribe
-        
+
     def on_close(self):
-        self.feeds.remove(self)
+        print "close"
+        #self.feeds.remove(self)
 
-    @event
+    @sio.event
     def subscribe(self, nodes, current=None):
-        self.feeds.add(self)
-        return 
+        print "subscribe"
+        #self.feeds.add(self)
+        return "subscribed"
 
-    def on_added(self, nodes, current=None):
+    # These are server events that need to be restricted; we could either
+    # sign the message using HMAC or somehow make some events require an
+    # authenticated connection.
+    @sio.event
+    def started(self, nodes, current=None):
+        self.broadcast('started', nodes)
+    @sio.event
+    def added(self, nodes, current=None):
+        self.broadcast('added', nodes)
+    @sio.event
+    def removed(self, nodeIDs, current=None):
+        self.broadcast('removed', nodeIDS)
+    @sio.event
+    def changed(self, nodes, current=None):
+        self.broadcast('changed', nodes)
+
+    def broadcast(event, *args):
+        print "broadcast device",event
         for f in self.feeds:
-            f['device'].emit('added', nodes)
-    def on_removed(self, nodeIDs, current=None):
-        for f in self.feeds:
-            f['device'].emit('removed', nodeIDs)
-    def on_changed(self, nodes, current=None):
-        for f in self.feeds:
-            f['device'].emit('changed', nodes)
+            f['device'].emit(event, *args)
 
+class RouterConnection(sio.SocketConnection):
+    __endpoints__ = {
+        '/device': DeviceConnection,
+        }
 
+def serve():
+    # Create tornadio server
+    Router = sio.TornadioRouter(RouterConnection)
 
-# Create tornadio server
-ChatRouter = tornadio2.router.TornadioRouter(ChatConnection)
+    # Create socket application
+    app = web.Application(
+        Router.apply_routes([
+            (r"/", IndexHandler),
+            (r"/socket.io.js", SocketIOHandler),
+            ]),
+        flash_policy_port = 843,
+        flash_policy_file = op.join(ROOT, 'flashpolicy.xml'),
+        socket_io_port = 8001,
+        )
 
-# Create socket application
-sock_app = tornado.web.Application(
-    ChatRouter.urls,
-    flash_policy_port = 843,
-    flash_policy_file = op.join(ROOT, 'flashpolicy.xml'),
-    socket_io_port = 8002
-)
-
-# Create HTTP application
-http_app = tornado.web.Application(
-    [(r"/", IndexHandler), (r"/socket.io.js", SocketIOHandler)]
-)
+    # Server application
+    sio.SocketServer(app)
 
 if __name__ == "__main__":
     import logging
     logging.getLogger().setLevel(logging.DEBUG)
+    serve()
 
+def _skip():
     # Create http server on port 8001
     http_server = tornado.httpserver.HTTPServer(http_app)
     http_server.listen(8001)

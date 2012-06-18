@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+  <script src="/socket.io.js"></script>
+  <script>
+    $(function() {
+        var root = 'http://' + window.location.hostname + ':8001';
+        var device = new io.connect(root+'/device');
+
+        device.on('connect', function() {
+            $("#console").append('<div class="debug">subscribing</div>');
+            device.emit('subscribe', function (data) {
+                $("#console").append('<div class="debug">subscribed with '+data+'</div>');
+            });
+        });
+        device.on('added', function (data) {
+            $("#console").append('<div class="debug">added</div>');
+        });
+        device.on('changed', function(data) {
+            $("#console").append('<div class="debug">changed</div>');
+        });
+        device.on('removed', function(data) {
+            $("#console").append('<div class="debug">removed</div>');
+        });
+
+        //send the message when submit is clicked
+        $('#command').submit(function (evt) {
+            var line = $('#command [type=text]').val();
+            $('#command [type=text]').val('');
+            $("#console").append('<div class="debug">[ignored] '+line+'</div>');
+            // console.send(line);
+            return false;
+        });
+    });
+</script>
+</head>
+<body>
+<h3>Live data!</h3>
+<div id="console" style="width: 60em; height: 20em; overflow:auto; border: 1px solid black">
+</div>
+<form id="command">
+<input type="text" />
+<input type="submit" />
+</form>
+</body>
+</html>
