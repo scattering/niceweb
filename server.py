@@ -19,9 +19,11 @@ class SocketIOHandler(web.RequestHandler):
 
 
 class DeviceConnection(sio.SocketConnection):
-    # info shared across all class instances
-    feeds = set() # shared across all instances
-    device_model = {}
+    def __init__(self, *args, **kw):
+        super(DeviceConnection,self).__init__(*args, **kw)
+        self.feeds = set()
+        self.device_model = {}
+        self.nodes = {}
 
     def on_open(self, info):
         print "open"
@@ -32,25 +34,25 @@ class DeviceConnection(sio.SocketConnection):
         #self.feeds.remove(self)
 
     @sio.event
-    def subscribe(self, nodes, current=None):
+    def subscribe(self):
         print "subscribe"
         #self.feeds.add(self)
-        return "subscribed"
+        return self.nodes
 
     # These are server events that need to be restricted; we could either
     # sign the message using HMAC or somehow make some events require an
     # authenticated connection.
     @sio.event
-    def started(self, nodes, current=None):
+    def started(self, nodes):
         self.broadcast('started', nodes)
     @sio.event
-    def added(self, nodes, current=None):
+    def added(self, nodes):
         self.broadcast('added', nodes)
     @sio.event
-    def removed(self, nodeIDs, current=None):
+    def removed(self, nodeIDs):
         self.broadcast('removed', nodeIDS)
     @sio.event
-    def changed(self, nodes, current=None):
+    def changed(self, nodes):
         self.broadcast('changed', nodes)
 
     def broadcast(event, *args):
