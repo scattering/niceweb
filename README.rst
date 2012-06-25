@@ -36,11 +36,14 @@ ruby or the node reference implementation.  We will use a python solution.
 Installation
 ============
 
+RedHat
+------
+
 Install support packages for python and redis::
 
     sudo yum install python-virtualenvwrapper   # 2.3-3.el6
-    sudo yum install python-redis               # 2.0.0-1
-    sudo yum install redis                      # 2.4.10-1
+    #sudo yum install python-redis               # 2.0.0-1
+    #sudo yum install redis                      # 2.4.10-1
 
 Use virtualenv to isolate the python environment::
 
@@ -56,25 +59,13 @@ To go back to this python enviroment later, or in another console::
     source `which virtualenvwrapper.sh`
     workon niceweb
 
-
-Install the socket.IO server on the proxy.   We will try with both tornadio2
-and with gevent-socketio+gunicorn (see below).  Tornadio2 is a much easier
-install.  Note that tornado itself has a relatively simple chat application, 
-and full socket.IO support may introduce more dependencies than we need.  Check
-if it works on iphone, android, ipad, and desktop browsers.
-
 We need a ZeroC client to feed NICE status to our proxy server.  We could
 use either a Java client or a Python client for this, since both can speak
 to ZeroC.  This is only needed on the instrument computers, not on the
 proxy server.  We have our own version of a python client implemented here::
 
     git clone git://github.com/scattering/socketIO-client.git
-    cd socketIO-client
-    python setup.py install
-
-
-tornadio
---------
+    (cd socketIO-client && python setup.py install)
 
 Tornado is available in the epel repo::
 
@@ -85,45 +76,23 @@ TornadIO2 needs to be installed separately::
     pip install tornadio2
 
 
-gevent-socketio
----------------
+Example Usage
+=============
 
-Use epel packages where we can::
+Start the server using::
 
-    sudo yum install libev-devel                # 4.03-3.el6.i686
-    sudo yum install python-anyjson             # 0.3.1-1.el6
-    sudo yum install python-greenlet            # 0.3.1-6.el6
+	cd niceweb
+    ./server.py
 
-rhel has libev but not libevent, so need prerelease of gevent::
+Point your browser to localhost:8001.  You should see a mostly empty console.
 
-    curl http://gevent.googlecode.com/files/gevent-1.0b2.tar.gz > gevent-1.0b2.tar.gz
-    tar xzf gevent-1.0b2.tar.gz
-    cd gevent-1.0b2
-    python setup.py build
-    python setup.py test
-    python setup.py install
+In a separate terminal, start the fake instrument:
 
-Using "pip install" for gevent-socketio out of laziness::
+    cd niceweb/test
+    ./feed.py
 
-    pip install gevent-socketio
-
-The dependencies pulled in by pip are as follows.  We could use
-curl and install them directly like we did for gevent::
-
-    gevent-socketio-0.3.5-beta.tar.gz
-    gevent-websocket-0.3.6.tar.gz
-    anyjson already satisfied
-    gevent already satisfied
-    greenlet already satisfied
-
-Check that gevent-socketio works::
-
-    git clone https://github.com/abourget/gevent-socketio.git
-    cd gevent-socketio/examples
-    python chat.py
-
-    firefox &
-
-Point your browser at 127.0.0.1:8080 from a couple of different tabs and
-chat away
-
+Back in the browser, you can see change notices every second.   After 4 seconds,
+type "move A3.position 7" and click submit.  This will send the move command
+through the proxy to the feed.py fake instrument script, which will then
+pretend that the move was successful and send a new change notice.
+    
