@@ -5,31 +5,36 @@
   <script src="/socket.io.js"></script>
   <script>
     $(function() {
-        var root = 'http://' + window.location.hostname + ':8001';
-        var device = new io.connect(root+'/device');
+		var instrument = 'sans10m';  // FIXME: should be a parameter
+		var root = 'http://' + window.location.hostname + ':8001/' + instrument;
+		var device = new io.connect(root+'/device');
+		var control = new io.connect(root+'/control');
 
         device.on('connect', function() {
             $("#console").append('<div class="debug">subscribing</div>');
             device.emit('subscribe', function (data) {
-                $("#console").append('<div class="debug">subscribed with '+data+'</div>');
+                $("#console").append('<div class="debug">subscribed with '+JSON.stringify(data)+'</div>');
             });
         });
+        device.on('started', function(data) {
+            $("#console").append('<div class="debug">started '+JSON.stringify(data)+'</div>');
+        });
         device.on('added', function (data) {
-            $("#console").append('<div class="debug">added</div>');
+            $("#console").append('<div class="debug">added '+JSON.stringify(data)+'</div>');
         });
         device.on('changed', function(data) {
-            $("#console").append('<div class="debug">changed</div>');
+            $("#console").append('<div class="debug">changed '+JSON.stringify(data)+'</div>');
         });
         device.on('removed', function(data) {
-            $("#console").append('<div class="debug">removed</div>');
+            $("#console").append('<div class="debug">removed '+JSON.stringify(data)+'</div>');
         });
 
         //send the message when submit is clicked
         $('#command').submit(function (evt) {
             var line = $('#command [type=text]').val();
             $('#command [type=text]').val('');
-            $("#console").append('<div class="debug">[ignored] '+line+'</div>');
-            // console.send(line);
+            $("#console").append('<div class="debug">sending '+line+'</div>');
+            control.send(line);
             return false;
         });
     });
