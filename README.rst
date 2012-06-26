@@ -33,45 +33,56 @@ work fine.  We are using redis.  The socket.IO server could be implemented
 in anything that supports socket.IO, including python, erlang, java,
 ruby or the node reference implementation.  We will use a python solution.
 
+Current Status
+==============
+
+We have the repeater for the device model, and a primitive interface to
+NICE command line.  The web page is minimal.
+
+TODO: Support for multiple instruments.  Currently everything is sans10m.
+
+TODO: Start the web proxy automatically with the server.
+
+TODO: Support reboot of the repeater.
+
+
 Installation
 ============
 
-RedHat
-------
+Install support packages for python::
 
-Install support packages for python and redis::
+    Ubuntu:  sudo apt-get install python-virtualenvwrapper
+    Ubuntu:  sudo apt-get install python-tornado
 
-    sudo yum install python-virtualenvwrapper   # 2.3-3.el6
-    #sudo yum install python-redis               # 2.0.0-1
-    #sudo yum install redis                      # 2.4.10-1
+    RedHat:  sudo yum install python-virtualenvwrapper   # 2.3-3.el6
+    RedHat:  sudo yum install python-tornado             # 2.2.1-1.el6
 
 Use virtualenv to isolate the python environment::
 
-    export WORKON_HOME=$HOME/pyenv
-    mkdir -p $WORKON_HOME
-    source `which virtualenvwrapper.sh`
+    Ubuntu:  source /etc/bash_completion.d/virtualenvwrapper
+    RedHat:  source `which virtualenvwrapper.sh`
+
+Use virtualenv to isolate the python environment::
 
     mkvirutalenv --system-site-packages niceweb
 
-To go back to this python enviroment later, or in another console::
+Note that you can use this virtual environment from eclipse by setting
+the pydev interpreter to ~/.virtualenvs/niceweb/bin/python.
 
-    export WORKON_HOME=$HOME/pyenv
-    source `which virtualenvwrapper.sh`
+To go back to this python enviroment later, or in another console, you
+need to again source virtualenvwrapper.sh, then do::
+
     workon niceweb
 
-We need a ZeroC client to feed NICE status to our proxy server.  We could
-use either a Java client or a Python client for this, since both can speak
-to ZeroC.  This is only needed on the instrument computers, not on the
-proxy server.  We have our own version of a python client implemented here::
+We have a ZeroC python client to feed NICE status to our proxy server,
+which requires our own socketIO client library to communicate.  This is 
+only needed on the instrument computers, not on the webster repeater. 
+Install the python client from here::
 
     git clone git://github.com/scattering/socketIO-client.git
     (cd socketIO-client && python setup.py install)
 
-Tornado is available in the epel repo::
-
-    sudo yum install python-tornado             # 2.2.1-1.el6
-
-TornadIO2 needs to be installed separately::
+TornadIO2 needs to be installed from PyPI::
 
     pip install tornadio2
 
@@ -81,18 +92,18 @@ Example Usage
 
 Start the server using::
 
-	cd niceweb
+    cd niceweb
     ./server.py
 
 Point your browser to localhost:8001.  You should see a mostly empty console.
 
-In a separate terminal, start the fake instrument:
+In a separate terminal, start the fake instrument::
 
     cd niceweb/test
     ./feed.py
 
 Back in the browser, you can see change notices every second.   After 4 seconds,
-type "move A3.position 7" and click submit.  This will send the move command
+type "move A3.position 5" and click submit.  This will send the move command
 through the proxy to the feed.py fake instrument script, which will then
 pretend that the move was successful and send a new change notice.
-    
+
