@@ -14,31 +14,11 @@ from sioclient import SocketIO
 
 import Ice
 Ice.loadSlice('-I. --all --underscore devices.ice')
+Ice.loadSlice('-I. --all --underscore data.ice')
+Ice.loadSlice('-I. --all --underscore events.ice')
+Ice.loadSlice('-I. --all --underscore queue.ice')
 
-from nice.api import data, devices
-
-# about Jan 1 2012 in milliseconds since Jan 1 1970
-T0 = 42*365.2425*24*60*60*1000
-class SimulationTime(object):
-    """
-    Class to keep track of simulation time.
-    
-    *T* is the simulation time in milliseconds since epoch (Jan 1, 1970).
-    """
-    def __init__(self, T=T0):
-        self.T = T
-        
-    def sleep(self, dT):
-        """
-        Sleep for *dT* seconds and update simulation clock.
-        
-        Note that *dT* is in seconds to be consistent with time.sleep(), 
-        but *T* is in milliseconds to be consistent with NICE timestamps.
-        """
-        self.T += dT*1000
-        time.sleep(dT)
-SIM_TIME = SimulationTime()
-
+from nice.api import data, devices, events, queue
 
 # List of enumerated types in NICE interface
 NICE_ENUMS = set((
@@ -47,6 +27,10 @@ NICE_ENUMS = set((
     data.CountAgainst,
     data.SansSampleMode,
     devices.ValidityT,
+    events.EventLevel,
+    events.EventState,
+    queue.CommandState,
+    queue.QueueEventType,
     ))
 
 def deice(obj):
@@ -68,6 +52,74 @@ def deice(obj):
     else:
         return obj
 
+# about Jan 1 2012 in milliseconds since Jan 1 1970
+T0 = 42*365.2425*24*60*60*1000
+class SimulationTime(object):
+    """
+    Class to keep track of simulation time.
+    
+    *T* is the simulation time in milliseconds since epoch (Jan 1, 1970).
+    """
+    def __init__(self, T=T0):
+        self.T = T
+        
+    def sleep(self, dT):
+        """
+        Sleep for *dT* seconds and update simulation clock.
+        
+        Note that *dT* is in seconds to be consistent with time.sleep(), 
+        but *T* is in milliseconds to be consistent with NICE SIM_TIMEs.
+        """
+        self.T += dT*1000
+        time.sleep(dT)
+SIM_TIME = SimulationTime()
+
+
+
+class Events(object):
+    """
+    Event logger simulation.
+    """
+    def __init__(self):
+        self.events = []
+        self.id = 0
+        self.channel = None
+        
+    def trace(self, msg): self._log(events.EventLevel.TRACE,msg)
+    def debug(self, msg): self._log(events.EventLevel.DEBUG,msg)
+    def info(self, msg): self._log(events.EventLevel.INFO,msg)
+    def important(self, msg): self._log(events.EventLevel.IMPORTANT,msg)
+    def warning(self, msg): self._log(events.EventLevel.WARNING,msg)
+    def error(self, msg): self._log(events.EventLevel.ERROR,msg)
+    def serious(self, msg): self._log(events.EventLevel.SERIOUS,msg)
+    def critical(self, msg): self._log(events.EventLevel.CRITICAL,msg)
+    def fatal(self, msg): self._log(events.EventLevel.FAAL,msg)
+
+    def _log(self, level, message):
+        self.id += 1
+        ev = events.NiceEvent(self.id, SIM_TIME.T, level, 
+                              events.EventState.OPEN,
+                              events.EventSourceCommand(0, ""),
+                              message, "", 
+                              events.EventResolution(0,""),
+                              )
+        self.events.append(ev)
+        if self.channel is not None:
+            self.channel.emit('created', deice(ev))
+
+    def connect(self, channel):
+        """
+        Connect device to the appropriate proxy channel.
+        
+        This simulates instrument startup, which triggers the device model
+        reset message that initializes all node values on the client.
+        """
+        self.channel = channel
+        self.channel.emit('publish', 
+                          [deice(v) for v in self.events])
+        
+        
+        
 class Devices(object):
     """
     Set of devices associated with the instrument.  This corresponds
@@ -105,7 +157,7 @@ class Devices(object):
             self.added.discard(node.id)
         self.changed.discard(node.id)
         
-    def change(self, id, current=None, desired=None, timestamp=None,
+    def change(self, id, current=None, desired=None,
                validity=None, message=None):
         """
         Simulate a change in node value.  
@@ -113,8 +165,6 @@ class Devices(object):
         This only changes the desired and current value, not the metadata 
         such as units or precision.
         
-        Timestamp is milliseconds since Jan 1, 1970.
-    
         Validity is one of GOOD, BAD or SUSPECT in the namespace 
         devices.ValidityT.
         
@@ -122,19 +172,18 @@ class Devices(object):
         
         The web proxy will not be updated until update() is called.
         """
-        if timestamp is None: raise TypeError("need timestamp")
         node = self.devices[id]
         if current is not None:
             node.currentValue.val = current
-            node.currentValue.timeStampBefore = timestamp.T
-            node.currentValue.timeStampAfter = timestamp.T
+            node.currentValue.timeStampBefore = SIM_TIME.T
+            node.currentValue.timeStampAfter = SIM_TIME.T
         if validity is not None:
             node.currentValue.validity = validity
             node.currentValue.validityString = message
         if desired is not None:
             node.desiredValue.val = desired
-            node.desiredValue.timeStampBefore = timestamp.T
-            node.desiredValue.timeStampAfter = timestamp.T
+            node.desiredValue.timeStampBefore = SIM_TIME.T
+            node.desiredValue.timeStampAfter = SIM_TIME.T
         self.changed.add(id)
         
     def connect(self, channel):
@@ -145,8 +194,8 @@ class Devices(object):
         reset message that initializes all node values on the client.
         """
         self.channel = channel
-        self.channel.emit('reset', 
-                          [deice(v) for v in self.devices.values()])
+        self.channel.emit('publish', 
+                          dict((v.id,deice(v)) for v in self.devices.values()))
         self._reset_notify()
         
     def update(self):
@@ -183,6 +232,7 @@ class Instrument(object):
     def __init__(self, name):
         self.name = name
         self.device = Devices()
+        self.event = Events()
         
     def connect(self, socket):
         """
@@ -190,6 +240,7 @@ class Instrument(object):
         web proxy *socket*.
         """
         self.device.connect(socket.connect('/%s/device'%self.name))
+        self.event.connect(socket.connect('/%s/events'%self.name))
         self.control = socket.connect('/%s/control'%self.name)
         self.control.on('message', self.perform_command)
         self.control.emit('listen')
@@ -197,10 +248,10 @@ class Instrument(object):
     def perform_command(self, line):
         parts = line.split()
         if parts[0] == 'move':
-            self.device.simulate(parts[1], SIM_TIME, desired=parts[2])
+            simulate_move(self.device, node=parts[1], desired=float(parts[2]))
 
 
-def device_init(device, timestamp):
+def device_init(device):
     """
     Create a simple instrument with the following nodes::
     
@@ -221,15 +272,15 @@ def device_init(device, timestamp):
             val = data.DoubleValue(3.0),
             validity = devices.ValidityT.GOOD,
             validityString = None,
-            timeStampBefore = timestamp.T,
-            timeStampAfter = timestamp.T,
+            timeStampBefore = SIM_TIME.T,
+            timeStampAfter = SIM_TIME.T,
             ),
         currentValue = devices.DeviceValue(
             val = data.DoubleValue(3.0),
             validity = devices.ValidityT.GOOD,
             validityString = None,
-            timeStampBefore = timestamp.T,
-            timeStampAfter = timestamp.T,
+            timeStampBefore = SIM_TIME.T,
+            timeStampAfter = SIM_TIME.T,
             ),
         )
     device.add(
@@ -247,18 +298,17 @@ def device_init(device, timestamp):
             val = data.DoubleArrayValue([0,0,0]),
             validity = devices.ValidityT.GOOD,
             validityString = None,
-            timeStampBefore = timestamp.T,
-            timeStampAfter = timestamp.T,
+            timeStampBefore = SIM_TIME.T,
+            timeStampAfter = SIM_TIME.T,
             ),
         )
 
-def simulate_move(device, timestamp, desired, 
+def simulate_move(device, desired, 
                   duration=1, dT=0.1, node="A3.position"):
     """
     Simulate move.
     
     *device* is the device to move
-    *timestamp* is the clock
     *desired* is the target value.    
     *duration* is the total duration of the move (default is 1 s)
     *dT* is the move update frequency (default is 0.1 s)
@@ -267,39 +317,35 @@ def simulate_move(device, timestamp, desired,
     current = device.devices[node].currentValue.val.val;
     N = int(duration/0.01)
     step = (desired-current)/N
-    device.change(node, desired=desired, timestamp=timestamp)
+    device.change(node, desired=data.DoubleValue(desired))
     for _ in range(N):
-        timestamp.sleep(0.01)
+        SIM_TIME.sleep(0.01)
         current += step
-        device.change(node, current=current, timestamp=timestamp)
+        device.change(node, current=data.DoubleValue(current))
         device.update()
     
-def simulate_count(device, timestamp):
+def simulate_count(device):
     """
     Simulate detector counts on the instrument over four seconds.
     """
-    timestamp.sleep(1)
+    SIM_TIME.sleep(1)
     device.change('detector.counts', 
-                  current=data.DoubleArrayValue([3,4,5]),
-                  timestamp=timestamp)
+                  current=data.DoubleArrayValue([3,4,5]))
     device.update()
     
-    timestamp.sleep(1)
+    SIM_TIME.sleep(1)
     device.change('detector.counts', 
-                  current=data.DoubleArrayValue([6,5,6]),
-                  timestamp=timestamp)
+                  current=data.DoubleArrayValue([6,5,6]))
     device.update()
     
-    timestamp.sleep(1)
+    SIM_TIME.sleep(1)
     device.change('detector.counts', 
-                  current=data.DoubleArrayValue([10,9,11]),
-                  timestamp=timestamp)
+                  current=data.DoubleArrayValue([10,9,11]))
     device.update()
     
-    timestamp.sleep(1)
+    SIM_TIME.sleep(1)
     device.change('detector.counts', 
-                  current=data.DoubleArrayValue([12,12,12]),
-                  timestamp=timestamp)
+                  current=data.DoubleArrayValue([12,12,12]))
     device.update()
 
 def main():
@@ -307,12 +353,15 @@ def main():
     Run the simulation.
     """
     sans10m = Instrument('sans10m')
-    device_init(sans10m.device, SIM_TIME)
+    device_init(sans10m.device)
     socket = SocketIO('localhost', 8001)
     sans10m.connect(socket)
     
-    simulate_move(sans10m.device, SIM_TIME, desired=7)
-    simulate_count(sans10m.device, SIM_TIME)
+    sans10m.event.debug("simulating move")
+    #simulate_move(sans10m.device, desired=7)
+    sans10m.event.debug("simulating count")
+    simulate_count(sans10m.device)
+    sans10m.event.debug("ready")
     
     # sleep forever so that controller can run
     while True: time.sleep(1)

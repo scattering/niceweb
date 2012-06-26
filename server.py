@@ -5,6 +5,7 @@ streams.
 """
 
 import os
+import re
 
 SOCKETIO_CLIENT = 'static/socket.io-0.9.6/socket.io.min.js'
 from tornado import web
@@ -26,13 +27,24 @@ class SocketIOHandler(web.RequestHandler):
     def get(self):
         self.render(SOCKETIO_CLIENT)
 
-class ControlConnection(sio.SocketConnection):
+class ControlChannel(sio.SocketConnection):
     """
     Forward control messages to listening instrument.
     """
-    listener = None
-    def __init__(self, *args, **kw):
-        super(ControlConnection,self).__init__(*args, **kw)
+    _all_listeners = {}
+    def __init__(self, session, endpoint=None):
+        super(ControlChannel,self).__init__(session, endpoint=endpoint)
+        self.channel = endpoint
+        self._all_listeners.setdefault(endpoint,None)
+
+    @property
+    def listener(self):
+        return self._all_listeners[self.channel]
+    
+    @listener.setter
+    def listener(self, value):
+        self._all_listeners[self.channel] = value
+        
     def on_message(self, line):
         """
         Received message from browser which needs to be forwarded to
@@ -48,117 +60,141 @@ class ControlConnection(sio.SocketConnection):
         messages.
         """
         if name == "listen":
+            
             # On connection to the internal server, the NICE web proxy will
             # register itself as a control listener  which can receive arbitrary
             # arbitrary events.
             # TODO: This needs to support multiple instruments
-            ControlConnection.listener = self
+            self.listener = self
         elif self.listener:
             return self.listener.emit(name, *args, **kw)
-        
-    
-class DeviceConnection(sio.SocketConnection):
-    """
-    Maintain a copy of the device model and a list of client subscriptions.
-    
-    Broadcast state changes to all clients.
-    """
-    # TODO: state shared across all connections, but need per instrument state
-    feeds = set()
-    nodes = {}
-    def __init__(self, *args, **kw):
-        super(DeviceConnection,self).__init__(*args, **kw)
-        print "starting device with", args, kw
 
-    def on_open(self, info):
-        """
-        Respond to channel open event.
-        
-        Don't want to echo back to publishers, so don't do anything until
-        the client subscribes.
-        """
-        print "open"
+class SubscriptionChannel(sio.SocketConnection):
+    """
+    Subscription channel that keeps track of the number of subscribers.
+    """
+    # Channel-specific subscribers and channel specific state
+    _all_feeds = {}
+    _all_state = {}
+    def __init__(self, session, endpoint=None):
+        super(SubscriptionChannel,self).__init__(session, endpoint=endpoint)
+        self.channel = endpoint
+        self._all_feeds.setdefault(endpoint, set())
+        self._all_state.setdefault(endpoint, None)
 
+    @property
+    def state(self):
+        return self._all_state[self.channel]
+    @state.setter
+    def state(self, value):
+        self._all_state[self.channel] = value
+
+    @property
+    def feeds(self):
+        return self._all_feeds[self.channel]
+    
     def on_close(self):
-        """
-        Respond to channel close event.
-        
-        Release the subscriber from the list of clients.
-        """
-        print "close"
         self.feeds.discard(self)
-
+        
     @sio.event
     def subscribe(self):
-        """
-        Respond to the subscribe event.
-        
-        Add the connection to the list of subscribers, and send the initial
-        subscription state.
-        """
-        # TODO: make sure we don't have threading problems, where change
-        # notification sent by NICE happens while a new client is subscribing.
-        print "subscribe"
         self.feeds.add(self)
-        return self.nodes
+        return self.state
+    
+    @sio.event
+    def publish(self, *args, **kw):
+        # Note: tornadio has the weird notion that if a method is called
+        # with a single dictionary as an argument, then it should be
+        # treated as a set of keyword arguments.  Since publish state
+        # will often use kw to represent state, we can hack around this
+        # problem by intercepting the **kw argument if args is not present.
+        if args:
+            self.state = args[0]
+        else:
+            self.state = kw
 
+    def emit(self, event, *args, **kw):
+        """
+        Send an event to all connected clients.
+        """
+        #print "_broadcast device",event
+        for f in self.feeds:
+            sio.SocketConnection.emit(f, event, *args, **kw)
+
+    def send(self, message, callback=None):
+        """
+        Send a message to all connected clients.
+        """
+        #print "_broadcast device",event
+        for f in self.feeds:
+            sio.SocketConnection.send(f, message, callback=callback)
+
+
+
+class EventChannel(SubscriptionChannel):
+    """
+    NICE logger interface.
+    """
+    @sio.event
+    def created(self, **event):
+        # Ick! tornadio2 treats single dict arg as keywords!
+        self.state.append(event)
+        print "event channel is", self.channel
+        self.emit('created', event)
+    
+class DeviceChannel(SubscriptionChannel):
+    """
+    NICE device model.
+    """
     # TODO: browser clients should not be able to update state; we could either
     # sign the message using HMAC or somehow make some events require an
     # authenticated connection.
-    @sio.event
-    def reset(self, nodes):
-        """
-        Reset the entire device model to the set of nodes provided.
-        """
-        self.nodes.clear()
-        self.nodes.update((n['id'],n) for n in nodes)
-        self._broadcast('started', nodes)
-        
     @sio.event
     def added(self, nodes):
         """
         Nodes added to the instrument.  Forward their details to the
         clients.
         """
-        self.nodes.update((n['id'],n) for n  in nodes)
-        self._broadcast('added', nodes)
+        self.state.update((n['id'],n) for n  in nodes)
+        self.emit('added', nodes)
         
     @sio.event
     def removed(self, nodeIDs):
         """
         Nodes removed from the instrument.  Forward their names to the clients.
         """
-        for nid in nodeIDS:
-            del self.nodes[nid]
-        self._broadcast('removed', nodeIDS)
+        for id in nodeIDS:
+            del self.state[id]
+        self.emit('removed', nodeIDS)
         
     @sio.event
     def changed(self, nodes):
         """
         Node value or properties changed.  Forward the details to the clients.
         """
-        self.nodes.update((n['id'],n) for n in nodes)
-        self._broadcast('changed', nodes)
-
-    def _broadcast(self, event, *args):
-        """
-        Send an event to all connected clients.
-        """
-        #print "_broadcast device",event
-        for f in self.feeds:
-            if f is not self:
-                f.emit(event, *args)
+        self.state.update((n['id'],n) for n in nodes)
+        self.emit('changed', nodes)
 
 class RouterConnection(sio.SocketConnection):
     """
     Register the socket.io channel endpoints.
     """
-    # FIXME: server should allow arbitrary instruments
-    # TODO: don't know how this differs from "Router.apply_routes" below.
-    __endpoints__ = {
-        '/sans10m/device': DeviceConnection,
-        '/sans10m/control': ControlConnection,
-        }
+    _channels = {
+        'device': DeviceChannel,
+        'control': ControlChannel,
+        'events': EventChannel,
+         }
+    def get_endpoint(self, endpoint):
+        """
+        Parse /insturment/channel into specific channel handlers.
+        """
+        try:
+            _,instrument,channel = endpoint.split('/', 3)
+            return self._channels[channel]
+        except ValueError:
+            pass # Not /instrument/channel
+        except KeyError:
+            pass # invalid channel name 
 
 def serve():
     """

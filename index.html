@@ -9,6 +9,7 @@
 		var root = 'http://' + window.location.hostname + ':8001/' + instrument;
 		var device = new io.connect(root+'/device');
 		var control = new io.connect(root+'/control');
+		var events = new io.connect(root+'/events');
 
         device.on('connect', function() {
             $("#console").append('<div class="debug">subscribing</div>');
@@ -28,6 +29,17 @@
         device.on('removed', function(data) {
             $("#console").append('<div class="debug">removed '+JSON.stringify(data)+'</div>');
         });
+
+        events.on('connect', function() {
+            $("#console").append('<div class="debug">event subscription</div>');
+            events.emit('subscribe', function (data) {
+                $("#console").append('<div class="debug">event subscribed with '+JSON.stringify(data)+'</div>');
+            });
+        });
+        events.on('created', function(data) {
+            $("#console").append('<div class="debug">event '+JSON.stringify(data)+'</div>');
+        });
+
 
         //send the message when submit is clicked
         $('#command').submit(function (evt) {

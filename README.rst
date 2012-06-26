@@ -39,8 +39,6 @@ Current Status
 We have the repeater for the device model, and a primitive interface to
 NICE command line.  The web page is minimal.
 
-TODO: Support for multiple instruments.  Currently everything is sans10m.
-
 TODO: Start the web proxy automatically with the server.
 
 TODO: Support reboot of the repeater.
