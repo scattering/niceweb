@@ -1,64 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
-  <script src="/socket.io.js"></script>
-  <script>
-    $(function() {
-		var instrument = 'sans10m';  // FIXME: should be a parameter
-		var root = 'http://' + window.location.hostname + ':8001/' + instrument;
-		var device = new io.connect(root+'/device');
-		var control = new io.connect(root+'/control');
-		var events = new io.connect(root+'/events');
-
-        device.on('connect', function() {
-            $("#console").append('<div class="debug">subscribing</div>');
-            device.emit('subscribe', function (data) {
-                $("#console").append('<div class="debug">subscribed with '+JSON.stringify(data)+'</div>');
-            });
-        });
-        device.on('started', function(data) {
-            $("#console").append('<div class="debug">started '+JSON.stringify(data)+'</div>');
-        });
-        device.on('added', function (data) {
-            $("#console").append('<div class="debug">added '+JSON.stringify(data)+'</div>');
-        });
-        device.on('changed', function(data) {
-            $("#console").append('<div class="debug">changed '+JSON.stringify(data)+'</div>');
-        });
-        device.on('removed', function(data) {
-            $("#console").append('<div class="debug">removed '+JSON.stringify(data)+'</div>');
-        });
-
-        events.on('connect', function() {
-            $("#console").append('<div class="debug">event subscription</div>');
-            events.emit('subscribe', function (data) {
-                $("#console").append('<div class="debug">event subscribed with '+JSON.stringify(data)+'</div>');
-            });
-        });
-        events.on('created', function(data) {
-            $("#console").append('<div class="debug">event '+JSON.stringify(data)+'</div>');
-        });
-
-
-        //send the message when submit is clicked
-        $('#command').submit(function (evt) {
-            var line = $('#command [type=text]').val();
-            $('#command [type=text]').val('');
-            $("#console").append('<div class="debug">sending '+line+'</div>');
-            control.send(line);
-            return false;
-        });
-    });
-</script>
 </head>
 <body>
-<h3>Live data!</h3>
-<div id="console" style="width: 60em; height: 20em; overflow:auto; border: 1px solid black">
-</div>
-<form id="command">
-<input type="text" />
-<input type="submit" />
-</form>
+<a href="/static/simple.html">summary feed</a>
+<a href="/static/json.html">json feed</a>
 </body>
 </html>

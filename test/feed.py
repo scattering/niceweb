@@ -37,7 +37,16 @@ def deice(obj):
     """
     Convert a NICE type into python primitives which can be pickled by JSON.
     """
-    if isinstance(obj, data.NullValue):
+    if isinstance(obj, float):
+        if numpy.isfinite(obj):
+            return obj
+        elif obj > 0:
+            return 1e308
+        elif obj < 0:
+            return -1e308
+        else: # NaN always compares false
+            return 1e-308
+    elif isinstance(obj, data.NullValue):
         return None
     elif isinstance(obj, data.Value):
         return deice(obj.val)
@@ -57,17 +66,17 @@ T0 = 42*365.2425*24*60*60*1000
 class SimulationTime(object):
     """
     Class to keep track of simulation time.
-    
+
     *T* is the simulation time in milliseconds since epoch (Jan 1, 1970).
     """
     def __init__(self, T=T0):
         self.T = T
-        
+
     def sleep(self, dT):
         """
         Sleep for *dT* seconds and update simulation clock.
-        
-        Note that *dT* is in seconds to be consistent with time.sleep(), 
+
+        Note that *dT* is in seconds to be consistent with time.sleep(),
         but *T* is in milliseconds to be consistent with NICE SIM_TIMEs.
         """
         self.T += dT*1000
@@ -84,7 +93,7 @@ class Events(object):
         self.events = []
         self.id = 0
         self.channel = None
-        
+
     def trace(self, msg): self._log(events.EventLevel.TRACE,msg)
     def debug(self, msg): self._log(events.EventLevel.DEBUG,msg)
     def info(self, msg): self._log(events.EventLevel.INFO,msg)
@@ -97,10 +106,10 @@ class Events(object):
 
     def _log(self, level, message):
         self.id += 1
-        ev = events.NiceEvent(self.id, SIM_TIME.T, level, 
+        ev = events.NiceEvent(self.id, SIM_TIME.T, level,
                               events.EventState.OPEN,
                               events.EventSourceCommand(0, ""),
-                              message, "", 
+                              message, "",
                               events.EventResolution(0,""),
                               )
         self.events.append(ev)
@@ -110,16 +119,15 @@ class Events(object):
     def connect(self, channel):
         """
         Connect device to the appropriate proxy channel.
-        
+
         This simulates instrument startup, which triggers the device model
         reset message that initializes all node values on the client.
         """
         self.channel = channel
-        self.channel.emit('publish', 
-                          [deice(v) for v in self.events])
-        
-        
-        
+        self.channel.emit('reset', [deice(v) for v in self.events])
+
+
+
 class Devices(object):
     """
     Set of devices associated with the instrument.  This corresponds
@@ -128,25 +136,25 @@ class Devices(object):
     def __init__(self):
         self.devices = {}
         self._reset_notify()
-        
+
     def add(self, **kw):
         """
         Add a node.  Keyword arguments match devices.DeviceNode.
 
         To add a whole device, each node needs to be added individually.
-        
+
         The web proxy will not be updated until update() is called.
         """
         node = devices.DeviceNode(**kw)
         self.devices[node.id] = node
         self.added.add(node.id)
-        
+
     def remove(self, id):
         """
         Remove a node from a running instrument.
-        
+
         To remove a whole device, each node needs to be removed individually.
-        
+
         The web proxy will not be updated until update() is called.
         """
         del self.devices[id]
@@ -156,20 +164,20 @@ class Devices(object):
         else:
             self.added.discard(node.id)
         self.changed.discard(node.id)
-        
+
     def change(self, id, current=None, desired=None,
                validity=None, message=None):
         """
-        Simulate a change in node value.  
-        
-        This only changes the desired and current value, not the metadata 
+        Simulate a change in node value.
+
+        This only changes the desired and current value, not the metadata
         such as units or precision.
-        
-        Validity is one of GOOD, BAD or SUSPECT in the namespace 
+
+        Validity is one of GOOD, BAD or SUSPECT in the namespace
         devices.ValidityT.
-        
+
         Any arguments not specified are left unchanged.
-        
+
         The web proxy will not be updated until update() is called.
         """
         node = self.devices[id]
@@ -185,31 +193,31 @@ class Devices(object):
             node.desiredValue.timeStampBefore = SIM_TIME.T
             node.desiredValue.timeStampAfter = SIM_TIME.T
         self.changed.add(id)
-        
+
     def connect(self, channel):
         """
         Connect device to the appropriate proxy channel.
-        
+
         This simulates instrument startup, which triggers the device model
         reset message that initializes all node values on the client.
         """
         self.channel = channel
-        self.channel.emit('publish', 
+        self.channel.emit('reset',
                           dict((v.id,deice(v)) for v in self.devices.values()))
         self._reset_notify()
-        
+
     def update(self):
         """
         Send add/remove/change notification to the proxy.
         """
         if self.added:
-            self.channel.emit('added', 
+            self.channel.emit('added',
                               [deice(self.devices[id]) for id in self.added])
         if self.removed:
-            self.channel.emit('removed', 
+            self.channel.emit('removed',
                               list(self.removed))
         if self.changed:
-            self.channel.emit('changed', 
+            self.channel.emit('changed',
                               [deice(self.devices[id]) for id in self.changed])
         self._reset_notify()
 
@@ -226,14 +234,14 @@ class Instrument(object):
     """
     NICE instrument.  This is a collection of devices, queue, data stream
     and controls associated with the instrument.
-    
+
     *name* is the name of the instrument.
     """
     def __init__(self, name):
         self.name = name
         self.device = Devices()
         self.event = Events()
-        
+
     def connect(self, socket):
         """
         Connect the NICE pub-sub channels and the control channel to the
@@ -244,7 +252,7 @@ class Instrument(object):
         self.control = socket.connect('/%s/control'%self.name)
         self.control.on('message', self.perform_command)
         self.control.emit('listen')
-        
+
     def perform_command(self, line):
         parts = line.split()
         if parts[0] == 'move':
@@ -254,7 +262,7 @@ class Instrument(object):
 def device_init(device):
     """
     Create a simple instrument with the following nodes::
-    
+
         A3.position = 3
         detector.counts = [0,0,0]
     """
@@ -303,17 +311,17 @@ def device_init(device):
             ),
         )
 
-def simulate_move(device, desired, 
+def simulate_move(device, desired,
                   duration=1, dT=0.1, node="A3.position"):
     """
     Simulate move.
-    
+
     *device* is the device to move
-    *desired* is the target value.    
+    *desired* is the target value.
     *duration* is the total duration of the move (default is 1 s)
     *dT* is the move update frequency (default is 0.1 s)
     *node* is the node to move (default is A3.position)
-    """    
+    """
     current = device.devices[node].currentValue.val.val;
     N = int(duration/0.01)
     step = (desired-current)/N
@@ -323,28 +331,28 @@ def simulate_move(device, desired,
         current += step
         device.change(node, current=data.DoubleValue(current))
         device.update()
-    
+
 def simulate_count(device):
     """
     Simulate detector counts on the instrument over four seconds.
     """
     SIM_TIME.sleep(1)
-    device.change('detector.counts', 
+    device.change('detector.counts',
                   current=data.DoubleArrayValue([3,4,5]))
     device.update()
-    
+
     SIM_TIME.sleep(1)
-    device.change('detector.counts', 
+    device.change('detector.counts',
                   current=data.DoubleArrayValue([6,5,6]))
     device.update()
-    
+
     SIM_TIME.sleep(1)
-    device.change('detector.counts', 
+    device.change('detector.counts',
                   current=data.DoubleArrayValue([10,9,11]))
     device.update()
-    
+
     SIM_TIME.sleep(1)
-    device.change('detector.counts', 
+    device.change('detector.counts',
                   current=data.DoubleArrayValue([12,12,12]))
     device.update()
 
@@ -356,13 +364,13 @@ def main():
     device_init(sans10m.device)
     socket = SocketIO('localhost', 8001)
     sans10m.connect(socket)
-    
+
     sans10m.event.debug("simulating move")
     #simulate_move(sans10m.device, desired=7)
     sans10m.event.debug("simulating count")
     simulate_count(sans10m.device)
     sans10m.event.debug("ready")
-    
+
     # sleep forever so that controller can run
     while True: time.sleep(1)
 

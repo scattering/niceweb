@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" type="text/css" href="/static/simple.css" />
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.js"></script>
+  <script src="/socket.io.js"></script>
+  <script>
+    $(function() {
+        var instrument = 'sans10m';  // FIXME: should be a parameter
+        var root = 'http://' + window.location.hostname + ':8001/' + instrument;
+        var device = new io.connect(root+'/device');
+        var control = new io.connect(root+'/control');
+        var events = new io.connect(root+'/events');
+
+        function json_hilite(obj) {
+            json = JSON.stringify(obj, undefined, 4);
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                var cls = 'number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'key';
+                    } else {
+                        cls = 'string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+        function log(msg, obj) {
+            var content = ("<pre>"+(obj&&json_hilite(obj))+"</pre>")||"";
+            $("#console").append('<div>'+msg+content+'</div>');
+        }
+
+        device.on('connect', function() {
+            log("device connect");
+            device.emit('subscribe', function (data) {
+                log("device subscribe", data);
+            });
+        });
+        device.on('reset', function(data) {
+            log("device reset",data);
+        });
+        device.on('added', function (data) {
+            log("device added",data);
+        });
+        device.on('changed', function(data) {
+            log("device changed",data);
+        });
+        device.on('removed', function(data) {
+            log("device removed",data);
+        });
+
+        events.on('connect', function() {
+            log("event connect");
+            events.emit('subscribe', function (data) {
+                log("event subscribe",data);
+            });
+        });
+        events.on('reset', function(data) {
+            log("event reset",data);
+        });
+        events.on('created', function(data) {
+            log("event created",data);
+        });
+
+    });
+</script>
+</head>
+<body>
+  <h3>Live data!</h3>
+  <div id="console" style="width: 100%; height: 30em; overflow:auto; border: 1px solid black">
+  </div>
+</body>
+</html>
