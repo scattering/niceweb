@@ -59,7 +59,7 @@
             }
         }
         function show_event(ev) {
-                json_hilite(ev);
+            jsonlog(ev);
             log(".."+ev.level+": "+ev.message);
         }
 
@@ -67,7 +67,6 @@
             log("device connect");
             device.emit('subscribe', function (data) {
                 log("device subscribe");
-                jsonlog(data);
                 var keys = sorted_keys(data);
                 for (var i=0; i < keys.length; i++) show_node(data[keys[i]]);
             });
@@ -94,7 +93,6 @@
             log("event connect");
             events.emit('subscribe', function (data) {
                 log("event subscribe");
-                jsonlog(data);
                 for (var i=0; i < data.length; i++) show_event(data[i]);
             });
         });

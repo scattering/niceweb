@@ -263,13 +263,13 @@ def device_init(device):
     """
     Create a simple instrument with the following nodes::
 
-        A3.position = 3
+        A3.softPosition = 3
         detector.counts = [0,0,0]
     """
     device.add(
-        id = "A3.position",
+        id = "A3.softPosition",
         description = "Incident angle",
-        units = u"°",
+        units = u"ï¿½",
         precision = 0.01,
         isScannable = True,
         storageMode = data.StorageMode.STATE,
@@ -312,7 +312,7 @@ def device_init(device):
         )
 
 def simulate_move(device, desired,
-                  duration=1, dT=0.1, node="A3.position"):
+                  duration=1, dT=0.1, node="A3.softPosition"):
     """
     Simulate move.
 
@@ -320,7 +320,7 @@ def simulate_move(device, desired,
     *desired* is the target value.
     *duration* is the total duration of the move (default is 1 s)
     *dT* is the move update frequency (default is 0.1 s)
-    *node* is the node to move (default is A3.position)
+    *node* is the node to move (default is A3.softPosition)
     """
     current = device.devices[node].currentValue.val.val;
     N = int(duration/0.01)
@@ -366,9 +366,9 @@ def main():
     sans10m.connect(socket)
 
     sans10m.event.debug("simulating move")
-    #simulate_move(sans10m.device, desired=7)
+    simulate_move(sans10m.device, desired=7)
     sans10m.event.debug("simulating count")
-    simulate_count(sans10m.device)
+    #simulate_count(sans10m.device)
     sans10m.event.debug("ready")
 
     # sleep forever so that controller can run
