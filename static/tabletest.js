@@ -20,6 +20,32 @@ Editing:
 */
     var maxvals = [];
     var minvals = [];
+    var instrument = 'sans10m';  // FIXME: should be a parameter
+    var root = 'http://' + window.location.hostname + ':8001/' + instrument;
+    var device = new io.connect(root+'/device');
+    var control = new io.connect(root+'/control');
+    var events = new io.connect(root+'/events');
+
+    function sorted_keys(obj) {
+        var keys = [];
+        for (var i in obj) {
+            if (obj.hasOwnProperty(i)) {
+                keys.push(i);
+            }
+        }
+
+        // may have to craft a custom sort function to get the right order
+        keys.sort();
+        return keys;
+    }
+
+
+    device.on('changed', function(data) {
+        console.log("device changed");
+        //for (var i=0; i < data.length; i++) show_node(data[i]);
+    });
+
+
     // Generates the "range graphic" in the cells of the file gridpanel
     function vrange(val, meta, record, rI, cI, store) {
         var range = maxvals[cI] - minvals[cI];

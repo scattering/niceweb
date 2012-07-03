@@ -11,6 +11,8 @@ SOCKETIO_CLIENT = 'static/socket.io-0.9.6/socket.io.min.js'
 from tornado import web
 import tornadio2 as sio
 
+
+
 import cookie
 
 ROOT = os.path.normpath(os.path.dirname(__file__))
@@ -20,6 +22,34 @@ class IndexHandler(web.RequestHandler):
     """Regular HTTP handler to serve the index.html page"""
     def get(self):
         self.render('index.html')
+        
+class TestHandler(web.RequestHandler):
+    """Regular HTTP handler to serve the index.html page"""
+    def get(self):
+        self.render('static/testTable2.html')
+        
+class testjsHandler(web.RequestHandler):
+    """Regular HTTP handler to serve the index.html page"""
+    def get(self):
+        self.render('static/tabletest.js')
+
+class extHandler(web.StaticFileHandler):
+    """Regular HTTP handler to serve the index.html page"""
+    def get(self):
+        self.render('static/ext-all.js')
+        
+class extExampleCssHandler(web.RequestHandler):
+    """Regular HTTP handler to serve the index.html page"""
+    def get(self):
+        self.render('static/ext/examples/shared/example.css')        
+
+
+class extAllCssHandler(web.RequestHandler):
+    """Regular HTTP handler to serve the index.html page"""
+    def get(self):
+        self.render('static/ext/resources/css/ext-all.css')        
+
+
 
 
 class SocketIOHandler(web.RequestHandler):
@@ -240,9 +270,17 @@ def serve():
     """
     # Create tornadio server
     Router = sio.TornadioRouter(RouterConnection)
+    ext_path='static/ext-all.js'
     routes = Router.apply_routes([
             (r"/", IndexHandler),
+            (r"/testTable2.html", TestHandler),
             (r"/socket.io.js", SocketIOHandler),
+            (r"/tabletest.js", testjsHandler),
+            #(r"/ext-all.js", extHandler),
+            #(r'/ext-all.js', web.StaticFileHandler, {'path': ext_path}),
+            #(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path}),
+            #(r"/ext/examples/shared/example.css", extExampleCssHandler),
+            #(r"/ext/resources/css/ext-all.css", extAllCssHandler),
             ])
 
     settings = dict(
