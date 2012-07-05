@@ -257,7 +257,7 @@ class QueueChannel(SubscriptionChannel):
     @sio.event
     def reset(self, *args, **kw):
         SubscriptionChannel.reset(self, *args, **kw)
-        print "queue subscribe",self.state
+        #print "queue subscribe",self.state
 
     # TODO: browser clients should not be able to update state; we could either
     # sign the message using HMAC or somehow make some events require an
@@ -269,7 +269,7 @@ class QueueChannel(SubscriptionChannel):
         clients.
         """
         queue_add(self.state, nodes, parentID, prevID)
-        print "queue add",[n['id'] for n in nodes]
+        #print "queue add",[n['id'] for n in nodes]
         self.emit('added', nodes, parentID, prevID)
 
     @sio.event
@@ -278,13 +278,13 @@ class QueueChannel(SubscriptionChannel):
         Nodes removed from the queue.  Forward them to the clients.
         """
         if len(nodeIDs) == 1:
-            print "queue remove",nodeIDs[0]
+            #print "queue remove",nodeIDs[0]
             queue_remove(self.state, nodeIDs[0])
             self.emit('removed', nodeIDs[0])
         else:
             parent, index = queue_find(self.state, nodeIDs[0])
             parent['child'] = []
-            print "queue remove children",parent['id']
+            #print "queue remove children",parent['id']
             self.emit('removed_children', parent['id'])
 
     @sio.event
@@ -292,7 +292,7 @@ class QueueChannel(SubscriptionChannel):
         """
         Nodes moved from the instrument.  Forward their names to the clients.
         """
-        print "queue move",nodeID,parentID,prevID
+        #print "queue move",nodeID,parentID,prevID
         queue_move(nodeID, parentID, prevID)
         self.emit('moved', nodeID, parentID, prevID)
 
@@ -302,7 +302,7 @@ class QueueChannel(SubscriptionChannel):
         Node value or properties changed.  Forward the details to the clients.
         """
         queue_update_status(self.state, nodeID, status)
-        print "queue change",nodeID
+        #print "queue change",nodeID
         self.emit('changed', nodeID, status)
 
 def queue_update_status(queue, nodeID, status):
@@ -316,6 +316,7 @@ def queue_update_status(queue, nodeID, status):
     except KeyError:
         import pprint; pprint.pprint(queue)
         print "could not find",nodeID
+        raise
 
 def queue_move(queue, nodeID, parentID, prevID):
     """
