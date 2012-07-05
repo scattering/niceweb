@@ -11,8 +11,6 @@ SOCKETIO_CLIENT = 'static/socket.io-0.9.6/socket.io.min.js'
 from tornado import web
 import tornadio2 as sio
 
-
-
 import cookie
 
 ROOT = os.path.normpath(os.path.dirname(__file__))
@@ -23,35 +21,6 @@ class IndexHandler(web.RequestHandler):
     def get(self):
         self.render('index.html')
         
-class TestHandler(web.RequestHandler):
-    """Regular HTTP handler to serve the index.html page"""
-    def get(self):
-        self.render('static/testTable2.html')
-        
-class testjsHandler(web.RequestHandler):
-    """Regular HTTP handler to serve the index.html page"""
-    def get(self):
-        self.render('static/tabletest.js')
-
-class extHandler(web.StaticFileHandler):
-    """Regular HTTP handler to serve the index.html page"""
-    def get(self):
-        self.render('static/ext-all.js')
-        
-class extExampleCssHandler(web.RequestHandler):
-    """Regular HTTP handler to serve the index.html page"""
-    def get(self):
-        self.render('static/ext/examples/shared/example.css')        
-
-
-class extAllCssHandler(web.RequestHandler):
-    """Regular HTTP handler to serve the index.html page"""
-    def get(self):
-        self.render('static/ext/resources/css/ext-all.css')        
-
-
-
-
 class SocketIOHandler(web.RequestHandler):
     """Regular HTTP handler to serve socket.io.js"""
     def get(self):
@@ -264,7 +233,7 @@ class RouterConnection(sio.SocketConnection):
         except KeyError:
             pass # invalid channel name
 
-def serve():
+def serve(debug=False):
     """
     Run the NICE repeater, forwarding subscription streams to the web.
     """
@@ -273,14 +242,7 @@ def serve():
     ext_path='static/ext-all.js'
     routes = Router.apply_routes([
             (r"/", IndexHandler),
-            (r"/testTable2.html", TestHandler),
             (r"/socket.io.js", SocketIOHandler),
-            (r"/tabletest.js", testjsHandler),
-            #(r"/ext-all.js", extHandler),
-            #(r'/ext-all.js', web.StaticFileHandler, {'path': ext_path}),
-            #(r'/static/(.*)', tornado.web.StaticFileHandler, {'path': static_path}),
-            #(r"/ext/examples/shared/example.css", extExampleCssHandler),
-            #(r"/ext/resources/css/ext-all.css", extAllCssHandler),
             ])
 
     settings = dict(
@@ -291,6 +253,7 @@ def serve():
         flash_policy_port = 843,
         flash_policy_file = os.path.join(ROOT, 'flashpolicy.xml'),
         socket_io_port = 8001,
+        debug = debug,
         )
 
     # Create socket application
@@ -302,4 +265,5 @@ def serve():
 if __name__ == "__main__":
     import logging
     logging.getLogger().setLevel(logging.INFO)
-    serve()
+    debug = False if len(sys.argv)>1 and sys.argv[1]=='-p' else True
+    serve(debug=debug)
