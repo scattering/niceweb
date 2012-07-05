@@ -1,30 +1,42 @@
-Ext.onReady(function() {
-/* FILE ASSOCIATIONS TABLE, Andrew Tracer, 6/8/2011
+Ext.Loader.setConfig({
+    enabled: true
+});
 
-Field:
-	-filename, the name of the file
-		- accepts any string
-	-filetype, the type of file (e.g., measurement or background)
-		- combobox options MEA or BAC
-	-group, associating a bunch of files (e.g., measurement and 
-		background from one experiment)
-		- accepts lone integers and comma separated integers
+Ext.Loader.setPath('Ext.ux', '../ux');
 
-Editing:
-	-Double-click on a cell to edit an individual record's field values.
-	-Shift + right-click will allow you to edit the filetype and group of all selected rows.		
-	-the group field will accept a single integer or a list of integers.
-		The latter option is to allow association of a single file 
-		with multiple groups
+Ext.require([
+    'Ext.ux.RowExpander'
+]);
 
-*/
+Ext.onReady(function () {
+    /* FILE ASSOCIATIONS TABLE, Andrew Tracer, 6/8/2011
+
+     Field:
+     -filename, the name of the file
+     - accepts any string
+     -filetype, the type of file (e.g., measurement or background)
+     - combobox options MEA or BAC
+     -group, associating a bunch of files (e.g., measurement and
+     background from one experiment)
+     - accepts lone integers and comma separated integers
+
+     Editing:
+     -Double-click on a cell to edit an individual record's field values.
+     -Shift + right-click will allow you to edit the filetype and group of all selected rows.
+     -the group field will accept a single integer or a list of integers.
+     The latter option is to allow association of a single file
+     with multiple groups
+
+     */
     var maxvals = [];
     var minvals = [];
     var instrument = 'sans10m';  // FIXME: should be a parameter
     var root = 'http://' + window.location.hostname + ':8001/' + instrument;
-    var device = new io.connect(root+'/device');
-    var control = new io.connect(root+'/control');
-    var events = new io.connect(root+'/events');
+    var device = new io.connect(root + '/device');
+    var control = new io.connect(root + '/control');
+    var events = new io.connect(root + '/events');
+    var storeFields = [];
+    var dataArray = [];
 
     function sorted_keys(obj) {
         var keys = [];
@@ -39,154 +51,162 @@ Editing:
         return keys;
     }
 
+    device.on('connect', function () {
+        console.log("device connect");
+        device.emit('subscribe', function (data) {
+            console.log("device subscribe");
+            dataArray = [];
+            var datum = {};
+            datum['position'] = data['A3.softPosition']['currentValue']['val'];
+            datum['target'] = data['A3.softPosition']['desiredValue']['val'];
+            datum['device'] = data['A3.softPosition']['id'];
+            dataArray.push(datum);
+            reload_data();
+            //var keys = sorted_keys(data);
+            //for (var i=0; i < keys.length; i++) show_node(data[keys[i]]);
+        });
+    });
 
-    device.on('changed', function(data) {
+    device.on('changed', function (data) {
         console.log("device changed");
+        dataArray = [];
+        var datum = {};
+        for (var i=0; i < data.length; i++){
+            datum['position'] = data[i].currentValue.val;
+            datum['target'] = data[i].desiredValue.val;
+            datum['device'] = data[i].id;
+            dataArray.push(datum);
+        }
+
+
+
+
+        reload_data();
         //for (var i=0; i < data.length; i++) show_node(data[i]);
     });
 
 
-    // Generates the "range graphic" in the cells of the file gridpanel
-    function vrange(val, meta, record, rI, cI, store) {
-        var range = maxvals[cI] - minvals[cI];
-        var spl = val.split(',');
-        var low = parseFloat(spl[0]);
-        var high = parseFloat(spl[1]);
-        var roffset = 0;
-        var loffset = 0;
-        if (range != 0) {
-            loffset = ((low - minvals[cI]) / range) * 100 - 1;
-            roffset = ((maxvals[cI] - high) / range) * 100 - 1;
-        }
-        var ret = high + low;
-        if (range != 0 && low != NaN && high != NaN) {return '<div class="woot"><div style="margin-right:' + roffset + '%; margin-left:' + loffset + '%;"></div></div>';}
-        else {return '<div class="woot empty"></div>';}
-    }
-    var storeFields = [];
-    var dataArray = [];
-
-    Ext.regModel('fileModel', {
-	fields: [
-	    {name: 'file name', type: 'string'},
-	    'database id',
-	    {name:'sha1',type:'string'}
-	]
+    Ext.regModel('deviceModel', {
+        fields:[
+            {name:'device', type:'string'},
+            'position',
+            {name:'target', type:'string'}
+        ]
     });
 
-    var store = Ext.create('Ext.data.Store', { model: 'fileModel'});
-	
+    var store = Ext.create('Ext.data.Store', { model:'deviceModel'});
+
 //	var store = new Ext.data.Store({
 //        proxy: new Ext.data.proxy.Memory(dataArray),
 //        reader: new Ext.data.ArrayReader({},storeFields),
 //        remoteSort: true,
 //    });
     var gridColumns = [];
-	
-    gridColumns.push({header: 'file name', width: 150, sortable: true, dataIndex: 'filename'});
-    //storeFields.push({name: fieldData[0]});
-    gridColumns.push({header: 'database id', width: 150,hidden:true, sortable: true, dataIndex: 'database_id'});
-    //storeFields.push({name: fieldData[1]});
-    gridColumns.push({header: 'sha1', width: 150,hidden:true, sortable: true, dataIndex: 'sha1'});
-    //storeFields.push({name: fieldData[2]});	
-	
-	/*GridPanel that displays the data*/
+
+    gridColumns.push({header:'device', width:150, sortable:true, dataIndex:'device'});
+    gridColumns.push({header:'position', width:150, hidden:false, sortable:true, dataIndex:'position'});
+    gridColumns.push({header:'target', width:150, hidden:false, sortable:true, dataIndex:'target'});
+
+    /*GridPanel that displays the data*/
     var grid = new Ext.grid.GridPanel({
-        store: store,
-        columns: gridColumns,
-        stripeRows: true,
-        height: 500,
-        autoWidth: true,
-        title: 'Available files',
-        bbar: [],
+        store:store,
+        columns:gridColumns,
+        stripeRows:true,
+        height:500,
+        autoWidth:true,
+        /*
+        plugins: [{
+            ptype: 'rowexpander',
+            rowBodyTpl : [
+                '<p><b>Device:</b> {device}</p><br>',
+                '<p><b>Target:</b> {target}</p>'
+            ]
+        }],
+        */
+        title:'Devices',
+        collapsible: true,
+        animCollapse: false,
+        bbar:[],
     });
-	
+
     grid.render('gridtest');
 
 
-	
-/*After data is retrieved from server, we have to reinitiallize the Store reconfigure the ArrayGrid
-so that the new data is displayed on the page*/
-    function reload_data(){
-	var fieldData = dataArray[0]; //First row is the parameters of the data file (e.g. ['X', 'Y', 'Z', 'Temp'])
-	maxvals = dataArray[1];       //Second row is the max values of the parameters over all files (used for rendering ranges)
-	minvals = dataArray[2];       //Third row is min values of parameters
-	dataArray.splice(0, 3);        //The rest is the actual data
-	var gridColumns = [];
-	storeFields = [];
-    /*The first three parameters (File Name, database ID, and md5 sum) aren't renedered using the
-    standard renderer and the ID and md5 sum aren't displayed at all, they are only used for server
-    requests later, so we add them to the Store differently*/
-	gridColumns.push({header: fieldData[0], width: 150, sortable: true, dataIndex: fieldData[0]});
-	storeFields.push({name: fieldData[0]});
-	gridColumns.push({header: fieldData[1], width: 150,hidden:true, sortable: true, dataIndex: fieldData[1]});
-	storeFields.push({name: fieldData[1]});
-	gridColumns.push({header: fieldData[2], width: 150,hidden:true, sortable: true, dataIndex: fieldData[2]});
-	storeFields.push({name: fieldData[2]});
-	for (var i = 3; i < fieldData.length; ++i) {
-	    gridColumns.push({header: fieldData[i], width: 100, renderer: vrange, sortable: true, dataIndex: fieldData[i]});
-	    storeFields.push({name: fieldData[i]});
-	}
-	//store = new Ext.data.Store({
-	//    proxy: new Ext.data.proxy.Memory(dataArray),
-	//    reader: new Ext.data.ArrayReader({},storeFields),
-	//    remoteSort: true,
-	//});
-	    
-	Ext.regModel('fileModel', {
-	    fields: storeFields
-	});
-	var store = Ext.create('Ext.data.Store', { model: 'fileModel'});
-	grid.columns=gridColumns;
-	
-	//add all files to the store..
-	var filerecs=[];
-	for (var j = 0; j < dataArray.length; ++j) {
-	    var filerec={}
-	    for (var i = 0; i < fieldData.length; ++i) {
-		filerec[fieldData[i]]=dataArray[j][i];
-	    }
-	    filerecs.push(filerec);
-	}
-	store.loadData(filerecs);
-	//colModel = new Ext.grid.ColumnModel({columns: gridColumns});
-	//store.load({params:{start:0, limit:10}});
-	//grid.getBottomToolbar().removeAll();
-	//grid.getBottomToolbar().add(new Ext.PagingToolbar({
-	//        store:store,
-	//        pageSize: 10,
-	//        displayInfo: false,
-	//        displayMsg: 'Displaying topics {0} - {1} of {2}',
-	//        emptyMsg: "No topics to display",
-	//    }))
-	//grid.getBottomToolbar().doLayout();
-	grid.reconfigure(store, gridColumns);
-    
-    };
+    /*After data is retrieved from server, we have to reinitiallize the Store reconfigure the ArrayGrid
+     so that the new data is displayed on the page*/
+    function reload_data() {
+
+        var gridColumns = [];
+        storeFields = [];
+        gridColumns.push({header:'device', width: 150, sortable: true, dataIndex: 'device'});
+
+        gridColumns.push({header: 'position', width: 150,hidden:false, sortable: true, dataIndex: 'position'});
+
+        gridColumns.push({header: 'target', width: 150,hidden:false, sortable: true, dataIndex: 'target'});
 
 
+        storeFields.push({name:'device'});
+        storeFields.push({name:'position'});
+        storeFields.push({name:'target'});
 
-/*Retrieve data in json format via a GET request to the server. This is used
-anytime there is new data, and initially to populate the table.*/
+
+        Ext.regModel('deviceModel', {
+            fields:storeFields
+        });
+        var store = Ext.create('Ext.data.Store', { model:'deviceModel'});
+        grid.columns = gridColumns;
+
+        //add all devices to the store..
+        var devicerecs = [];
+        for (var j = 0; j < dataArray.length; ++j) {
+            var devicerec = {}
+            devicerec['position'] = dataArray[j]['position'];
+            devicerec['device'] = dataArray[j]['device'];
+            devicerec['target'] = dataArray[j]['target'];
+            devicerecs.push(devicerec);
+
+        }
+        store.loadData(devicerecs);
+        //colModel = new Ext.grid.ColumnModel({columns: gridColumns});
+        //store.load({params:{start:0, limit:10}});
+        //grid.getBottomToolbar().removeAll();
+        //grid.getBottomToolbar().add(new Ext.PagingToolbar({
+        //        store:store,
+        //        pageSize: 10,
+        //        displayInfo: false,
+        //        displayMsg: 'Displaying topics {0} - {1} of {2}',
+        //        emptyMsg: "No topics to display",
+        //    }))
+        //grid.getBottomToolbar().doLayout();
+
+        //gridColumns = store.data.items;
+        grid.reconfigure(store, gridColumns);
+
+    }
+
+    ;
+
+
+    /*Retrieve data in json format via a GET request to the server. This is used
+     anytime there is new data, and initially to populate the table.*/
     function update() {
-	//dataArray=[['file name','database id','sha1','x','y','z'],[NaN,NaN,NaN,10,10,10],[NaN,NaN,NaN,-10,-10,-10],['file1','1','sh1','1,9','2,3','3,4'],['file2','1','sh2','4,5','2,3','5,5']];	
-    var conn = new Ext.data.Connection();
+        //dataArray=[['file name','database id','sha1','x','y','z'],[NaN,NaN,NaN,10,10,10],[NaN,NaN,NaN,-10,-10,-10],['file1','1','sh1','1,9','2,3','3,4'],['file2','1','sh2','4,5','2,3','5,5']];
+        var conn = new Ext.data.Connection();
         conn.request({
-            url: '/json/',
-            method: 'GET',
-            params: {},
-            success: function(responseObject) {
+            url:'/json/',
+            method:'GET',
+            params:{},
+            success:function (responseObject) {
                 dataArray = Ext.decode(responseObject.responseText);//decodes the response
                 reload_data();                                      //resets the store and grids
             },
-            failure: function() {
+            failure:function () {
             }
         });
-	//reload_data();
+        //reload_data();
     }
+
     update();
-	
-
-
 
 
 });
