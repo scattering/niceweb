@@ -229,7 +229,6 @@ class Devices(object):
         self.removed = set()
         self.changed = set()
 
-
 class Instrument(object):
     """
     NICE instrument.  This is a collection of devices, queue, data stream
@@ -355,6 +354,7 @@ def simulate_count(device):
     device.change('detector.counts',
                   current=data.DoubleArrayValue([12,12,12]))
     device.update()
+
 
 def main():
     """

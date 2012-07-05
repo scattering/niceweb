@@ -9,6 +9,7 @@
         var instrument = 'sans10m';  // FIXME: should be a parameter
         var root = 'http://' + window.location.hostname + ':8001/' + instrument;
         var device = new io.connect(root+'/device');
+        var queue = new io.connect(root+'/queue');
         var control = new io.connect(root+'/control');
         var events = new io.connect(root+'/events');
 
@@ -35,21 +36,32 @@
             var content = ("<pre>"+(obj&&json_hilite(obj))+"</pre>")||"";
             $("#console").append('<div>'+msg+content+'</div>');
         }
+        function trim_data(data) {
+            $.each(data, function (idx,node) {
+                if ($.isArray(node.currentValue.val) && node.currentValue.value.length > 5) {
+                    node.currentValue.value = "[...]";
+                }
+                if ($.isArray(node.desiredValue.val) && node.desiredValue.value.length > 5) {
+                    node.desiredValue.value = "[...]";
+                }
+            });
+            return data;
+        }
 
         device.on('connect', function() {
             log("device connect");
             device.emit('subscribe', function (data) {
-                log("device subscribe", data);
+                log("device subscribe",trim_data(data));
             });
         });
         device.on('reset', function(data) {
-            log("device reset",data);
+            log("device reset",trim_data(data));
         });
         device.on('added', function (data) {
-            log("device added",data);
+            log("device added",trim_data(data));
         });
         device.on('changed', function(data) {
-            log("device changed",data);
+            log("device changed",trim_data(data));
         });
         device.on('removed', function(data) {
             log("device removed",data);
@@ -68,6 +80,42 @@
             log("event created",data);
         });
 
+        queue.on('connect', function() {
+            log("queue connect");
+            queue.emit('subscribe', function (root) {
+                log("queue subscribe",root);
+            });
+        });
+        queue.on('added', function(node, parentID, siblingID) {
+            log("queue added under "+parentID+" after "+siblingID,node);
+            queue.emit('subscribe', function(root) {
+               log("queue is now",root);
+            });
+        });
+        queue.on('removed', function(nodeID) {
+            log("queue removed "+nodeID);
+            queue.emit('subscribe', function(root) {
+               log("queue is now",root);
+            });
+        });
+        queue.on('removed children', function(nodeID) {
+            log("queue removed children from "+nodeID);
+            queue.emit('subscribe', function(root) {
+               log("queue is now",root);
+            });
+        });
+        queue.on('moved', function(nodeID, parentID, siblingID) {
+            log("queue moved "+nodeID+" to "+parentID+" after "+siblingID);
+            queue.emit('subscribe', function(root) {
+               log("queue is now",root);
+            });
+        });
+        queue.on('changed', function(nodeID, node_status) {
+            log("queue status "+nodeID, node_status);
+        });
+        queue.on('reset', function(root) {
+            log("queue reset",root);
+        });
     });
 </script>
 </head>
