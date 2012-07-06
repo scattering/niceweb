@@ -1,10 +1,13 @@
+//my file
 Ext.Loader.setConfig({
     enabled: true
 });
 
-Ext.Loader.setPath('Ext.ux', '../ux');
+Ext.Loader.setPath('Ext.ux', '/static/ext/examples/ux');
 
 Ext.require([
+    'Ext.grid.*',
+    'Ext.data.*',
     'Ext.ux.RowExpander'
 ]);
 
@@ -114,7 +117,6 @@ Ext.onReady(function () {
         stripeRows:true,
         height:500,
         autoWidth:true,
-        /*
         plugins: [{
             ptype: 'rowexpander',
             rowBodyTpl : [
@@ -122,11 +124,10 @@ Ext.onReady(function () {
                 '<p><b>Target:</b> {target}</p>'
             ]
         }],
-        */
         title:'Devices',
         collapsible: true,
         animCollapse: false,
-        bbar:[],
+        bbar:[]
     });
 
     grid.render('gridtest');
@@ -153,7 +154,7 @@ Ext.onReady(function () {
         Ext.regModel('deviceModel', {
             fields:storeFields
         });
-        var store = Ext.create('Ext.data.Store', { model:'deviceModel'});
+        //var store = Ext.create('Ext.data.Store', { model:'deviceModel'});
         grid.columns = gridColumns;
 
         //add all devices to the store..
@@ -166,7 +167,7 @@ Ext.onReady(function () {
             devicerecs.push(devicerec);
 
         }
-        store.loadData(devicerecs);
+        grid.store.loadData(devicerecs);
         //colModel = new Ext.grid.ColumnModel({columns: gridColumns});
         //store.load({params:{start:0, limit:10}});
         //grid.getBottomToolbar().removeAll();
@@ -180,11 +181,9 @@ Ext.onReady(function () {
         //grid.getBottomToolbar().doLayout();
 
         //gridColumns = store.data.items;
-        grid.reconfigure(store, gridColumns);
+        grid.getView().refresh();
 
     }
-
-    ;
 
 
     /*Retrieve data in json format via a GET request to the server. This is used
