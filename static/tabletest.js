@@ -57,13 +57,18 @@ Ext.onReady(function () {
     device.on('connect', function () {
         console.log("device connect");
         device.emit('subscribe', function (data) {
-            console.log("device subscribe");
+            console.log("device subscribe", data);
             dataArray = [];
             var datum = {};
-            datum['position'] = data['A3.softPosition']['currentValue']['val'];
-            datum['target'] = data['A3.softPosition']['desiredValue']['val'];
-            datum['device'] = data['A3.softPosition']['id'];
-            dataArray.push(datum);
+            keys=Object.keys(data);
+            for (var i = 1; i < keys.length; i++) {
+                var datum = {};
+                datum['position'] = data[keys[i]]['currentValue']['val'];
+                datum['target'] = data[keys[i]]['desiredValue']['val'];
+                datum['device'] = data[keys[i]]['id'];
+                dataArray.push(datum);
+            }
+
             reload_data();
             //var keys = sorted_keys(data);
             //for (var i=0; i < keys.length; i++) show_node(data[keys[i]]);
@@ -74,10 +79,11 @@ Ext.onReady(function () {
         console.log("device changed");
         dataArray = [];
         var datum = {};
-        for (var i=0; i < data.length; i++){
-            datum['position'] = data[i].currentValue.val;
-            datum['target'] = data[i].desiredValue.val;
-            datum['device'] = data[i].id;
+        keys=Object.keys(data);
+        for (var i=0; i < keys.length; i++){
+            datum['position'] = data[keys[i]].currentValue.val;
+            datum['target'] = data[keys[i]].desiredValue.val;
+            datum['device'] = data[keys[i]].id;
             dataArray.push(datum);
         }
 
@@ -160,7 +166,7 @@ Ext.onReady(function () {
         //add all devices to the store..
         var devicerecs = [];
         for (var j = 0; j < dataArray.length; ++j) {
-            var devicerec = {}
+            var devicerec = {};
             devicerec['position'] = dataArray[j]['position'];
             devicerec['device'] = dataArray[j]['device'];
             devicerec['target'] = dataArray[j]['target'];
