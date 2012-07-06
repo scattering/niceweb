@@ -38,6 +38,24 @@ module data {
 	    TIME, MONITOR, ROI, TIME_AND_MONITOR, TIME_AND_ROI, MONITOR_AND_ROI, TIME_AND_MONITOR_AND_ROI
 	};
 	
+	/* for bt4 */
+	enum FixedEnergyMode
+	{
+		EI, EF
+	};
+
+	/* for bt4 */
+	enum SampleGeometry
+	{
+		TILT, EULERIAN
+	};
+
+	/* for bt4 */
+	enum HklStrategy
+	{
+		PLACEHOLDER_STRATEGY /*I don't know what the strategies are supposed to be yet. */
+	};
+		
     sequence<bool> BoolArray;
     sequence<byte> ByteArray;
     sequence<int> IntArray;
@@ -50,7 +68,6 @@ module data {
     dictionary<string, string> StringToStringMap;
     dictionary<int, double> IntToDoubleMap;
     
-
     /* +
      * There are data types used by NICE to exchange data between the client and server.
      * Well, it's mostly for the client to be able to receive values in a generic manner.
@@ -76,7 +93,10 @@ module data {
 	class DeviceStateValue extends Value { DeviceState val; };
 	class SansSampleModeValue extends Value { SansSampleMode val; };
 	class CountAgainstValue extends Value { CountAgainst val; };
-		
+	class FixedEnergyModeValue extends Value { FixedEnergyMode val; };
+	class SampleGeometryValue extends Value { SampleGeometry val; };
+	class HklStrategyValue extends Value { HklStrategy val; };
+			
     /* Array Values */
     class BoolArrayValue extends Value { BoolArray val; };
     class IntArrayValue extends Value { IntArray val; };
@@ -91,6 +111,11 @@ module data {
 
     /* Admittedly, this sounds a little silly. But it allows heterogeneous arrays. */
     class ValueArrayValue extends Value { ValueArray val; };
+
+    /* The validity indicates if the associated value is possibly in an inconsistent state.
+     The order of declaration of Validity enum values is used for comparisons (don't change, as it
+     changes the behavior of Comparable<Validity>) */
+    enum Validity { BAD, SUSPECT, GOOD };
 
 	class CompletionResult
 	{

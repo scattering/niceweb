@@ -1,12 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: latin-1 -*-
-
 """
-Test data feed for the server.
+Test data feed for the server.  This program feeds NICE events to the web repeater
+so that they can be used to debug the web client.  Currently it implements:
+
+    counts - simulate counting on the sans counter
+    move   - simulate an A3 move
+    queue  - replay the unrolling of a sans trajectory in real time
+
+Usage::
+
+    ./feed.py [counts|queue|move]*
 
 Requires socketIO client and ZeroC python bindings.
 """
 import time
+import sys
+import json
 
 import numpy
 
@@ -26,7 +36,7 @@ NICE_ENUMS = set((
     data.DeviceState,
     data.CountAgainst,
     data.SansSampleMode,
-    devices.ValidityT,
+    data.Validity,
     events.EventLevel,
     events.EventState,
     queue.CommandState,
@@ -174,7 +184,7 @@ class Devices(object):
         such as units or precision.
 
         Validity is one of GOOD, BAD or SUSPECT in the namespace
-        devices.ValidityT.
+        data.Validity.
 
         Any arguments not specified are left unchanged.
 
@@ -248,6 +258,7 @@ class Instrument(object):
         """
         self.device.connect(socket.connect('/%s/device'%self.name))
         self.event.connect(socket.connect('/%s/events'%self.name))
+        self.queue = socket.connect('/%s/queue'%self.name)
         self.control = socket.connect('/%s/control'%self.name)
         self.control.on('message', self.perform_command)
         self.control.emit('listen')
@@ -270,21 +281,20 @@ def device_init(device):
         description = "Incident angle",
         units = u"�",
         precision = 0.01,
-        isScannable = True,
         storageMode = data.StorageMode.STATE,
         isStored = True,
         isUserLocked = False,
         isAdminLocked = False,
         desiredValue = devices.DeviceValue(
             val = data.DoubleValue(3.0),
-            validity = devices.ValidityT.GOOD,
+            validity = data.Validity.GOOD,
             validityString = None,
             timeStampBefore = SIM_TIME.T,
             timeStampAfter = SIM_TIME.T,
             ),
         currentValue = devices.DeviceValue(
             val = data.DoubleValue(3.0),
-            validity = devices.ValidityT.GOOD,
+            validity = data.Validity.GOOD,
             validityString = None,
             timeStampBefore = SIM_TIME.T,
             timeStampAfter = SIM_TIME.T,
@@ -295,7 +305,6 @@ def device_init(device):
         description = "Counts on the detector",
         units = "",
         precision = 0.01,
-        isScannable = False,
         storageMode = data.StorageMode.COUNTS,
         isStored = True,
         isUserLocked = False,
@@ -303,7 +312,7 @@ def device_init(device):
         desiredValue = data.NullValue(),
         currentValue = devices.DeviceValue(
             val = data.DoubleArrayValue([0,0,0]),
-            validity = devices.ValidityT.GOOD,
+            validity = data.Validity.GOOD,
             validityString = None,
             timeStampBefore = SIM_TIME.T,
             timeStampAfter = SIM_TIME.T,
@@ -365,14 +374,32 @@ def main():
     socket = SocketIO('localhost', 8001)
     sans10m.connect(socket)
 
-    sans10m.event.debug("simulating move")
-    simulate_move(sans10m.device, desired=7)
-    sans10m.event.debug("simulating count")
-    #simulate_count(sans10m.device)
-    sans10m.event.debug("ready")
+    sims = ["move"] if len(sys.argv) == 1 else sys.argv[1:]
+    for s in sims:        
+        eval("sim_%s"%s)(sans10m)
 
     # sleep forever so that controller can run
+    sans10m.event.debug("ready")
     while True: time.sleep(1)
 
+def sim_move(sans10m):
+    sans10m.event.debug("simulating move")
+    simulate_move(sans10m.device, desired=7)
+
+def sim_count(sans10m):
+    sans10m.event.debug("simulating count")
+    simulate_count(sans10m.device)
+
+def sim_queue(sans10m):
+    sans10m.event.debug("simulating queue")
+    T0 = None
+    for line in open("queue.dat","r"):
+        print "line",line
+        T,ev,args = json.loads(line)
+        if T0 != None:
+            SIM_TIME.sleep(T-T0)
+        T0 = T
+        sans10m.queue.emit(ev, *args)
+
 if __name__ == "__main__":
-    main()
+     main()

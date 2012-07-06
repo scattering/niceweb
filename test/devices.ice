@@ -9,12 +9,9 @@ module api {
 
 module devices {
 
-    /* These values indicate if the value returned is possibly in an inconsistent state. */
-    enum ValidityT { BAD, SUSPECT, GOOD };
-
     class DeviceValue {
         data::Value val;
-        ValidityT validity;
+        data::Validity validity;
         string validityString;
         long timeStampBefore;
         long timeStampAfter;
@@ -26,7 +23,6 @@ module devices {
         string description;
         string units;
         double precision;
-        bool isScannable;
         data::StorageMode storageMode;
         bool isStored;
         bool isUserLocked;

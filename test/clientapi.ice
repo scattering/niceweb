@@ -47,7 +47,8 @@ module api {
      
         queue::QueueNode move(data::StringArray moveList, bool relative) throws exceptions::CommandException;
 
-        string getNodeID(string node) throws exceptions::CommandException;
+        string getCanonicalNodeID(string node) throws exceptions::CommandException;
+        devices::DeviceNodeArray getAllNodes() throws exceptions::CommandException;
 
         string read(string node) throws exceptions::CommandException;
         data::Value readValue(string node) throws exceptions::CommandException;

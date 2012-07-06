@@ -7,6 +7,9 @@ streams.
 import sys
 import os
 import re
+import time
+import functools
+import json
 
 SOCKETIO_CLIENT = 'static/socket.io-0.9.6/socket.io.min.js'
 from tornado import web
@@ -26,6 +29,32 @@ class SocketIOHandler(web.RequestHandler):
     """Regular HTTP handler to serve socket.io.js"""
     def get(self):
         self.render(SOCKETIO_CLIENT)
+
+class CaptureMessages(object):
+    """
+    Decorator for capturing certain types of events to a file so that they
+    can be later replayed.
+
+    Note: this would be better handled by modifying SubscriptionChannel so
+    that every method doesn't need the decorator, and it could instead be a
+    constructor option.  Consider doing so if other event streams need to be
+    captured.
+    """
+    def __init__(self, filename):
+        self.file = open(filename, "w")
+        self.T0 = time.time()
+    def __call__(self, fn):
+       @functools.wraps(fn)
+       def wrapper(obj, *args, **kw):
+           if kw: args = [kw]
+           self.file.write("[%d,\"%s\",%s]\n"
+                           % (time.time()-self.T0,fn.func_name, json.dumps(args)))
+           self.file.flush()
+           return fn(obj, *args, **kw)
+       return wrapper
+
+#capture_queue = CaptureMessages("queue.dat")
+capture_queue = lambda fn: fn
 
 class ControlChannel(sio.SocketConnection):
     """
@@ -255,6 +284,7 @@ class QueueChannel(SubscriptionChannel):
     of the queue.
     """
     @sio.event
+    @capture_queue
     def reset(self, *args, **kw):
         SubscriptionChannel.reset(self, *args, **kw)
         #print "queue subscribe",self.state
@@ -263,6 +293,7 @@ class QueueChannel(SubscriptionChannel):
     # sign the message using HMAC or somehow make some events require an
     # authenticated connection.
     @sio.event
+    @capture_queue
     def added(self, nodes, parentID, prevID):
         """
         Node added to the queue.  Forward the details to the
@@ -273,6 +304,7 @@ class QueueChannel(SubscriptionChannel):
         self.emit('added', nodes, parentID, prevID)
 
     @sio.event
+    @capture_queue
     def removed(self, nodeIDs, parentID, index):
         """
         Nodes removed from the queue.  Forward them to the clients.
@@ -288,6 +320,7 @@ class QueueChannel(SubscriptionChannel):
             self.emit('removed_children', parent['id'])
 
     @sio.event
+    @capture_queue
     def moved(self, nodeID, parentID, prevID):
         """
         Nodes moved from the instrument.  Forward their names to the clients.
@@ -297,6 +330,7 @@ class QueueChannel(SubscriptionChannel):
         self.emit('moved', nodeID, parentID, prevID)
 
     @sio.event
+    @capture_queue
     def changed(self, nodeID, status):
         """
         Node value or properties changed.  Forward the details to the clients.
