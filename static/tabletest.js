@@ -4,11 +4,17 @@ Ext.Loader.setConfig({
 });
 
 Ext.Loader.setPath('Ext.ux', '/static/ext/examples/ux');
+Ext.Loader.setPath('Ext.selection', '/static/ext/src/selection');
+Ext.Loader.setPath('Ext.grid', '/static/ext/src/grid');
 
 Ext.require([
     'Ext.grid.*',
     'Ext.data.*',
-    'Ext.ux.RowExpander'
+    'Ext.util.*',
+    'Ext.state.*',
+    'Ext.form.*',
+    'Ext.ux.RowExpander',
+    'Ext.selection.CellModel'
 ]);
 
 Ext.onReady(function () {
@@ -31,6 +37,18 @@ Ext.onReady(function () {
      with multiple groups
 
      */
+
+    //The following line is evil and worse, it is impolite.    We should try to replace it!!!
+    Object.prototype.clone = function() {
+        var newObj = (this instanceof Array) ? [] : {};
+        for (i in this) {
+            if (i == 'clone') continue;
+            if (this[i] && typeof this[i] == "object") {
+                newObj[i] = this[i].clone();
+            } else newObj[i] = this[i]
+        } return newObj;
+    };
+
     var maxvals = [];
     var minvals = [];
     var instrument = 'sans10m';  // FIXME: should be a parameter
@@ -40,6 +58,7 @@ Ext.onReady(function () {
     var events = new io.connect(root + '/events');
     var storeFields = [];
     var dataArray = [];
+    var keys = [];
 
     function sorted_keys(obj) {
         var keys = [];
@@ -61,15 +80,20 @@ Ext.onReady(function () {
             dataArray = [];
             var datum = {};
             keys=Object.keys(data);
-            for (var i = 1; i < keys.length; i++) {
+            for (var i = 0; i < keys.length; i++) {
                 var datum = {};
-                datum['position'] = data[keys[i]]['currentValue']['val'];
-                datum['target'] = data[keys[i]]['desiredValue']['val'];
-                datum['device'] = data[keys[i]]['id'];
-                dataArray.push(datum);
+                if (keys[i] !== "detector.counts") {
+                    datum['position'] = data[keys[i]]['currentValue']['val'];
+                    datum['target'] = data[keys[i]]['desiredValue']['val'];
+                    datum['device'] = data[keys[i]]['id'];
+                    dataArray.push(datum);
+                }
             }
-
-            reload_data();
+            keys.splice(keys.indexOf('detector.counts'), 1);
+            var localData=dataArray.clone();
+            grid.store.loadData(localData);
+            grid.getView().refresh();
+            //load_data();
             //var keys = sorted_keys(data);
             //for (var i=0; i < keys.length; i++) show_node(data[keys[i]]);
         });
@@ -77,20 +101,26 @@ Ext.onReady(function () {
 
     device.on('changed', function (data) {
         console.log("device changed");
-        dataArray = [];
+        var changedData = [];
         var datum = {};
-        keys=Object.keys(data);
-        for (var i=0; i < keys.length; i++){
-            datum['position'] = data[keys[i]].currentValue.val;
-            datum['target'] = data[keys[i]].desiredValue.val;
-            datum['device'] = data[keys[i]].id;
-            dataArray.push(datum);
+        var changedKeys=Object.keys(data);
+        for (var i=0; i < changedKeys.length; i++){
+            if (changedKeys[i] !== "detector.counts") {
+                datum['position'] = data[changedKeys[i]].currentValue.val;
+                datum['target'] = data[changedKeys[i]].desiredValue.val;
+                datum['device'] = data[changedKeys[i]].id;
+                changedData.push(datum);
+            }
         }
 
-
-
-
-        reload_data();
+        //updates dataArray based on the changed positions from changedData
+        for (var i=0; i < changedData.length; i++) {
+            var x = keys.indexOf(changedData[i]['device']);
+            dataArray[x] = changedData[i]
+        }
+        var localData=dataArray.clone();
+        grid.store.loadData(localData);
+        grid.getView().refresh();
         //for (var i=0; i < data.length; i++) show_node(data[i]);
     });
 
@@ -105,6 +135,10 @@ Ext.onReady(function () {
 
     var store = Ext.create('Ext.data.Store', { model:'deviceModel'});
 
+    var cellEditing = Ext.create('Ext.grid.plugin.CellEditing', {
+        clicksToEdit: 1
+    });
+
 //	var store = new Ext.data.Store({
 //        proxy: new Ext.data.proxy.Memory(dataArray),
 //        reader: new Ext.data.ArrayReader({},storeFields),
@@ -113,8 +147,10 @@ Ext.onReady(function () {
     var gridColumns = [];
 
     gridColumns.push({header:'device', width:150, sortable:true, dataIndex:'device'});
-    gridColumns.push({header:'position', width:150, hidden:false, sortable:true, dataIndex:'position'});
-    gridColumns.push({header:'target', width:150, hidden:false, sortable:true, dataIndex:'target'});
+    gridColumns.push({header:'position', width:150, hidden:false, sortable:true, dataIndex:'position'})
+        //field: {xtype: 'numberfield', allowBlank: false}});
+    gridColumns.push({header:'target', width:150, hidden:false, sortable:true, dataIndex:'target'})
+        //field: {xtype: 'numberfield', allowBlank: false}});
 
     /*GridPanel that displays the data*/
     var grid = new Ext.grid.GridPanel({
@@ -122,18 +158,18 @@ Ext.onReady(function () {
         columns:gridColumns,
         stripeRows:true,
         height:500,
-        autoWidth:true,
+        width:700,
         plugins: [{
             ptype: 'rowexpander',
             rowBodyTpl : [
                 '<p><b>Device:</b> {device}</p><br>',
                 '<p><b>Target:</b> {target}</p>'
             ]
-        }],
+        },
+        cellEditing],
         title:'Devices',
         collapsible: true,
         animCollapse: false,
-        bbar:[]
     });
 
     grid.render('gridtest');
@@ -141,7 +177,7 @@ Ext.onReady(function () {
 
     /*After data is retrieved from server, we have to reinitiallize the Store reconfigure the ArrayGrid
      so that the new data is displayed on the page*/
-    function reload_data() {
+    function load_data(dataArray) {
 
         var gridColumns = [];
         storeFields = [];
@@ -152,28 +188,31 @@ Ext.onReady(function () {
         gridColumns.push({header: 'target', width: 150,hidden:false, sortable: true, dataIndex: 'target'});
 
 
-        storeFields.push({name:'device'});
-        storeFields.push({name:'position'});
-        storeFields.push({name:'target'});
+        //storeFields.push({name:'device'});
+       // storeFields.push({name:'position'});
+        //storeFields.push({name:'target'});
 
 
-        Ext.regModel('deviceModel', {
-            fields:storeFields
-        });
+       // Ext.regModel('deviceModel', {
+       //     fields:storeFields
+        //});
         //var store = Ext.create('Ext.data.Store', { model:'deviceModel'});
-        grid.columns = gridColumns;
+        //grid.columns = gridColumns;
 
         //add all devices to the store..
-        var devicerecs = [];
-        for (var j = 0; j < dataArray.length; ++j) {
-            var devicerec = {};
-            devicerec['position'] = dataArray[j]['position'];
-            devicerec['device'] = dataArray[j]['device'];
-            devicerec['target'] = dataArray[j]['target'];
-            devicerecs.push(devicerec);
+//        var devicerecs = [];
+//        for (var j = 0; j < dataArray.length; ++j) {
+//            var devicerec = {};
+//            devicerec['position'] = dataArray[j]['position'];
+//            devicerec['device'] = dataArray[j]['device'];
+//            devicerec['target'] = dataArray[j]['target'];
+//            devicerecs.push(devicerec);
+//
+//        }
+        //grid.store.loadData(devicerecs);
+        grid.store.loadData(dataArray);
 
-        }
-        grid.store.loadData(devicerecs);
+
         //colModel = new Ext.grid.ColumnModel({columns: gridColumns});
         //store.load({params:{start:0, limit:10}});
         //grid.getBottomToolbar().removeAll();
