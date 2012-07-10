@@ -59,6 +59,22 @@ Ext.onReady(function () {
     var storeFields = [];
     var dataArray = [];
     var keys = [];
+	
+	 function trim_data(data) {
+            $.each(data, function (idx,node) {
+			    if (node.currentValue === undefined) {
+				    node.currentValue = { 'val': 'undefined' };
+                } else if ($.isArray(node.currentValue.val) && node.currentValue.val.length > 5) {
+                    node.currentValue.val = "[...]";
+                }
+                if (node.desiredValue === undefined) {
+				    node.desiredValue = { 'val': 'undefined' };
+                } else if ($.isArray(node.desiredValue.val) && node.desiredValue.val.length > 5) {
+                    node.desiredValue.val = "[...]";
+                }
+            });
+            return data;
+        }
 
     function sorted_keys(obj) {
         var keys = [];
@@ -76,6 +92,7 @@ Ext.onReady(function () {
     device.on('connect', function () {
         console.log("device connect");
         device.emit('subscribe', function (data) {
+			data=trim_data(data);
             console.log("device subscribe", data);
             dataArray = [];
             var datum = {};
@@ -100,7 +117,9 @@ Ext.onReady(function () {
     });
 
     device.on('changed', function (data) {
+		data=trim_data(data);
         console.log("device changed");
+		
         var changedData = [];
         var datum = {};
         var changedKeys=Object.keys(data);
@@ -110,17 +129,23 @@ Ext.onReady(function () {
                 datum['target'] = data[changedKeys[i]].desiredValue.val;
                 datum['device'] = data[changedKeys[i]].id;
                 changedData.push(datum);
+				record=grid.store.getAt(i);
+				record.set('position',datum['position']);
+				record.set('target',datum['target']);
+				record.commit();
+				
             }
         }
-
+		return;
         //updates dataArray based on the changed positions from changedData
         for (var i=0; i < changedData.length; i++) {
             var x = keys.indexOf(changedData[i]['device']);
             dataArray[x] = changedData[i]
         }
         var localData=dataArray.clone();
+		return;
         grid.store.loadData(localData);
-        grid.getView().refresh();
+        //grid.getView().refresh();
         //for (var i=0; i < data.length; i++) show_node(data[i]);
     });
 
