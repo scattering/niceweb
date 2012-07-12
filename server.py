@@ -167,7 +167,7 @@ class SubscriptionChannel(sio.SocketConnection):
         #print "subscribing to",self.channel,self.session
         #print "channels",self._all_state.keys()
         self.feeds.add(self)
-        return self.state
+        return self.initial_state()
 
     @sio.event
     def reset(self, *args, **kw):
@@ -176,8 +176,26 @@ class SubscriptionChannel(sio.SocketConnection):
         # treated as a set of keyword arguments.  Since the publisher state
         # will often use a dict to represent state, we need to hack around this
         # problem by intercepting the **kw arguments if args is not present.
-        self.state = args[0] if args else kw
+        self.reset_state(args[0] if args else kw)
         self.emit('reset', self.state)
+
+    def reset_state(self, state):
+        """
+        Initial state sent by the publisher.  Subclasses may override if
+        they are preprocessing the state before feeding it to the
+        subscriber channels.
+        """
+        self.state = state
+        
+    def initial_state(self):
+        """
+        Default the initial state returned on subscribe to the entire
+        state of the channel.  Specific channel handlers can override
+        and return a part of the state as the initial state, if for
+        example they only want to send information to the browser one
+        page at a time.
+        """
+        return self.state
 
     def emit(self, event, *args, **kw):
         """
@@ -206,10 +224,49 @@ class EventChannel(SubscriptionChannel):
         self.emit('created', event)
 EventChannel._events.update(SubscriptionChannel._events)
 
+
 class DeviceChannel(SubscriptionChannel):
     """
     NICE device model.
     """
+    
+    def reset_state(self, state):
+        # Convert node list into device list where each device has a
+        # set of nodes.
+        
+        # for each node:
+        #   split node into device_name . node_name
+        #   if device_name not in set of defined devices
+        #     create new device
+        #   add node to device
+        #
+        # for each device
+        #    guess primary node
+        devices = {}
+        primaries = {}
+        for name in state.keys():
+            a = name.index('.')
+            device_name = name[0:a]
+            node_name = name[a+1: -1]
+            if device_name not in devices.keys():
+                devices[device_name] = {}
+            devices[device_name][node_name] = state[name]
+            if node_name == 'softPosition':
+                primaries[device_name] = node_name
+            
+        self.state = devices
+        
+    
+    def initial_state(self):
+        # create initial state as [(device,primary node value)]
+        return [(name,device.primary) for name,device in self.state.items()]
+        
+
+    @sio.event
+    def panel(self, device_name):
+        return self.state[device_name]
+        
+        
     # TODO: browser clients should not be able to update state; we could either
     # sign the message using HMAC or somehow make some events require an
     # authenticated connection.

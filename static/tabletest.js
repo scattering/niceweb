@@ -4,17 +4,12 @@ Ext.Loader.setConfig({
 });
 
 Ext.Loader.setPath('Ext.ux', '/static/ext/examples/ux');
-Ext.Loader.setPath('Ext.selection', '/static/ext/src/selection');
-Ext.Loader.setPath('Ext.grid', '/static/ext/src/grid');
 
 Ext.require([
     'Ext.grid.*',
     'Ext.data.*',
     'Ext.util.*',
-    'Ext.state.*',
-    'Ext.form.*',
     'Ext.ux.RowExpander',
-    'Ext.selection.CellModel'
 ]);
 
 Ext.onReady(function () {
@@ -160,10 +155,6 @@ Ext.onReady(function () {
 
     var store = Ext.create('Ext.data.Store', { model:'deviceModel'});
 
-    var cellEditing = Ext.create('Ext.grid.plugin.CellEditing', {
-        clicksToEdit: 1
-    });
-
 //	var store = new Ext.data.Store({
 //        proxy: new Ext.data.proxy.Memory(dataArray),
 //        reader: new Ext.data.ArrayReader({},storeFields),
@@ -190,11 +181,10 @@ Ext.onReady(function () {
                 '<p><b>Device:</b> {device}</p><br>',
                 '<p><b>Target:</b> {target}</p>'
             ]
-        },
-        cellEditing],
+        }],
         title:'Devices',
         collapsible: true,
-        animCollapse: false,
+        animCollapse: false
     });
 
     grid.render('gridtest');
