@@ -243,23 +243,21 @@ class DeviceChannel(SubscriptionChannel):
         # for each device
         #    guess primary node
         devices = {}
-        primaries = {}
         for name in state.keys():
-            a = name.index('.')
-            device_name = name[0:a]
-            node_name = name[a+1: -1]
+            device_name = name.split('.')[0]
+            #device_name = name[0:a]
+            node_name = name.split('.')[1]
             if device_name not in devices.keys():
                 devices[device_name] = {}
             devices[device_name][node_name] = state[name]
-            if node_name == 'softPosition':
-                primaries[device_name] = node_name
-            
+    
         self.state = devices
         
     
     def initial_state(self):
+        return self.state
         # create initial state as [(device,primary node value)]
-        return [(name,device.primary) for name,device in self.state.items()]
+        #return [(name,device.primary) for name,device in self.state.items()]
         
 
     @sio.event
