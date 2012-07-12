@@ -94,14 +94,14 @@ Ext.onReady(function () {
             keys=Object.keys(data);
             for (var i = 0; i < keys.length; i++) {
                 var datum = {};
-                if (keys[i] !== "detector.counts") {
+                if (keys[i] !== "detector") {
                     datum['position'] = data[keys[i]]['currentValue']['val'];
                     datum['target'] = data[keys[i]]['desiredValue']['val'];
                     datum['device'] = data[keys[i]]['id'];
                     dataArray.push(datum);
                 }
             }
-            keys.splice(keys.indexOf('detector.counts'), 1);
+            keys.splice(keys.indexOf('detector'), 1);
             var localData=dataArray.clone();
             grid.store.loadData(localData);
             grid.getView().refresh();
@@ -119,7 +119,7 @@ Ext.onReady(function () {
         var datum = {};
         var changedKeys=Object.keys(data);
         for (var i=0; i < changedKeys.length; i++){
-            if (changedKeys[i] !== "detector.counts") {
+            if (changedKeys[i] !== "detector") {
                 datum['position'] = data[changedKeys[i]].currentValue.val;
                 datum['target'] = data[changedKeys[i]].desiredValue.val;
                 datum['device'] = data[changedKeys[i]].id;
