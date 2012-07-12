@@ -243,6 +243,7 @@ class DeviceChannel(SubscriptionChannel):
         # for each device
         #    guess primary node
         devices = {}
+        primaries = {}
         for name in state.keys():
             a = name.index('.')
             device_name = name[0:a]
@@ -250,6 +251,8 @@ class DeviceChannel(SubscriptionChannel):
             if device_name not in devices.keys():
                 devices[device_name] = {}
             devices[device_name][node_name] = state[name]
+            if node_name == 'softPosition':
+                primaries[device_name] = node_name
             
         self.state = devices
         
