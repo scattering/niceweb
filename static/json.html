@@ -88,27 +88,19 @@
         });
         queue.on('added', function(node, parentID, siblingID) {
             log("queue added under "+parentID+" after "+siblingID,node);
-            queue.emit('subscribe', function(root) {
-               log("queue is now",root);
-            });
+           
         });
         queue.on('removed', function(nodeID) {
             log("queue removed "+nodeID);
-            queue.emit('subscribe', function(root) {
-               log("queue is now",root);
-            });
+            
         });
         queue.on('removed children', function(nodeID) {
             log("queue removed children from "+nodeID);
-            queue.emit('subscribe', function(root) {
-               log("queue is now",root);
-            });
+            
         });
         queue.on('moved', function(nodeID, parentID, siblingID) {
             log("queue moved "+nodeID+" to "+parentID+" after "+siblingID);
-            queue.emit('subscribe', function(root) {
-               log("queue is now",root);
-            });
+            
         });
         queue.on('changed', function(nodeID, node_status) {
             log("queue status "+nodeID, node_status);
