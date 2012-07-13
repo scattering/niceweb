@@ -394,7 +394,7 @@ def sim_queue(sans10m):
     sans10m.event.debug("simulating queue")
     T0 = None
     for line in open("queue.dat","r"):
-        print "line",line
+        #print "line",line
         T,ev,args = json.loads(line)
         if T0 != None:
             SIM_TIME.sleep(T-T0)
