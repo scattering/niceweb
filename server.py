@@ -55,6 +55,8 @@ class CaptureMessages(object):
 
 #capture_queue = CaptureMessages("queue.dat")
 capture_queue = lambda fn: fn
+capture_device = CaptureMessages("device.dat")
+#capture_queue = lambda fn: fn
 
 class ControlChannel(sio.SocketConnection):
     """
@@ -224,6 +226,20 @@ class EventChannel(SubscriptionChannel):
         self.emit('created', event)
 EventChannel._events.update(SubscriptionChannel._events)
 
+class Device(object):
+    
+    def __init__(self):
+        self.nodes = {}
+        self.primary = ''
+        
+    def addnode(self, name, node):
+        self.nodes[name] = node
+    
+    def setprimary(self):
+        if 'softPosition' in self.nodes.keys():
+            self.primary = 'softPosition'
+        else:
+            self.primary = self.nodes.keys()[0]
 
 class DeviceChannel(SubscriptionChannel):
     """
@@ -245,16 +261,29 @@ class DeviceChannel(SubscriptionChannel):
         devices = {}
         for name in state.keys():
             device_name = name.split('.')[0]
-            #device_name = name[0:a]
             node_name = name.split('.')[1]
             if device_name not in devices.keys():
-                devices[device_name] = {}
-            devices[device_name][node_name] = state[name]
-    
-        self.state = devices
-        
+                devices[device_name] = Device()
+            node = state[name]
+            devices[device_name].addnode(name, node)
+        dev_dict={}
+        for key, value in devices.items():
+            devices[key].setprimary()
+            dev_dict[key] = value.__dict__
+            #devices[key] = value.nodes
+        self.state = dev_dict
+        #self.state = state
     
     def initial_state(self):
+        #state = self.state
+        #devices = {}
+        #for name in state.keys():
+            #device_name = name.split('.')[0]
+            #node_name = name.split('.')[1]
+            #if device_name not in devices.keys():
+                #devices[device_name] = {}
+            #devices[device_name][node_name] = state[name]     
+        #self.state = devices
         return self.state
         # create initial state as [(device,primary node value)]
         #return [(name,device.primary) for name,device in self.state.items()]
@@ -269,6 +298,13 @@ class DeviceChannel(SubscriptionChannel):
     # sign the message using HMAC or somehow make some events require an
     # authenticated connection.
     @sio.event
+    @capture_device
+    def reset(self, *args, **kw):
+        SubscriptionChannel.reset(self, *args, **kw)
+        #print "queue subscribe",self.state
+
+    @sio.event
+    @capture_device
     def added(self, nodes):
         """
         Nodes added to the instrument.  Forward their details to the
@@ -278,6 +314,7 @@ class DeviceChannel(SubscriptionChannel):
         self.emit('added', nodes)
 
     @sio.event
+    @capture_device
     def removed(self, nodeIDs):
         """
         Nodes removed from the instrument.  Forward their names to the clients.
@@ -287,6 +324,7 @@ class DeviceChannel(SubscriptionChannel):
         self.emit('removed', nodeIDS)
 
     @sio.event
+    @capture_device
     def changed(self, nodes):
         """
         Node value or properties changed.  Forward the details to the clients.

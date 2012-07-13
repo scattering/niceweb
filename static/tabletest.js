@@ -90,14 +90,20 @@ Ext.onReady(function () {
 			data=trim_data(data);
             console.log("device subscribe", data);
             dataArray = [];
-            var datum = {};
+            //var datum = {};
             keys=Object.keys(data);
             for (var i = 0; i < keys.length; i++) {
                 var datum = {};
                 if (keys[i] !== "detector") {
-                    datum['position'] = data[keys[i]]['currentValue']['val'];
-                    datum['target'] = data[keys[i]]['desiredValue']['val'];
-                    datum['device'] = data[keys[i]]['id'];
+                    datum['device'] = keys[i];
+                    var primaryNode = keys[i]['primary'];
+                    if (primaryNode === 'softPosition') {
+                        datum['position'] = data[keys[i]][primaryNode]['currentValue']['val'];
+                        datum['target'] = data[keys[i]][primaryNode]['desiredValue']['val'];
+                    }
+         //           else {
+         //               datum['position'] = data[keys[i]][primaryNode]
+         //           }
                     dataArray.push(datum);
                 }
             }

@@ -392,14 +392,21 @@ def sim_count(sans10m):
 
 def sim_queue(sans10m):
     sans10m.event.debug("simulating queue")
+    run_log("queue.dat", sans10m)
+
+def run_log(filename, sans10m):
     T0 = None
-    for line in open("queue.dat","r"):
+    for line in open(filename,"r"):
         #print "line",line
         T,ev,args = json.loads(line)
         if T0 != None:
             SIM_TIME.sleep(T-T0)
         T0 = T
         sans10m.queue.emit(ev, *args)
+
+def sim_device(sans10m):
+    run_log("device.dat")
+    
 
 if __name__ == "__main__":
      main()
