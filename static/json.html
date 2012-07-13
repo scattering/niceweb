@@ -38,11 +38,11 @@
         }
         function trim_data(data) {
             $.each(data, function (idx,node) {
-                if ($.isArray(node.currentValue.val) && node.currentValue.value.length > 5) {
-                    node.currentValue.value = "[...]";
+                if (undefined != node.CurrentValue && $.isArray(node.currentValue.val) && node.currentValue.val.length > 5) {
+                    node.currentValue.val = "[...]";
                 }
-                if ($.isArray(node.desiredValue.val) && node.desiredValue.value.length > 5) {
-                    node.desiredValue.value = "[...]";
+                if (undefined != node.CurrentValue && $.isArray(node.desiredValue.val) && node.desiredValue.val.length > 5) {
+                    node.desiredValue.val = "[...]";
                 }
             });
             return data;
@@ -88,22 +88,18 @@
         });
         queue.on('added', function(node, parentID, siblingID) {
             log("queue added under "+parentID+" after "+siblingID,node);
-           
         });
         queue.on('removed', function(nodeID) {
             log("queue removed "+nodeID);
-            
         });
         queue.on('removed children', function(nodeID) {
             log("queue removed children from "+nodeID);
-            
         });
         queue.on('moved', function(nodeID, parentID, siblingID) {
             log("queue moved "+nodeID+" to "+parentID+" after "+siblingID);
-            
         });
         queue.on('changed', function(nodeID, node_status) {
-            log("queue status "+nodeID, node_status);
+            log("queue changed "+nodeID, node_status);
         });
         queue.on('reset', function(root) {
             log("queue reset",root);

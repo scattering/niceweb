@@ -8,6 +8,7 @@ Ext.onReady(function() {
     var root = 'http://' + window.location.hostname + ':8001/' + instrument;
     var queue = new io.connect(root+'/queue');
     var events = new io.connect(root+'/events');
+    //var tree;
     
     function log(msg, obj) {
 		var content = ("<pre>"+(obj&&json_hilite(obj))+"</pre>")||"";
@@ -41,19 +42,26 @@ Ext.onReady(function() {
     queue.on('connect', function() {
         log("queue connect");
         queue.emit('subscribe', function(qroot) {
-            log("queue subscribe", qroot);
-            var child = qroot.child
-            var treeRoot = tree.getRootNode();
-            var child = treeRoot.appendChild({
-                  text : qroot.id + qroot.child
-            });
-            child.expand();
-        });
+			log("queue subscribe", qroot);
+            
+	         // set the root node
+		     var root = new Ext.tree.AsyncTreeNode({
+			    text: 'Commands',
+				draggable:false,
+				id:'source',
+				children: qroot
+			 });
+			tree.setRootNode(root);
+			tree.render();
+			root.expand();
+		});       
+		//var treeRoot = tree.getRootNode();
     });
 
     queue.on('added', function(node, parentID, siblingID) {
         log("queue added under " + parentID + " after " + siblingID, node);
         
+ 
         var parent = tree.getNodeById(parentID);
         var child = parent.appendChild({
                   text : qroot.id + qroot.child
@@ -84,16 +92,9 @@ Ext.onReady(function() {
     });
     
     
-    var store = Ext.create('Ext.data.TreeStore', {
-        root : {
-            text : 'Root',
-            expanded : true
-        }
-    });
-
     // create the Tree
     var tree = Ext.create('Ext.tree.Panel', {
-        store : store,
+    	store: store,
         hideHeaders : true,
         rootVisible : true,
         viewConfig : {
@@ -106,6 +107,20 @@ Ext.onReady(function() {
         title : 'Queue',
         renderTo : 'nice-queue',
         collapsible : true
+    });
+    
+    
+    var store = Ext.create('Ext.data.TreeStore', {
+        proxy: {
+            type: 'ajax',
+            url: 'get-nodes.php'
+        },
+        root: {
+            text: 'Commands',
+            id: 'src',
+            expanded: true
+        }
+       
     });
     
 });

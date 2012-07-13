@@ -57,12 +57,12 @@ Ext.onReady(function () {
 	
 	 function trim_data(data) {
             $.each(data, function (idx,node) {
-			    if (node.currentValue === undefined) {
+			    if (node.currentValue === undefined || node.currentValue == null) {
 				    node.currentValue = { 'val': 'undefined' };
                 } else if ($.isArray(node.currentValue.val) && node.currentValue.val.length > 5) {
                     node.currentValue.val = "[...]";
                 }
-                if (node.desiredValue === undefined) {
+                if (node.desiredValue === undefined || node.desiredValue == null) {
 				    node.desiredValue = { 'val': 'undefined' };
                 } else if ($.isArray(node.desiredValue.val) && node.desiredValue.val.length > 5) {
                     node.desiredValue.val = "[...]";
