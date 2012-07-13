@@ -378,6 +378,7 @@ def main():
     for s in sims:        
         eval("sim_%s"%s)(sans10m)
 
+def sim_listen(sans10m):
     # sleep forever so that controller can run
     sans10m.event.debug("ready")
     while True: time.sleep(1)

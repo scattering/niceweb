@@ -38,11 +38,11 @@
         }
         function trim_data(data) {
             $.each(data, function (idx,node) {
-                if ($.isArray(node.currentValue.val) && node.currentValue.value.length > 5) {
-                    node.currentValue.value = "[...]";
+                if (undefined != node.CurrentValue && $.isArray(node.currentValue.val) && node.currentValue.val.length > 5) {
+                    node.currentValue.val = "[...]";
                 }
-                if ($.isArray(node.desiredValue.val) && node.desiredValue.value.length > 5) {
-                    node.desiredValue.value = "[...]";
+                if (undefined != node.CurrentValue && $.isArray(node.desiredValue.val) && node.desiredValue.val.length > 5) {
+                    node.desiredValue.val = "[...]";
                 }
             });
             return data;
