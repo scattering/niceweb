@@ -51,25 +51,25 @@ Ext.onReady(function () {
     var device = new io.connect(root + '/device');
     var control = new io.connect(root + '/control');
     var events = new io.connect(root + '/events');
-    var storeFields = [];
+    var properties = [];
     var dataArray = [];
     var keys = [];
-	
-	 function trim_data(data) {
-            $.each(data, function (idx,node) {
-			    if (node.currentValue === undefined || node.currentValue == null) {
-				    node.currentValue = { 'val': 'undefined' };
-                } else if ($.isArray(node.currentValue.val) && node.currentValue.val.length > 5) {
-                    node.currentValue.val = "[...]";
-                }
-                if (node.desiredValue === undefined || node.desiredValue == null) {
-				    node.desiredValue = { 'val': 'undefined' };
-                } else if ($.isArray(node.desiredValue.val) && node.desiredValue.val.length > 5) {
-                    node.desiredValue.val = "[...]";
-                }
-            });
-            return data;
-        }
+
+    function trim_data(data) {
+        $.each(data, function (idx,node) {
+            if (node.currentValue === undefined || node.currentValue == null) {
+                node.currentValue = { 'val': 'undefined' };
+            } else if ($.isArray(node.currentValue.val) && node.currentValue.val.length > 5) {
+                node.currentValue.val = "[...]";
+            }
+            if (node.desiredValue === undefined || node.desiredValue == null) {
+                node.desiredValue = { 'val': 'undefined' };
+            } else if ($.isArray(node.desiredValue.val) && node.desiredValue.val.length > 5) {
+                node.desiredValue.val = "[...]";
+            }
+        });
+        return data;
+    }
 
     function sorted_keys(obj) {
         var keys = [];
@@ -87,7 +87,7 @@ Ext.onReady(function () {
     device.on('connect', function () {
         console.log("device connect");
         device.emit('subscribe', function (data) {
-			data=trim_data(data);
+            data=trim_data(data);
             console.log("device subscribe", data);
             dataArray = [];
             //var datum = {};
@@ -96,14 +96,16 @@ Ext.onReady(function () {
                 var datum = {};
                 if (keys[i] !== "detector") {
                     datum['device'] = keys[i];
-                    var primaryNode = keys[i]['primary'];
+                    var primaryNode = data[keys[i]]['primary'];
                     if (primaryNode === 'softPosition') {
-                        datum['position'] = data[keys[i]][primaryNode]['currentValue']['val'];
-                        datum['target'] = data[keys[i]][primaryNode]['desiredValue']['val'];
+                        var dict = data[keys[i]]['nodes'][primaryNode];
+                        properties.push(dict);
+                        datum['position'] = dict['currentValue']['val'];
+                        datum['target'] = dict['desiredValue']['val'];
                     }
-         //           else {
-         //               datum['position'] = data[keys[i]][primaryNode]
-         //           }
+                    //           else {
+                    //               datum['position'] = data[keys[i]][primaryNode]
+                    //           }
                     dataArray.push(datum);
                 }
             }
@@ -118,9 +120,9 @@ Ext.onReady(function () {
     });
 
     device.on('changed', function (data) {
-		data=trim_data(data);
+        data=trim_data(data);
         console.log("device changed");
-		
+
         var changedData = [];
         var datum = {};
         var changedKeys=Object.keys(data);
@@ -130,21 +132,21 @@ Ext.onReady(function () {
                 datum['target'] = data[changedKeys[i]].desiredValue.val;
                 datum['device'] = data[changedKeys[i]].id;
                 changedData.push(datum);
-				record=grid.store.getAt(i);
-				record.set('position',datum['position']);
-				record.set('target',datum['target']);
-				record.commit();
-				
+                record=grid.store.getAt(i);
+                record.set('position',datum['position']);
+                record.set('target',datum['target']);
+                record.commit();
+
             }
         }
-		return;
+        return;
         //updates dataArray based on the changed positions from changedData
         for (var i=0; i < changedData.length; i++) {
             var x = keys.indexOf(changedData[i]['device']);
             dataArray[x] = changedData[i]
         }
         var localData=dataArray.clone();
-		return;
+        return;
         grid.store.loadData(localData);
         //grid.getView().refresh();
         //for (var i=0; i < data.length; i++) show_node(data[i]);
@@ -170,10 +172,16 @@ Ext.onReady(function () {
 
     gridColumns.push({header:'device', width:150, sortable:true, dataIndex:'device'});
     gridColumns.push({header:'position', width:150, hidden:false, sortable:true, dataIndex:'position'})
-        //field: {xtype: 'numberfield', allowBlank: false}});
     gridColumns.push({header:'target', width:150, hidden:false, sortable:true, dataIndex:'target'})
-        //field: {xtype: 'numberfield', allowBlank: false}});
+    //field: {xtype: 'numberfield', allowBlank: false}});
 
+    var info = '';
+    for (var item in properties) {
+        if (typeof properties[item] !== "function") {
+        info += item + ': \t' + properties[item];
+        }
+    }
+    //field: {xtype: 'numberfield', allowBlank: false}});
     /*GridPanel that displays the data*/
     var grid = new Ext.grid.GridPanel({
         store:store,
@@ -184,10 +192,11 @@ Ext.onReady(function () {
         plugins: [{
             ptype: 'rowexpander',
             rowBodyTpl : [
-                '<p><b>Device:</b> {device}</p><br>',
-                '<p><b>Target:</b> {target}</p>'
-            ]
-        }],
+                info
+//    '<p><b>Device:</b> {device}</p><br>',
+//    '<p><b>Target:</b> {target}</p>'
+    ]
+}],
         title:'Devices',
         collapsible: true,
         animCollapse: false
@@ -201,7 +210,6 @@ Ext.onReady(function () {
     function load_data(dataArray) {
 
         var gridColumns = [];
-        storeFields = [];
         gridColumns.push({header:'device', width: 150, sortable: true, dataIndex: 'device'});
 
         gridColumns.push({header: 'position', width: 150,hidden:false, sortable: true, dataIndex: 'position'});

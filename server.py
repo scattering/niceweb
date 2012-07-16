@@ -258,20 +258,8 @@ class DeviceChannel(SubscriptionChannel):
         #
         # for each device
         #    guess primary node
-        devices = {}
-        for name in state.keys():
-            device_name = name.split('.')[0]
-            node_name = name.split('.')[1]
-            if device_name not in devices.keys():
-                devices[device_name] = Device()
-            node = state[name]
-            devices[device_name].addnode(name, node)
-        dev_dict={}
-        for key, value in devices.items():
-            devices[key].setprimary()
-            dev_dict[key] = value.__dict__
-            #devices[key] = value.nodes
-        self.state = dev_dict
+        devices = self.configNodes(state)
+        self.state = devices
         #self.state = state
     
     def initial_state(self):
@@ -329,8 +317,28 @@ class DeviceChannel(SubscriptionChannel):
         """
         Node value or properties changed.  Forward the details to the clients.
         """
-        self.state.update((n['id'],n) for n in nodes)
-        self.emit('changed', nodes)
+        delta = dict((n['id'], n) for n in nodes)
+        dev_dict = self.configNodes(delta)
+        self.state.update(dev_dict)
+        self.emit('changed', delta)
+
+    def configNodes(self, state):
+        devices ={}
+        
+        for n in state.keys():
+            device_name = n.split('.')[0]
+            node_name = n.split('.')[1]
+            if device_name not in devices.keys():
+                devices[device_name] = Device()
+            node = state[n]
+            devices[device_name].addnode(node_name, node)
+        dev_dict={}
+        for key, value in devices.items():
+            devices[key].setprimary()
+            dev_dict[key] = value.__dict__
+            #devices[key] = value.nodes
+          
+        return dev_dict
 
 class QueueChannel(SubscriptionChannel):
     """

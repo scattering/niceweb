@@ -406,7 +406,7 @@ def run_log(filename, sans10m):
         sans10m.queue.emit(ev, *args)
 
 def sim_device(sans10m):
-    run_log("device.dat")
+    run_log("device.dat", sans10m)
     
 
 if __name__ == "__main__":
