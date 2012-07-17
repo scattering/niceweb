@@ -2,13 +2,22 @@ Ext.require([
 'Ext.tree.*', 
 'Ext.data.*']);
 
+
+    
 Ext.onReady(function() {
 
     var instrument = 'sans10m';  // FIXME: should be a parameter
     var root = 'http://' + window.location.hostname + ':8001/' + instrument;
     var queue = new io.connect(root+'/queue');
     var events = new io.connect(root+'/events');
-    //var tree;
+    
+    Ext.define('CommandModel', {
+	    extend: 'Ext.data.Model',
+	    fields: [
+	        { name: 'id', type: 'string' },
+	        { name: 'text', type: 'string' }
+	    ]
+    });
     
     function log(msg, obj) {
 		var content = ("<pre>"+(obj&&json_hilite(obj))+"</pre>")||"";
@@ -43,30 +52,27 @@ Ext.onReady(function() {
         log("queue connect");
         queue.emit('subscribe', function(qroot) {
 			log("queue subscribe", qroot);
-            
-	         // set the root node
-		     var root = new Ext.tree.AsyncTreeNode({
-			    text: 'Commands',
-				draggable:false,
-				id:'source',
-				children: qroot
-			 });
-			tree.setRootNode(root);
-			tree.render();
-			root.expand();
+ 			
+			var newCommand = Ext.create('CommandModel', { id: '24', text: 'move a1 to 40', leaf: true });
+            var treeRoot = treeStore.getRootNode()
+            //treeStore.load();
+            var child = treeRoot.appendChild(newCommand);
+            child.expand();
+
 		});       
-		//var treeRoot = tree.getRootNode();
     });
 
     queue.on('added', function(node, parentID, siblingID) {
         log("queue added under " + parentID + " after " + siblingID, node);
         
  
-        var parent = tree.getNodeById(parentID);
-        var child = parent.appendChild({
-                  text : qroot.id + qroot.child
-            });
-        child.expand();
+        //var parent = tree.getNodeById(parentID);
+        var root = tree.getRootNode();
+        var newCommand = Ext.create('CommandModel', { id: node.id, text: node.text, leaf: true });
+            var treeRoot = treeStore.getRootNode()
+            var child = treeRoot.appendChild(newCommand);
+            child.expand();
+
         //Ext.tree.TreeNode
         //parent.contains(tree.getNodeById('childId'));
     });
@@ -90,11 +96,25 @@ Ext.onReady(function() {
     queue.on('reset', function(root) {
         log("queue reset", root);
     });
-    
-    
-    // create the Tree
+     
+
+	var treeStore = Ext.create('Ext.data.TreeStore', {
+	    model: 'CommandModel',
+	    proxy: {
+	        type: 'memory',
+	        reader: {
+            	type: 'json',
+            	root: 'commands' 
+        	}
+	    },
+	    root: {
+            id: "commands"
+        }
+	});
+	
+	    // create the Tree
     var tree = Ext.create('Ext.tree.Panel', {
-    	store: store,
+    	store: treeStore,
         hideHeaders : true,
         rootVisible : true,
         viewConfig : {
@@ -105,22 +125,8 @@ Ext.onReady(function() {
         height : 600,
         width : 800,
         title : 'Queue',
-        renderTo : 'nice-queue',
+        renderTo : Ext.getBody(),
         collapsible : true
-    });
-    
-    
-    var store = Ext.create('Ext.data.TreeStore', {
-        proxy: {
-            type: 'ajax',
-            url: 'get-nodes.php'
-        },
-        root: {
-            text: 'Commands',
-            id: 'src',
-            expanded: true
-        }
-       
-    });
-    
+    });		    
+
 });
