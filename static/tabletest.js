@@ -33,6 +33,16 @@ Ext.onReady(function () {
 
      */
 
+    var maxvals = [];
+    var minvals = [];
+    var instrument = 'sans10m';  // FIXME: should be a parameter
+    var root = 'http://' + window.location.hostname + ':8001/' + instrument;
+    var device = new io.connect(root + '/device');
+    var control = new io.connect(root + '/control');
+    var events = new io.connect(root + '/events');
+    var dataArray = [];
+    var deviceNames = [];
+
     //The following line is evil and worse, it is impolite.    We should try to replace it!!!
     Object.prototype.clone = function() {
         var newObj = (this instanceof Array) ? [] : {};
@@ -44,16 +54,6 @@ Ext.onReady(function () {
         } return newObj;
     };
 
-    var maxvals = [];
-    var minvals = [];
-    var instrument = 'sans10m';  // FIXME: should be a parameter
-    var root = 'http://' + window.location.hostname + ':8001/' + instrument;
-    var device = new io.connect(root + '/device');
-    var control = new io.connect(root + '/control');
-    var events = new io.connect(root + '/events');
-    var properties = [];
-    var dataArray = [];
-    var keys = [];
 
     function trim_data(data) {
         $.each(data, function (idx,node) {
@@ -84,40 +84,50 @@ Ext.onReady(function () {
         return keys;
     }
 
+    function setDeviceModel(data) {
+        data=trim_data(data);
+        console.log("device subscribe", data);
+        dataArray = [];
+        var properties = [];
+        //var datum = {};
+        deviceNames = sorted_keys(data);
+        for (var i = 0; i < deviceNames.length; i++) {
+            var datum = {};
+            if (deviceNames[i] !== "detector") {
+                datum['device'] = deviceNames[i];
+                var primaryNode = data[deviceNames[i]]['primary'];
+                if (primaryNode === 'softPosition') {
+                    var dict = data[deviceNames[i]]['nodes'];
+                    //datum.nodes = dict;
+                    var children = [];
+                    var nodeNames = sorted_keys(dict);
+                    for (var j = 0; j < nodeNames.length; j++) {
+                        children.push(dict[nodeNames[j]]);
+                    }
+                    datum.nodes = children;
+                    datum['position'] = dict[primaryNode]['currentValue']['val'];
+                    datum['target'] = dict[primaryNode]['desiredValue']['val'];
+                }
+                //           else {
+                //               datum['position'] = data[keys[i]][primaryNode]
+                //           }
+                dataArray.push(datum);
+            }
+        }
+        //displayNodes(properties);
+
+        deviceNames.splice(deviceNames.indexOf('detector'), 1);
+        var localData=dataArray.clone();
+        grid.store.loadData(localData);
+        grid.getView().refresh();
+    }
+
     device.on('connect', function () {
         console.log("device connect");
-        device.emit('subscribe', function (data) {
-            data=trim_data(data);
-            console.log("device subscribe", data);
-            dataArray = [];
-            //var datum = {};
-            keys=Object.keys(data);
-            for (var i = 0; i < keys.length; i++) {
-                var datum = {};
-                if (keys[i] !== "detector") {
-                    datum['device'] = keys[i];
-                    var primaryNode = data[keys[i]]['primary'];
-                    if (primaryNode === 'softPosition') {
-                        var dict = data[keys[i]]['nodes'][primaryNode];
-                        properties.push(dict);
-                        datum['position'] = dict['currentValue']['val'];
-                        datum['target'] = dict['desiredValue']['val'];
-                    }
-                    //           else {
-                    //               datum['position'] = data[keys[i]][primaryNode]
-                    //           }
-                    dataArray.push(datum);
-                }
-            }
-            keys.splice(keys.indexOf('detector'), 1);
-            var localData=dataArray.clone();
-            grid.store.loadData(localData);
-            grid.getView().refresh();
-            //load_data();
-            //var keys = sorted_keys(data);
-            //for (var i=0; i < keys.length; i++) show_node(data[keys[i]]);
-        });
+        device.emit('subscribe', setDeviceModel);
+
     });
+
 
     device.on('changed', function (data) {
         data=trim_data(data);
@@ -142,12 +152,12 @@ Ext.onReady(function () {
         return;
         //updates dataArray based on the changed positions from changedData
         for (var i=0; i < changedData.length; i++) {
-            var x = keys.indexOf(changedData[i]['device']);
+            var x = deviceNames.indexOf(changedData[i]['device']);
             dataArray[x] = changedData[i]
         }
         var localData=dataArray.clone();
         return;
-        grid.store.loadData(localData);
+        //grid.store.loadData(localData);
         //grid.getView().refresh();
         //for (var i=0; i < data.length; i++) show_node(data[i]);
     });
@@ -161,26 +171,29 @@ Ext.onReady(function () {
         ]
     });
 
-    var store = Ext.create('Ext.data.Store', { model:'deviceModel'});
+    //field: {xtype: 'numberfield', allowBlank: false}});
 
 //	var store = new Ext.data.Store({
 //        proxy: new Ext.data.proxy.Memory(dataArray),
 //        reader: new Ext.data.ArrayReader({},storeFields),
 //        remoteSort: true,
 //    });
+
+    var store = Ext.create('Ext.data.Store', { model:'deviceModel'});
+
     var gridColumns = [];
 
     gridColumns.push({header:'device', width:150, sortable:true, dataIndex:'device'});
     gridColumns.push({header:'position', width:150, hidden:false, sortable:true, dataIndex:'position'})
     gridColumns.push({header:'target', width:150, hidden:false, sortable:true, dataIndex:'target'})
-    //field: {xtype: 'numberfield', allowBlank: false}});
 
-    var info = '';
-    for (var item in properties) {
-        if (typeof properties[item] !== "function") {
-        info += item + ': \t' + properties[item];
-        }
-    }
+    var tpl =
+        ['<tpl for="nodes">',
+        '<p><b>{description}:</b>  {currentValue.val}</p>',
+        '</tpl></p>'];
+
+//    tpl.overwrite(panel.body, data.kids);
+
     //field: {xtype: 'numberfield', allowBlank: false}});
     /*GridPanel that displays the data*/
     var grid = new Ext.grid.GridPanel({
@@ -191,11 +204,12 @@ Ext.onReady(function () {
         width:700,
         plugins: [{
             ptype: 'rowexpander',
-            rowBodyTpl : [
-                info
-//    '<p><b>Device:</b> {device}</p><br>',
-//    '<p><b>Target:</b> {target}</p>'
-    ]
+            rowBodyTpl : tpl
+//                info
+//    ['<p><b>Device:</b> {device}</p><br>',
+//    '<p><b>Target:</b> {target}</p><br>',
+//    '<p><b>Nodes:</b> {nodes}</p>'
+//    ]
 }],
         title:'Devices',
         collapsible: true,
@@ -204,6 +218,29 @@ Ext.onReady(function () {
 
     grid.render('gridtest');
 
+
+    function displayNodes(properties)
+    {
+        var labels = [];
+
+        for (var i=0; i < properties.length; i++) {
+            var nodes = properties[i];
+            var nodeKeys = sorted_keys(nodes);
+            for (var j=0; i < nodeKeys.length; i++) {
+                labels.push(nodeKeys[j]);
+            }
+
+        }
+        return labels;
+
+//        for (var item in properties) {
+//            if (typeof properties[item] !== "function") {
+//                labels.push(item);
+//
+//            }
+//        }
+
+    }
 
     /*After data is retrieved from server, we have to reinitiallize the Store reconfigure the ArrayGrid
      so that the new data is displayed on the page*/
