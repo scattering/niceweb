@@ -81,30 +81,45 @@ Ext.onReady(function() {
 									+ '</span>';
 						});
 	}
-        
+      
+	function generateText(nodeStatus) {
+		return ' '+nodeStatus.commandStr + ' (' + nodeStatus.metaState + ') '+ nodeStatus.state;
+	}
+	
     queue.on('connect', function() {
     	
     	// first time the web client connects to the repeater.
         window.console.log("queue connect");
         // ask for initial state and all messages
         queue.emit('subscribe', function(qroot) {
-		window.console.log("queue subscribe", qroot);
-			
-//			for (var command in qroot.child) {
-//               if (qroot.child.hasOwnProperty(command)) {   
-//                  var commandObject = qroot.child[command];
-//                  
-//                  var newCommand = Ext.create('CommandModel', { id: commandObject.id, text: commandObject.status.commandStr, expanded: true, leaf: true });
-//                  var child = treeRoot.insertChild(command,newCommand);
-//                  
-//                  child.expand();
-//               }
-//			}
-			
+	        if (qroot == undefined)
+	        {
+	        	window.console.log("no feed");
+	        	return;
+	        }
+	        
+			window.console.log("queue subscribe", qroot);
+				
+	//			for (var command in qroot.child) {
+	//               if (qroot.child.hasOwnProperty(command)) {   
+	//                  var commandObject = qroot.child[command];
+	//                  
+	//                  var newCommand = Ext.create('CommandModel', { id: commandObject.id, text: commandObject.status.commandStr, expanded: true, leaf: true });
+	//                  var child = treeRoot.insertChild(command,newCommand);
+	//                  
+	//                  child.expand();
+	//               }
+	//			}
+				
 			treeRoot.expand();
 			var commandObject = qroot.child[0];                
-			var newCommand = Ext.create('CommandModel', { id: commandObject.id, text: commandObject.id +' '+ commandObject.status.commandStr, expanded: true, leaf: true });
- 			var child = treeRoot.insertChild(0,newCommand); 			
+			var newCommand = Ext.create('CommandModel', { 
+				id: commandObject.id, 
+				text: commandObject.id + generateText(commandObject.status), 
+				expanded: true, 
+				leaf: true 
+			});
+	 		var child = treeRoot.insertChild(0,newCommand); 			
 
 		});       
     });
@@ -116,24 +131,41 @@ Ext.onReady(function() {
         window.console.log("node " +node.id+ " added under " + parentID + " after " + siblingID, node.status.commandStr);
         var newCommand = Ext.create('CommandModel', { 
               id: node.id, 
-              text: node.id + ' '+node.status.commandStr, 
+              text: node.id + generateText(node.status), 
               expanded:true, 
               leaf: true 
         });
 
         var parent = treeStore.getNodeById(parentID);
         var sibling = treeStore.getNodeById(siblingID);
+        if (parent.isLeaf()) {
+        	parent.set('leaf',false);
+        }
         parent.insertChild(siblingID +1,newCommand);
         
         //parent.contains(tree.getNodeById('childId'));
     });
 
     queue.on('removed', function(nodeID) {
-        log("queue removed " + nodeID);
+        window.console.log("queue removed " + nodeID);
+         var changedNode = treeStore.getNodeById(nodeID); 
+        if (changedNode == undefined){
+        	window.console.log("node %s does not exist and cannot be removed ",nodeID);
+        }
+        else{
+        	changedNode.remove(false);
+        }
     });
 
     queue.on('removed children', function(nodeID) {
         log("queue removed children from " + nodeID);
+         var changedNode = treeStore.getNodeById(nodeID); 
+        if (changedNode == undefined){
+        	window.console.log("children cannot be removed because the node %s does not exist ", nodeID);
+        }
+        else{
+        	changeNode.removeAll(false);
+        }
     });
 
     queue.on('moved', function(nodeID, parentID, siblingID) {
@@ -147,7 +179,7 @@ Ext.onReady(function() {
         	window.console.log("node is not defined " + nodeID);
         }
         else{
-        	changedNode.set('text',nodeID + ' '+node_status.commandStr);
+        	changedNode.set('text',nodeID + generateText(node_status));
         }
        
     });
@@ -160,7 +192,12 @@ Ext.onReady(function() {
 		}
 		
 		var commandObject = qroot.child[0];                
-		var newCommand = Ext.create('CommandModel', { id: commandObject.id, text: commandObject.id +' '+ commandObject.status.commandStr, expanded: true, leaf: true });
+		var newCommand = Ext.create('CommandModel', { 
+			id: commandObject.id, 
+			text: commandObject.id + generateText(commandObject.status), 
+			expanded: true, 
+			leaf: true 
+		});
  		var child = treeRoot.insertChild(0,newCommand); 		
 		
     });
