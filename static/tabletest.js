@@ -3,13 +3,13 @@ Ext.Loader.setConfig({
     enabled: true
 });
 
-Ext.Loader.setPath('Ext.ux', '/static/ext/examples/ux');
+//Ext.Loader.setPath('Ext.ux', '/static/ext/examples/ux'); //'../ux');
 
 Ext.require([
     'Ext.grid.*',
     'Ext.data.*',
     'Ext.util.*',
-    'Ext.ux.RowExpander',
+    'Ext.ux.RowExpander'
 ]);
 
 Ext.onReady(function () {
@@ -33,104 +33,94 @@ Ext.onReady(function () {
 
      */
 
-    var maxvals = [];
-    var minvals = [];
-    var instrument = 'sans10m';  // FIXME: should be a parameter
-    var root = 'http://' + window.location.hostname + ':8001/' + instrument;
-    var device = new io.connect(root + '/device');
-    var control = new io.connect(root + '/control');
-    var events = new io.connect(root + '/events');
-    var dataArray = [];
-    var deviceNames = [];
+    var GridSpace = GridSpace || {};
 
-    //The following line is evil and worse, it is impolite.    We should try to replace it!!!
-    Object.prototype.clone = function() {
-        var newObj = (this instanceof Array) ? [] : {};
-        for (i in this) {
-            if (i == 'clone') continue;
-            if (this[i] && typeof this[i] == "object") {
-                newObj[i] = this[i].clone();
-            } else newObj[i] = this[i]
-        } return newObj;
-    };
+    GridSpace.instrument = 'sans10m';  // FIXME: should be a parameter
+    GridSpace.root = 'http://' + window.location.hostname + ':8001/' + GridSpace.instrument;
+    GridSpace.device = new io.connect(GridSpace.root + '/device');
+    GridSpace.control = new io.connect(GridSpace.root + '/control');
+    GridSpace.events = new io.connect(GridSpace.root + '/events');
+    GridSpace.dataArray = [];
+    GridSpace.deviceNames = [];
 
+    Ext.regModel('deviceModel', {
+        fields:[
+            {name:'device', type:'string'},
+            'position',
+            {name:'target', type:'string'}
+        ]
+    });
 
-    function trim_data(data) {
-        $.each(data, function (idx,node) {
-            if (node.currentValue === undefined || node.currentValue == null) {
-                node.currentValue = { 'val': 'undefined' };
-            } else if ($.isArray(node.currentValue.val) && node.currentValue.val.length > 5) {
-                node.currentValue.val = "[...]";
-            }
-            if (node.desiredValue === undefined || node.desiredValue == null) {
-                node.desiredValue = { 'val': 'undefined' };
-            } else if ($.isArray(node.desiredValue.val) && node.desiredValue.val.length > 5) {
-                node.desiredValue.val = "[...]";
+    if(Ext.isSafari){
+        Ext.override(Ext.grid.GridView, {
+            layout : function(){
+                this.scroller.dom.style.position = 'static';
             }
         });
-        return data;
     }
 
-    function sorted_keys(obj) {
-        var keys = [];
-        for (var i in obj) {
-            if (obj.hasOwnProperty(i)) {
-                keys.push(i);
+    GridSpace.store = Ext.create('Ext.data.Store', { model:'deviceModel'});
+
+    GridSpace.gridColumns = [];
+
+    GridSpace.gridColumns.push({header:'device', width:150, sortable:true, dataIndex:'device'});
+    GridSpace.gridColumns.push({header:'position', width:150, hidden:false, sortable:true, dataIndex:'position'})
+    GridSpace.gridColumns.push({header:'target', width:150, hidden:false, sortable:true, dataIndex:'target'})
+
+    GridSpace.tpl =
+        ['<tpl for="nodes">',
+            '<p><b>{[values.id+"hello"]}:</b>  {currentValue.val}</p>',
+            '</tpl></p>'];
+
+//    tpl.overwrite(panel.body, data.kids);
+
+    //field: {xtype: 'numberfield', allowBlank: false}});
+    /*GridPanel that displays the data*/
+    GridSpace.grid = new Ext.grid.GridPanel({
+        store: GridSpace.store,
+        columns: GridSpace.gridColumns,
+        stripeRows:true,
+        height:500,
+        width:475,
+        listeners: {
+            itemclick: function(view, cell, rowIdx, cellIndex, e) {
+
+                this.plugins[0].toggleRow(rowIdx);
             }
-        }
+//            itemdblclick: function(view, cell, rowIdx, cellIndex, e) {
+//
+//                //alert('double clicking');
+//                return true;
+//            }
+        },
+        //if other plugins are added, check listener (this.plugins[0]) and make sure
+        //that the 0 index plugin is still rowexpander
+        plugins: [{
+            ptype: 'rowexpander',
+            rowBodyTpl : GridSpace.tpl
+//                info
+//    ['<p><b>Device:</b> {device}</p><br>',
+//    '<p><b>Target:</b> {target}</p><br>',
+//    '<p><b>Nodes:</b> {nodes}</p>'
+//    ]
+        }],
+        title:'Devices',
+        collapsible: true,
+        animCollapse: false
+    });
 
-        // may have to craft a custom sort function to get the right order
-        keys.sort();
-        return keys;
-    }
+    GridSpace.grid.render('gridtest');
 
-    function setDeviceModel(data) {
-        data=trim_data(data);
-        console.log("device subscribe", data);
-        dataArray = [];
-        var properties = [];
-        //var datum = {};
-        deviceNames = sorted_keys(data);
-        for (var i = 0; i < deviceNames.length; i++) {
-            var datum = {};
-            if (deviceNames[i] !== "detector") {
-                datum['device'] = deviceNames[i];
-                var primaryNode = data[deviceNames[i]]['primary'];
-                if (primaryNode === 'softPosition') {
-                    var dict = data[deviceNames[i]]['nodes'];
-                    //datum.nodes = dict;
-                    var children = [];
-                    var nodeNames = sorted_keys(dict);
-                    for (var j = 0; j < nodeNames.length; j++) {
-                        children.push(dict[nodeNames[j]]);
-                    }
-                    datum.nodes = children;
-                    datum['position'] = dict[primaryNode]['currentValue']['val'];
-                    datum['target'] = dict[primaryNode]['desiredValue']['val'];
-                }
-                //           else {
-                //               datum['position'] = data[keys[i]][primaryNode]
-                //           }
-                dataArray.push(datum);
-            }
-        }
-        //displayNodes(properties);
 
-        deviceNames.splice(deviceNames.indexOf('detector'), 1);
-        var localData=dataArray.clone();
-        grid.store.loadData(localData);
-        grid.getView().refresh();
-    }
-
-    device.on('connect', function () {
+    GridSpace.device.on('connect', function () {
         console.log("device connect");
-        device.emit('subscribe', setDeviceModel);
+        GridSpace.device.emit('subscribe', GridSpace.setDeviceModel);
 
     });
 
 
-    device.on('changed', function (data) {
-        data=trim_data(data);
+    GridSpace.device.on('changed', function (data) {
+        data=GridSpace.trim_data(data);
         console.log("device changed");
 
         var changedData = [];
@@ -162,76 +152,97 @@ Ext.onReady(function () {
         //for (var i=0; i < data.length; i++) show_node(data[i]);
     });
 
-
-    Ext.regModel('deviceModel', {
-        fields:[
-            {name:'device', type:'string'},
-            'position',
-            {name:'target', type:'string'}
-        ]
-    });
-
-    //field: {xtype: 'numberfield', allowBlank: false}});
-
-//	var store = new Ext.data.Store({
-//        proxy: new Ext.data.proxy.Memory(dataArray),
-//        reader: new Ext.data.ArrayReader({},storeFields),
-//        remoteSort: true,
-//    });
-
-    var store = Ext.create('Ext.data.Store', { model:'deviceModel'});
-
-    var gridColumns = [];
-
-    gridColumns.push({header:'device', width:150, sortable:true, dataIndex:'device'});
-    gridColumns.push({header:'position', width:150, hidden:false, sortable:true, dataIndex:'position'})
-    gridColumns.push({header:'target', width:150, hidden:false, sortable:true, dataIndex:'target'})
-
-    var tpl =
-        ['<tpl for="nodes">',
-        '<p><b>{description}:</b>  {currentValue.val}</p>',
-        '</tpl></p>'];
-
-//    tpl.overwrite(panel.body, data.kids);
-
-    //field: {xtype: 'numberfield', allowBlank: false}});
-    /*GridPanel that displays the data*/
-    var grid = new Ext.grid.GridPanel({
-        store:store,
-        columns:gridColumns,
-        stripeRows:true,
-        height:500,
-        width:700,
-        plugins: [{
-            ptype: 'rowexpander',
-            rowBodyTpl : tpl
-//                info
-//    ['<p><b>Device:</b> {device}</p><br>',
-//    '<p><b>Target:</b> {target}</p><br>',
-//    '<p><b>Nodes:</b> {nodes}</p>'
-//    ]
-}],
-        title:'Devices',
-        collapsible: true,
-        animCollapse: false
-    });
-
-    grid.render('gridtest');
-
-
-    function displayNodes(properties)
-    {
-        var labels = [];
-
-        for (var i=0; i < properties.length; i++) {
-            var nodes = properties[i];
-            var nodeKeys = sorted_keys(nodes);
-            for (var j=0; i < nodeKeys.length; i++) {
-                labels.push(nodeKeys[j]);
+    GridSpace.setDeviceModel = function (data) {
+        data=GridSpace.trim_data(data);
+        console.log("device subscribe", data);
+        GridSpace.dataArray = [];
+        var properties = [];
+        //var datum = {};
+        GridSpace.deviceNames = GridSpace.sorted_keys(data);
+        for (var i = 0; i < GridSpace.deviceNames.length; i++) {
+            var datum = {};
+            if (GridSpace.deviceNames[i] !== "detector") {
+                datum['device'] = GridSpace.deviceNames[i];
+                var primaryNode = data[GridSpace.deviceNames[i]]['primary'];
+                if (primaryNode === 'softPosition') {
+                    var dict = data[GridSpace.deviceNames[i]]['nodes'];
+                    //datum.nodes = dict;
+                    var children = [];
+                    var nodeNames = GridSpace.sorted_keys(dict);
+                    for (var j = 0; j < nodeNames.length; j++) {
+                        children.push(dict[nodeNames[j]]);
+                    }
+                    datum.nodes = children;
+                    datum['position'] = dict[primaryNode]['currentValue']['val'];
+                    datum['target'] = dict[primaryNode]['desiredValue']['val'];
+                }
+                //           else {
+                //               datum['position'] = data[keys[i]][primaryNode]
+                //           }
+                GridSpace.dataArray.push(datum);
             }
-
         }
-        return labels;
+        //displayNodes(properties);
+
+        GridSpace.deviceNames.splice(GridSpace.deviceNames.indexOf('detector'), 1);
+        var localData=GridSpace.dataArray.clone();
+        GridSpace.grid.store.loadData(localData);
+        GridSpace.grid.getView().refresh();
+    };
+
+    //The following line is evil and worse, it is impolite.    We should try to replace it!!!
+    Object.prototype.clone = function() {
+        var newObj = (this instanceof Array) ? [] : {};
+        for (i in this) {
+            if (i == 'clone') continue;
+            if (this[i] && typeof this[i] == "object") {
+                newObj[i] = this[i].clone();
+            } else newObj[i] = this[i]
+        } return newObj;
+    };
+
+    GridSpace.trim_data = function (data) {
+        $.each(data, function (idx,node) {
+            if (node.currentValue === undefined || node.currentValue == null) {
+                node.currentValue = { 'val': 'undefined' };
+            } else if ($.isArray(node.currentValue.val) && node.currentValue.val.length > 5) {
+                node.currentValue.val = "[...]";
+            }
+            if (node.desiredValue === undefined || node.desiredValue == null) {
+                node.desiredValue = { 'val': 'undefined' };
+            } else if ($.isArray(node.desiredValue.val) && node.desiredValue.val.length > 5) {
+                node.desiredValue.val = "[...]";
+            }
+        });
+        return data;
+    };
+
+    GridSpace.sorted_keys = function (obj) {
+        var keys = [];
+        for (var i in obj) {
+            if (obj.hasOwnProperty(i)) {
+                keys.push(i);
+            }
+        }
+
+        // may have to craft a custom sort function to get the right order
+        keys.sort();
+        return keys;
+    };
+
+//    function displayNodes(properties)
+//    {
+//        var labels = [];
+//
+//        for (var i=0; i < properties.length; i++) {
+//            var nodes = properties[i];
+//            var nodeKeys = sorted_keys(nodes);
+//            for (var j=0; i < nodeKeys.length; i++) {
+//                labels.push(nodeKeys[j]);
+//            }
+//
+//        }
+//        return labels;
 
 //        for (var item in properties) {
 //            if (typeof properties[item] !== "function") {
@@ -240,7 +251,7 @@ Ext.onReady(function () {
 //            }
 //        }
 
-    }
+//    }
 
     /*After data is retrieved from server, we have to reinitiallize the Store reconfigure the ArrayGrid
      so that the new data is displayed on the page*/

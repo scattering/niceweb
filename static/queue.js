@@ -47,7 +47,7 @@ Ext.onReady(function() {
         height : 600,
         width : 800,
         title : instrument + ' Queue',
-        renderTo : Ext.getBody(),
+        renderTo : 'nicequeue', //Ext.getBody(),
         collapsible : true
     });
     
