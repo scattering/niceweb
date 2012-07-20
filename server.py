@@ -19,6 +19,34 @@ import cookie
 
 ROOT = os.path.normpath(os.path.dirname(__file__))
 
+CAPTURE = False
+CAPTURE_CHANNELS = {}
+CAPTURE_START = time.time()
+def store_event(channel, event, args, kw):
+    if CAPTURE:
+        if channel not in CAPTURE_CHANNELS:
+            CAPTURE_CHANNELS[channel] = open("capture"+channel.replace("/","."),"w")
+        file = CAPTURE_CHANNELS[channel]
+        if kw: args = [kw]
+        file.write("[%g,\"%s\",%s]\n"
+            % (time.time()-CAPTURE_START, event, json.dumps(args)))
+        file.flush()
+
+def capture(fn):
+    """
+    Decorator for capturing certain types of events to a file so that they
+    can be later replayed.
+
+    Note: this would be better handled by modifying SubscriptionChannel so
+    that every method doesn't need the decorator, and it could instead be a
+    constructor option.  Consider doing so if other event streams need to be
+    captured.
+    """
+    @functools.wraps(fn)
+    def wrapper(self, *args, **kw):
+        store_event(self.channel, fn.func_name, args, kw)
+        return fn(self, *args, **kw)
+    return wrapper
 
 class IndexHandler(web.RequestHandler):
     """Regular HTTP handler to serve the index.html page"""
@@ -30,37 +58,9 @@ class SocketIOHandler(web.RequestHandler):
     def get(self):
         self.render(SOCKETIO_CLIENT)
 
-class CaptureMessages(object):
-    """
-    Decorator for capturing certain types of events to a file so that they
-    can be later replayed.
-
-    Note: this would be better handled by modifying SubscriptionChannel so
-    that every method doesn't need the decorator, and it could instead be a
-    constructor option.  Consider doing so if other event streams need to be
-    captured.
-    """
-    def __init__(self, filename):
-        self.file = open(filename, "w")
-        self.T0 = time.time()
-    def __call__(self, fn):
-       @functools.wraps(fn)
-       def wrapper(obj, *args, **kw):
-           if kw: args = [kw]
-           self.file.write("[%d,\"%s\",%s]\n"
-                           % (time.time()-self.T0,fn.func_name, json.dumps(args)))
-           self.file.flush()
-           return fn(obj, *args, **kw)
-       return wrapper
-
-#capture_queue = CaptureMessages("queue.dat")
-capture_queue = lambda fn: fn
-capture_device = CaptureMessages("device.dat")
-#capture_queue = lambda fn: fn
-
 class ControlChannel(sio.SocketConnection):
     """
-    Forward control messages to listening client socket.
+    Forward control messages to listening NICE server.
 
     *session* identifies the client and *endpoint* identifies the
     desired control channel.  These are provided by Tornadio when the
@@ -98,13 +98,15 @@ class ControlChannel(sio.SocketConnection):
         """
         self._all_listeners[self.channel] = value
 
-    def on_message(self, line):
+    def on_message(self, *args, **kw):
         """
         Received message from browser which needs to be forwarded to
         NICE web proxy client.
         """
         if self.listener:
-            return self.listener.send(line)
+            response = self.listener.send(*args, **kw)
+            store_event(self.channel, "message", args, kw)            
+   	    return response 
     def on_event(self, name, *args, **kw):
         """
         Received event from browser which needs to be forwarded to
@@ -119,7 +121,9 @@ class ControlChannel(sio.SocketConnection):
             # TODO: This needs to support multiple instruments
             self.listener = self
         elif self.listener:
-            return self.listener.emit(name, *args, **kw)
+            response = self.listener.emit(name, *args, **kw)
+            store_event(self.channel, name, args, kw)            
+   	    return response 
 
 class SubscriptionChannel(sio.SocketConnection):
     """
@@ -172,6 +176,7 @@ class SubscriptionChannel(sio.SocketConnection):
         return self.initial_state()
 
     @sio.event
+    @capture
     def reset(self, *args, **kw):
         # Note: tornadio has the weird notion that if a method is called
         # with a single dictionary as an argument, then it should be
@@ -219,6 +224,7 @@ class EventChannel(SubscriptionChannel):
     NICE logger interface.
     """
     @sio.event
+    @capture
     def created(self, **event):
         # Ick! tornadio2 treats single dict arg as keywords!
         self.state.append(event)
@@ -247,52 +253,18 @@ class DeviceChannel(SubscriptionChannel):
     """
     
     def reset_state(self, state):
-        # Convert node list into device list where each device has a
-        # set of nodes.
-        
-        # for each node:
-        #   split node into device_name . node_name
-        #   if device_name not in set of defined devices
-        #     create new device
-        #   add node to device
-        #
-        # for each device
-        #    guess primary node
         devices = self.configNodes(state)
         self.state = devices
-        #self.state = state
     
     def initial_state(self):
-        #state = self.state
-        #devices = {}
-        #for name in state.keys():
-            #device_name = name.split('.')[0]
-            #node_name = name.split('.')[1]
-            #if device_name not in devices.keys():
-                #devices[device_name] = {}
-            #devices[device_name][node_name] = state[name]     
-        #self.state = devices
         return self.state
-        # create initial state as [(device,primary node value)]
-        #return [(name,device.primary) for name,device in self.state.items()]
         
 
-    @sio.event
-    def panel(self, device_name):
-        return self.state[device_name]
-        
-        
     # TODO: browser clients should not be able to update state; we could either
     # sign the message using HMAC or somehow make some events require an
     # authenticated connection.
     @sio.event
-    @capture_device
-    def reset(self, *args, **kw):
-        SubscriptionChannel.reset(self, *args, **kw)
-        #print "queue subscribe",self.state
-
-    @sio.event
-    @capture_device
+    @capture
     def added(self, nodes):
         """
         Nodes added to the instrument.  Forward their details to the
@@ -302,7 +274,7 @@ class DeviceChannel(SubscriptionChannel):
         self.emit('added', nodes)
 
     @sio.event
-    @capture_device
+    @capture
     def removed(self, nodeIDs):
         """
         Nodes removed from the instrument.  Forward their names to the clients.
@@ -312,7 +284,7 @@ class DeviceChannel(SubscriptionChannel):
         self.emit('removed', nodeIDS)
 
     @sio.event
-    @capture_device
+    @capture
     def changed(self, nodes):
         """
         Node value or properties changed.  Forward the details to the clients.
@@ -384,17 +356,11 @@ class QueueChannel(SubscriptionChannel):
     simply resubmit the subscribe message to get an up-to-date version
     of the queue.
     """
-    @sio.event
-    @capture_queue
-    def reset(self, *args, **kw):
-        SubscriptionChannel.reset(self, *args, **kw)
-        #print "queue subscribe",self.state
-
     # TODO: browser clients should not be able to update state; we could either
     # sign the message using HMAC or somehow make some events require an
     # authenticated connection.
     @sio.event
-    @capture_queue
+    @capture
     def added(self, nodes, parentID, prevID):
         """
         Node added to the queue.  Forward the details to the
@@ -405,7 +371,7 @@ class QueueChannel(SubscriptionChannel):
         self.emit('added', nodes, parentID, prevID)
 
     @sio.event
-    @capture_queue
+    @capture
     def removed(self, nodeIDs, parentID, index):
         """
         Nodes removed from the queue.  Forward them to the clients.
@@ -421,7 +387,7 @@ class QueueChannel(SubscriptionChannel):
             self.emit('removed_children', parent['id'])
 
     @sio.event
-    @capture_queue
+    @capture
     def moved(self, nodeID, parentID, prevID):
         """
         Nodes moved from the instrument.  Forward their names to the clients.
@@ -431,7 +397,7 @@ class QueueChannel(SubscriptionChannel):
         self.emit('moved', nodeID, parentID, prevID)
 
     @sio.event
-    @capture_queue
+    @capture
     def changed(self, nodeID, status):
         """
         Node value or properties changed.  Forward the details to the clients.
@@ -573,4 +539,5 @@ if __name__ == "__main__":
     import logging
     logging.getLogger().setLevel(logging.INFO)
     debug = False if len(sys.argv)>1 and sys.argv[1]=='production' else True
+    CAPTURE = True if len(sys.argv)>1 and sys.argv[1]=='capture' else False
     serve(debug=debug)

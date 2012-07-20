@@ -10,7 +10,7 @@ so that they can be used to debug the web client.  Currently it implements:
 
 Usage::
 
-    ./feed.py [counts|queue|move]*
+    ./feed.py [counts|queue|move|listen]*
 
 Requires socketIO client and ZeroC python bindings.
 """
@@ -365,19 +365,6 @@ def simulate_count(device):
     device.update()
 
 
-def main():
-    """
-    Run the simulation.
-    """
-    sans10m = Instrument('sans10m')
-    device_init(sans10m.device)
-    socket = SocketIO('localhost', 8001)
-    sans10m.connect(socket)
-
-    sims = ["move"] if len(sys.argv) == 1 else sys.argv[1:]
-    for s in sims:        
-        eval("sim_%s"%s)(sans10m)
-
 def sim_listen(sans10m):
     # sleep forever so that controller can run
     sans10m.event.debug("ready")
@@ -408,6 +395,19 @@ def run_log(filename, sans10m):
 def sim_device(sans10m):
     run_log("device.dat", sans10m)
     
+
+def main():
+    """
+    Run the simulation.
+    """
+    sans10m = Instrument('sans10m')
+    device_init(sans10m.device)
+    socket = SocketIO('localhost', 8001)
+    sans10m.connect(socket)
+
+    sims = ["move"] if len(sys.argv) == 1 else sys.argv[1:]
+    for s in sims:        
+        eval("sim_%s"%s)(sans10m)
 
 if __name__ == "__main__":
      main()
