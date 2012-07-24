@@ -1,22 +1,28 @@
 Ext.require([
     'Ext.tab.*'
-    ]);
+]);
 
 Ext.onReady(function () {
+
+    var instrument = 'sans10m';  // FIXME: should be a parameter
+    var root = 'http://' + window.location.hostname + ':8001/' + instrument;
+
     var tabs = Ext.createWidget('tabpanel', {
         renderTo: 'gridtab',
         width: 495,
+        height:1000,
         activeTab: 0,
         defaults :{
             bodyPadding: 10
         },
-        items: [{
-            contentEl:'gridtest',
-            title: 'Device Grid'
-        }]
-        //    {
-        //    contentEl:'nicequeue',
-        //    title: 'Queue'
-        //}]
+        items: [QueueSpace.tree]
+            //{
+           // contentEl:'gridtest',
+           // title: 'Device Grid'
+        //}
+//            {
+//                contentEl:'nicequeue',
+//                title: 'Queue'
+//            }]
     });
 });

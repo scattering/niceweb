@@ -35,13 +35,13 @@ Ext.onReady(function () {
 
     //var GridSpace = GridSpace || {};
 
-    Ext.namespace('GridSpace');
+    Ext.namespace('GridSpace','ConfigSpace');
 
-    GridSpace.instrument = 'sans10m';  // FIXME: should be a parameter
-    GridSpace.root = 'http://' + window.location.hostname + ':8001/' + GridSpace.instrument;
-    GridSpace.device = new io.connect(GridSpace.root + '/device');
-    GridSpace.control = new io.connect(GridSpace.root + '/control');
-    GridSpace.events = new io.connect(GridSpace.root + '/events');
+    ConfigSpace.instrument = 'sans10m';  // FIXME: should be a parameter
+    ConfigSpace.root = 'http://' + window.location.hostname + ':8001/' + ConfigSpace.instrument;
+    GridSpace.device = new io.connect(ConfigSpace.root + '/device');
+    GridSpace.control = new io.connect(ConfigSpace.root + '/control');
+    ConfigSpace.events = new io.connect(ConfigSpace.root + '/events');
     GridSpace.dataArray = [];
     GridSpace.deviceNames = [];
 
@@ -122,7 +122,7 @@ Ext.onReady(function () {
         animCollapse: false
     });
 
-    GridSpace.grid.render('gridtest');
+    //GridSpace.grid.render('gridtest');
 
 
     GridSpace.device.on('connect', function () {
