@@ -13,9 +13,10 @@ Ext.onReady(function () {
         items: [{
             contentEl:'gridtest',
             title: 'Device Grid'
-        },{
-            contentEl:'nicequeue',
-            title: 'Queue'
         }]
+        //    {
+        //    contentEl:'nicequeue',
+        //    title: 'Queue'
+        //}]
     });
 });

@@ -29,7 +29,7 @@ def store_event(channel, event, args, kw):
         file = CAPTURE_CHANNELS[channel]
         if kw: args = [kw]
         file.write("[%g,\"%s\",%s]\n"
-            % (time.time()-CAPTURE_START, event, json.dumps(args)))
+                   % (time.time()-CAPTURE_START, event, json.dumps(args)))
         file.flush()
 
 def capture(fn):
@@ -52,7 +52,7 @@ class IndexHandler(web.RequestHandler):
     """Regular HTTP handler to serve the index.html page"""
     def get(self):
         self.render('index.html')
-        
+
 class SocketIOHandler(web.RequestHandler):
     """Regular HTTP handler to serve socket.io.js"""
     def get(self):
@@ -106,7 +106,7 @@ class ControlChannel(sio.SocketConnection):
         if self.listener:
             response = self.listener.send(*args, **kw)
             store_event(self.channel, "message", args, kw)            
-   	    return response 
+            return response 
     def on_event(self, name, *args, **kw):
         """
         Received event from browser which needs to be forwarded to
@@ -123,7 +123,7 @@ class ControlChannel(sio.SocketConnection):
         elif self.listener:
             response = self.listener.emit(name, *args, **kw)
             store_event(self.channel, name, args, kw)            
-   	    return response 
+            return response 
 
 class SubscriptionChannel(sio.SocketConnection):
     """
@@ -193,7 +193,7 @@ class SubscriptionChannel(sio.SocketConnection):
         subscriber channels.
         """
         self.state = state
-        
+
     def initial_state(self):
         """
         Default the initial state returned on subscribe to the entire
@@ -233,14 +233,14 @@ class EventChannel(SubscriptionChannel):
 EventChannel._events.update(SubscriptionChannel._events)
 
 class Device(object):
-    
+
     def __init__(self):
         self.nodes = {}
         self.primary = ''
-        
+
     def addnode(self, name, node):
         self.nodes[name] = node
-    
+
     def setprimary(self):
         if 'softPosition' in self.nodes.keys():
             self.primary = 'softPosition'
@@ -251,14 +251,14 @@ class DeviceChannel(SubscriptionChannel):
     """
     NICE device model.
     """
-    
+
     def reset_state(self, state):
         devices = self.configNodes(state)
         self.state = devices
-    
+
     def initial_state(self):
         return self.state
-        
+
 
     # TODO: browser clients should not be able to update state; we could either
     # sign the message using HMAC or somehow make some events require an
@@ -296,7 +296,7 @@ class DeviceChannel(SubscriptionChannel):
 
     def configNodes(self, state):
         devices ={}
-        
+
         for n in state.keys():
             device_name = n.split('.')[0]
             node_name = n.split('.')[1]
@@ -309,7 +309,7 @@ class DeviceChannel(SubscriptionChannel):
             devices[key].setprimary()
             dev_dict[key] = value.__dict__
             #devices[key] = value.nodes
-          
+
         return dev_dict
 
 class QueueChannel(SubscriptionChannel):
@@ -493,7 +493,7 @@ class RouterConnection(sio.SocketConnection):
         'queue': QueueChannel,
         'control': ControlChannel,
         'events': EventChannel,
-         }
+    }
     def get_endpoint(self, endpoint):
         """
         Parse /insturment/channel into specific channel handlers.
@@ -514,9 +514,9 @@ def serve(debug=False):
     Router = sio.TornadioRouter(RouterConnection)
     ext_path='static/ext-all.js'
     routes = Router.apply_routes([
-            (r"/", IndexHandler),
-            (r"/socket.io.js", SocketIOHandler),
-            ])
+        (r"/", IndexHandler),
+        (r"/socket.io.js", SocketIOHandler),
+    ])
 
     settings = dict(
         static_path = os.path.join(ROOT, "static"),
@@ -527,7 +527,7 @@ def serve(debug=False):
         flash_policy_file = os.path.join(ROOT, 'flashpolicy.xml'),
         socket_io_port = 8001,
         debug = debug,
-        )
+    )
 
     # Create socket application
     app = web.Application(routes, **settings)

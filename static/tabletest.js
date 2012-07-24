@@ -3,7 +3,7 @@ Ext.Loader.setConfig({
     enabled: true
 });
 
-//Ext.Loader.setPath('Ext.ux', '/static/ext/examples/ux'); //'../ux');
+Ext.Loader.setPath('Ext.ux', '/static/ext/examples/ux'); //'../ux');
 
 Ext.require([
     'Ext.grid.*',
@@ -33,7 +33,9 @@ Ext.onReady(function () {
 
      */
 
-    var GridSpace = GridSpace || {};
+    //var GridSpace = GridSpace || {};
+
+    Ext.namespace('GridSpace');
 
     GridSpace.instrument = 'sans10m';  // FIXME: should be a parameter
     GridSpace.root = 'http://' + window.location.hostname + ':8001/' + GridSpace.instrument;
@@ -42,6 +44,17 @@ Ext.onReady(function () {
     GridSpace.events = new io.connect(GridSpace.root + '/events');
     GridSpace.dataArray = [];
     GridSpace.deviceNames = [];
+
+    //The following line is evil and worse, it is impolite.    We should try to replace it!!!
+    Object.prototype.clone = function() {
+        var newObj = (this instanceof Array) ? [] : {};
+        for (i in this) {
+            if (i == 'clone') continue;
+            if (this[i] && typeof this[i] == "object") {
+                newObj[i] = this[i].clone();
+            } else newObj[i] = this[i]
+        } return newObj;
+    };
 
     Ext.regModel('deviceModel', {
         fields:[
@@ -132,7 +145,7 @@ Ext.onReady(function () {
                 datum['target'] = data[changedKeys[i]].desiredValue.val;
                 datum['device'] = data[changedKeys[i]].id;
                 changedData.push(datum);
-                record=grid.store.getAt(i);
+                record=GridSpace.grid.store.getAt(i);
                 record.set('position',datum['position']);
                 record.set('target',datum['target']);
                 record.commit();
@@ -190,16 +203,7 @@ Ext.onReady(function () {
         GridSpace.grid.getView().refresh();
     };
 
-    //The following line is evil and worse, it is impolite.    We should try to replace it!!!
-    Object.prototype.clone = function() {
-        var newObj = (this instanceof Array) ? [] : {};
-        for (i in this) {
-            if (i == 'clone') continue;
-            if (this[i] && typeof this[i] == "object") {
-                newObj[i] = this[i].clone();
-            } else newObj[i] = this[i]
-        } return newObj;
-    };
+
 
     GridSpace.trim_data = function (data) {
         $.each(data, function (idx,node) {
@@ -287,7 +291,7 @@ Ext.onReady(function () {
 //
 //        }
         //grid.store.loadData(devicerecs);
-        grid.store.loadData(dataArray);
+        GridSpace.grid.store.loadData(dataArray);
 
 
         //colModel = new Ext.grid.ColumnModel({columns: gridColumns});
@@ -303,31 +307,31 @@ Ext.onReady(function () {
         //grid.getBottomToolbar().doLayout();
 
         //gridColumns = store.data.items;
-        grid.getView().refresh();
+        GridSpace.grid.getView().refresh();
 
     }
 
 
     /*Retrieve data in json format via a GET request to the server. This is used
      anytime there is new data, and initially to populate the table.*/
-    function update() {
-        //dataArray=[['file name','database id','sha1','x','y','z'],[NaN,NaN,NaN,10,10,10],[NaN,NaN,NaN,-10,-10,-10],['file1','1','sh1','1,9','2,3','3,4'],['file2','1','sh2','4,5','2,3','5,5']];
-        var conn = new Ext.data.Connection();
-        conn.request({
-            url:'/json/',
-            method:'GET',
-            params:{},
-            success:function (responseObject) {
-                dataArray = Ext.decode(responseObject.responseText);//decodes the response
-                reload_data();                                      //resets the store and grids
-            },
-            failure:function () {
-            }
-        });
-        //reload_data();
-    }
-
-    update();
+//    function update() {
+//        //dataArray=[['file name','database id','sha1','x','y','z'],[NaN,NaN,NaN,10,10,10],[NaN,NaN,NaN,-10,-10,-10],['file1','1','sh1','1,9','2,3','3,4'],['file2','1','sh2','4,5','2,3','5,5']];
+//        var conn = new Ext.data.Connection();
+//        conn.request({
+//            url:'/json/',
+//            method:'GET',
+//            params:{},
+//            success:function (responseObject) {
+//                dataArray = Ext.decode(responseObject.responseText);//decodes the response
+//                reload_data();                                      //resets the store and grids
+//            },
+//            failure:function () {
+//            }
+//        });
+//        //reload_data();
+//    }
+//
+//    update();
 
 
 });
