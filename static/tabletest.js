@@ -46,6 +46,7 @@ Ext.onReady(function () {
     GridSpace.deviceNames = [];
 
     //The following line is evil and worse, it is impolite.    We should try to replace it!!!
+    /*
     Object.prototype.clone = function() {
         var newObj = (this instanceof Array) ? [] : {};
         for (i in this) {
@@ -55,6 +56,7 @@ Ext.onReady(function () {
             } else newObj[i] = this[i]
         } return newObj;
     };
+    */
 
     Ext.regModel('deviceModel', {
         fields:[
@@ -158,7 +160,7 @@ Ext.onReady(function () {
             var x = deviceNames.indexOf(changedData[i]['device']);
             dataArray[x] = changedData[i]
         }
-        var localData=dataArray.clone();
+        //var localData=dataArray.clone();
         return;
         //grid.store.loadData(localData);
         //grid.getView().refresh();
@@ -195,11 +197,11 @@ Ext.onReady(function () {
                 GridSpace.dataArray.push(datum);
             }
         }
-        //displayNodes(properties);
-
         GridSpace.deviceNames.splice(GridSpace.deviceNames.indexOf('detector'), 1);
-        var localData=GridSpace.dataArray.clone();
-        GridSpace.grid.store.loadData(localData);
+
+        //var localData=GridSpace.dataArray.clone();
+        GridSpace.grid.store.loadData(GridSpace.dataArray);
+        //GridSpace.grid.store.loadData();
         GridSpace.grid.getView().refresh();
     };
 

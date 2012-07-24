@@ -17,6 +17,8 @@ Requires socketIO client and ZeroC python bindings.
 import time
 import sys
 import json
+from types import NoneType
+from pprint import pprint
 
 import numpy
 
@@ -27,27 +29,17 @@ Ice.loadSlice('-I. --all --underscore devices.ice')
 Ice.loadSlice('-I. --all --underscore data.ice')
 Ice.loadSlice('-I. --all --underscore events.ice')
 Ice.loadSlice('-I. --all --underscore queue.ice')
+Ice.loadSlice('-I. --all --underscore exceptions.ice')
 
-from nice.api import data, devices, events, queue
-
-# List of enumerated types in NICE interface
-NICE_ENUMS = set((
-    data.StorageMode,
-    data.DeviceState,
-    data.CountAgainst,
-    data.SansSampleMode,
-    data.Validity,
-    events.EventLevel,
-    events.EventState,
-    queue.CommandState,
-    queue.QueueEventType,
-    ))
+from nice.api import data, devices, events, queue, exceptions, SessionId
 
 def deice(obj):
     """
     Convert a NICE type into python primitives which can be pickled by JSON.
     """
     if isinstance(obj, float):
+        # Special handling of floats to convert exceptional values to 
+        # specific numbers
         if numpy.isfinite(obj):
             return obj
         elif obj > 0:
@@ -56,20 +48,32 @@ def deice(obj):
             return -1e308
         else: # NaN always compares false
             return 1e-308
-    elif isinstance(obj, data.NullValue):
-        return None
     elif isinstance(obj, data.Value):
-        return deice(obj.val)
-    elif type(obj) in NICE_ENUMS:
+        # Special handling of data values needed to support polymorphism
+        return deice(obj.val) if not isinstance(obj, data.NullValue) else None
+    elif isinstance(obj, Ice.Exception):
+        # Convert exceptions into strings for now.
         return str(obj)
     elif isinstance(obj, Ice.Object):
-        return deice(obj.__dict__)
+        # A slice class definition
+        return dict( (k,deice(v)) for k,v in obj.__dict__.items())
+    elif hasattr(obj, "value") and hasattr(obj, "_names"):
+        # Convert enum value to a string representation
+        return str(obj)
     elif isinstance(obj, dict):
+        # Slice dictionaries exists as well
+        print "dict", obj.keys()
         return dict( (k,deice(v)) for k,v in obj.items())
     elif isinstance(obj, list):
+        # A slice array is a list of slice objects
         return [deice(v) for v in obj]
-    else:
+    elif isinstance(obj, (str, bool, int, unicode, NoneType)):
+        # Slice base type
         return obj
+    else:
+        # A slice struct is just an object with a dictionary
+        #print "struct",str(type(obj)),obj.__dict__
+        return dict( (k,deice(v)) for k,v in obj.__dict__.items())
 
 # about Jan 1 2012 in milliseconds since Jan 1 1970
 T0 = 42*365.2425*24*60*60*1000
@@ -400,6 +404,8 @@ def main():
     """
     Run the simulation.
     """
+    # deice(SessionId(name="this name",ip="this ip"))  # struct example
+    # deice(exceptions.TopicException("reason")) # exception example
     sans10m = Instrument('sans10m')
     device_init(sans10m.device)
     socket = SocketIO('localhost', 8001)

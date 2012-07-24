@@ -67,7 +67,7 @@ Ext.onReady(function() {
             if (childNode.data.id == nodeID) {
                 return childNode;
             } else {
-                grandchild = QueueSpace._find_node(nodeID, childNode);
+                var grandchild = QueueSpace._find_node(nodeID, childNode);
                 if (grandchild !== null) {
                     return grandchild;
                 }

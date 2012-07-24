@@ -15,14 +15,8 @@ Ext.onReady(function () {
         defaults :{
             bodyPadding: 10
         },
+        //items: [GridSpace.grid]
+        //items: [QueueSpace.tree]
         items: [GridSpace.grid, QueueSpace.tree]
-            //{
-           // contentEl:'gridtest',
-           // title: 'Device Grid'
-        //}
-//            {
-//                contentEl:'nicequeue',
-//                title: 'Queue'
-//            }]
     });
 });
