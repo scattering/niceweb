@@ -3,7 +3,7 @@ Ext.Loader.setConfig({
     enabled: true
 });
 
-Ext.Loader.setPath('Ext.ux', '/static/ext/examples/ux'); //'../ux');
+//Ext.Loader.setPath('Ext.ux', '/static/ext/examples/ux');
 
 Ext.require([
     'Ext.grid.*',

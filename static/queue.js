@@ -7,6 +7,7 @@ Ext.require([
 Ext.onReady(function() {
 
     Ext.namespace('QueueSpace','ConfigSpace');
+    //Ext.namespace('ConfigSpace'); QueueSpace = {};
     ConfigSpace.instrument = 'sans10m';  // FIXME: should be a parameter
     ConfigSpace.root = 'http://' + window.location.hostname + ':8001/' + ConfigSpace.instrument;
     QueueSpace.queue = new io.connect(ConfigSpace.root+'/queue');
@@ -77,7 +78,7 @@ Ext.onReady(function() {
         return null;
     }
     QueueSpace.find_node = function(nodeID) {
-        if (nodeID == 0) {
+        if (nodeID === 0 || nodeID === "0") {
             return QueueSpace.treeRoot;
         } else {
             return QueueSpace._find_node(nodeID,  QueueSpace.treeRoot);
@@ -98,14 +99,13 @@ Ext.onReady(function() {
     };
     // Construct a tree from a list of top level nodes, and add
     // them to the root.
-    QueueSpace.build_tree= function(tree, qroot) {
+    QueueSpace.build_tree = function(treeNode, qroot) {
         for (var i=0; i < qroot.child.length; i++) {
             var qnode = qroot.child[i];
             var newCommand = QueueSpace.build_node(qnode);
-            if (tree.isRoot()){
-                tree.childNodes=[];
-            };
-            tree.insertChild(i,newCommand);
+            //if (tree.isRoot()){ tree.childNodes=[]; };
+            //tree.insertChild(i,newCommand);
+            treeNode.appendChild(newCommand);
         }
     }
 
