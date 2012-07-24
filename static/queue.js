@@ -67,7 +67,7 @@ Ext.onReady(function() {
             if (childNode.data.id == nodeID) {
                 return childNode;
             } else {
-                grandchild = _find_node(nodeID, childNode);
+                grandchild = QueueSpace._find_node(nodeID, childNode);
                 if (grandchild !== null) {
                     return grandchild;
                 }
@@ -82,19 +82,19 @@ Ext.onReady(function() {
         } else {
             return QueueSpace._find_node(nodeID,  QueueSpace.treeRoot);
         }
-    }
+    };
 
     // Construct a tree node from a queue item.  If the queue
     // item has children, construct the children as well.
     QueueSpace.build_node = function(qnode){
-        QueueSpace.commandNode = Ext.create('CommandModel', {
+        var commandNode = Ext.create('CommandModel', {
             id: qnode.id,
             text: qnode.id + QueueSpace.generateText(qnode.status),
             expanded: false,
             leaf: qnode.child.length == 0
         });
-        QueueSpace.build_tree(QueueSpace.commandNode, qnode);
-        return QueueSpace.commandNode;
+        QueueSpace.build_tree(commandNode, qnode);
+        return commandNode;
     };
     // Construct a tree from a list of top level nodes, and add
     // them to the root.
