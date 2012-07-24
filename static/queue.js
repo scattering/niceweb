@@ -102,6 +102,9 @@ Ext.onReady(function() {
         for (var i=0; i < qroot.child.length; i++) {
             var qnode = qroot.child[i];
             var newCommand = QueueSpace.build_node(qnode);
+            if (tree.isRoot()){
+                tree.childNodes=[];
+            };
             tree.insertChild(i,newCommand);
         }
     }
