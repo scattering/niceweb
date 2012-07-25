@@ -4,6 +4,7 @@ Tornado server providing a socket.io repeater for NICE publish-subscribe
 streams.
 """
 
+from pprint import pprint
 import sys
 import os
 import re
@@ -184,6 +185,7 @@ class SubscriptionChannel(sio.SocketConnection):
         # will often use a dict to represent state, we need to hack around this
         # problem by intercepting the **kw arguments if args is not present.
         self.reset_state(args[0] if args else kw)
+        #print "sending reset to",self.channel
         self.emit('reset', self.state)
 
     def reset_state(self, state):
@@ -232,31 +234,18 @@ class EventChannel(SubscriptionChannel):
         self.emit('created', event)
 EventChannel._events.update(SubscriptionChannel._events)
 
-class Device(object):
-
-    def __init__(self):
-        self.nodes = {}
-        self.primary = ''
-
-    def addnode(self, name, node):
-        self.nodes[name] = node
-
-    def setprimary(self):
-        if 'softPosition' in self.nodes.keys():
-            self.primary = 'softPosition'
-        else:
-            self.primary = self.nodes.keys()[0]
-
 class DeviceChannel(SubscriptionChannel):
     """
     NICE device model.
     """
 
     def reset_state(self, state):
-        devices = self.configNodes(state)
+        devices, nodes = state
+        _fixup_devices(devices,nodes)
         self.state = devices
 
     def initial_state(self):
+        #print "current state:"; pprint(self.state)
         return self.state
 
 
@@ -265,23 +254,25 @@ class DeviceChannel(SubscriptionChannel):
     # authenticated connection.
     @sio.event
     @capture
-    def added(self, nodes):
+    def added(self, devices, nodes):
         """
         Nodes added to the instrument.  Forward their details to the
         clients.
         """
-        self.state.update((n['id'],n) for n  in nodes)
-        self.emit('added', nodes)
+        _fixup_devices(devices, nodes)
+        self.state.update(devices)
+        self.emit('added', devices)
 
     @sio.event
     @capture
-    def removed(self, nodeIDs):
+    def removed(self, devices, nodes):
         """
         Nodes removed from the instrument.  Forward their names to the clients.
         """
-        for id in nodeIDS:
-            del self.state[id]
-        self.emit('removed', nodeIDS)
+        deviceIDs = devices.keys()
+        for device in deviceIDs:
+            del self.state[device]
+        self.emit('removed', deviceIDs)
 
     @sio.event
     @capture
@@ -289,28 +280,20 @@ class DeviceChannel(SubscriptionChannel):
         """
         Node value or properties changed.  Forward the details to the clients.
         """
-        delta = dict((n['id'], n) for n in nodes)
-        dev_dict = self.configNodes(delta)
-        self.state.update(dev_dict)
-        self.emit('changed', delta)
+        for node in nodes:
+            self.state[node['deviceID']]['nodes'][node['nodeID']] = node
+        self.emit('changed', nodes)
 
-    def configNodes(self, state):
-        devices ={}
+def _fixup_devices(devices, nodes):
+    for v in devices.values():
+        v['nodes'] = {}
+        #print v['primaryNodeID'],v['stateNodeID'],v['visibleNodeIDs']
+        v['primaryNodeID'] = v['primaryNodeID'].split('.')[1] if v['primaryNodeID'] else ''
+        v['stateNodeID'] = v['stateNodeID'].split('.')[1] if v['stateNodeID'] else ''
+        v['visibleNodeIDs'] = [id.split('.')[1] for id in v['visibleNodeIDs']]
+    for v in nodes.values():
+        devices[v['deviceID']]['nodes'][v['nodeID']] = v
 
-        for n in state.keys():
-            device_name = n.split('.')[0]
-            node_name = n.split('.')[1]
-            if device_name not in devices.keys():
-                devices[device_name] = Device()
-            node = state[n]
-            devices[device_name].addnode(node_name, node)
-        dev_dict={}
-        for key, value in devices.items():
-            devices[key].setprimary()
-            dev_dict[key] = value.__dict__
-            #devices[key] = value.nodes
-
-        return dev_dict
 
 class QueueChannel(SubscriptionChannel):
     """

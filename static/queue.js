@@ -7,8 +7,6 @@ Ext.require([
 Ext.onReady(function() {
 
     Ext.namespace('QueueSpace','ConfigSpace');
-    //Ext.namespace('ConfigSpace'); QueueSpace = {};
-    ConfigSpace.instrument = 'sans10m';  // FIXME: should be a parameter
     ConfigSpace.root = 'http://' + window.location.hostname + ':8001/' + ConfigSpace.instrument;
     QueueSpace.queue = new io.connect(ConfigSpace.root+'/queue');
     ConfigSpace.events = new io.connect(ConfigSpace.root+'/events');
