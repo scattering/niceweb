@@ -42,8 +42,15 @@ def run_log(socket, filename):
         ch.disconnect()
 
 def main():
-    socket = SocketIO('localhost', 8001)
-    for filename in sys.argv[1:]:
+    if ':' in sys.argv[1]:
+        url = sys.argv[1]
+        files = sys.argv[2:]
+    else:
+        url = 'localhost:8001'
+        files = sys.argv[1:]
+    host,port = url.split(':')
+    socket = SocketIO(host,int(port))
+    for filename in files:
         run_log(socket, filename)
 
 if __name__ == "__main__":
