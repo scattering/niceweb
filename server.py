@@ -11,6 +11,7 @@ import re
 import time
 import functools
 import json
+import gzip
 
 SOCKETIO_CLIENT = 'static/socket.io-0.9.6/socket.io.min.js'
 from tornado import web
@@ -20,18 +21,14 @@ import cookie
 
 ROOT = os.path.normpath(os.path.dirname(__file__))
 
-CAPTURE = False
-CAPTURE_CHANNELS = {}
 CAPTURE_START = time.time()
+CAPTURE_FILE = None
 def store_event(channel, event, args, kw):
-    if CAPTURE:
-        if channel not in CAPTURE_CHANNELS:
-            CAPTURE_CHANNELS[channel] = open("capture"+channel.replace("/","."),"w")
-        file = CAPTURE_CHANNELS[channel]
+    if CAPTURE_FILE is not None:
         if kw: args = [kw]
-        file.write("[%g,\"%s\",%s]\n"
-                   % (time.time()-CAPTURE_START, event, json.dumps(args)))
-        file.flush()
+        CAPTURE_FILE.write('[%g,"%s","%s",%s]\n'
+                   % (time.time()-CAPTURE_START, channel,event, json.dumps(args)))
+        CAPTURE_FILE.flush()
 
 def capture(fn):
     """
@@ -522,5 +519,6 @@ if __name__ == "__main__":
     import logging
     logging.getLogger().setLevel(logging.INFO)
     debug = False if len(sys.argv)>1 and sys.argv[1]=='production' else True
-    CAPTURE = True if len(sys.argv)>1 and sys.argv[1]=='capture' else False
+    if len(sys.argv) > 1 and sys.argv[1] == 'capture':
+        CAPTURE_FILE = gzip.open(sys.argv[2]+".gz", "w")
     serve(debug=debug)
