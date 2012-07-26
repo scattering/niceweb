@@ -61,16 +61,40 @@ Ext.onReady(function () {
     GridSpace.gridColumns = [];
 
     GridSpace.gridColumns.push({header:'device', width:150, sortable:true, dataIndex:'label'});
-    GridSpace.gridColumns.push({header:'position', width:150, hidden:false, sortable:true, dataIndex:'position'})
-    GridSpace.gridColumns.push({header:'target', width:150, hidden:false, sortable:true, dataIndex:'target'})
+    GridSpace.gridColumns.push({header:'position', width:150, hidden:false, sortable:true, dataIndex:'position'});
+    GridSpace.gridColumns.push({header:'target', width:150, hidden:false, sortable:true, dataIndex:'target'});
 
     GridSpace.tpl =
-        ['<tpl for="nodes">',
-            '<p><b>{[values.id+"hello"]}:</b>  {currentValue.val}</p>',
-            '</tpl></p>'];
+        ['<tpl for ="device.visibleNodeIDs">',
+            '<p><b>{[this.getName(values, parent)]}: </b>{[this.getVal(values, parent)]}</p>',
+//        '<p><b>{parent.device.nodes[values].nodeID}</b></p>',
+        {getName: getName,
+        getVal: getVal},
+            '</tpl>'];
+//        ['<tpl for="device.nodes">',
+//            '<p><b>{#}:</b></p>',  //{currentValue.val}</p>',
+//            '</tpl>'];
+    function getName(values, parent) {
+        return parent.device.nodes[values].nodeID;
+    }
 
+    function getVal(values, parent) {
+        return parent.device.nodes[values].currentValue.val;
+    }
 //    tpl.overwrite(panel.body, data.kids);
-
+//        this.rowExpander = new Ext.ux.RowExpander({
+//            rowBodyTpl: GridSpace.tpl,
+//        renderer: function(p, record) {
+//            if (record.get('listeRetourChaqueJour') != "") {
+//                p.cellAttr = 'rowspan="2"';
+//                return '<div class="x-grid3-row-expander"></div>';
+//            } else {
+//                p.id = '';
+//                return '&#160;';
+//            },
+//        expandOnEnter: false,
+//        expandOnDblClick: false
+//    });
     //field: {xtype: 'numberfield', allowBlank: false}});
     /*GridPanel that displays the data*/
     GridSpace.grid = new Ext.grid.GridPanel({
@@ -87,9 +111,11 @@ Ext.onReady(function () {
         },
         //if other plugins are added, check listener (this.plugins[0]) and make sure
         //that the 0 index plugin is still rowexpander
-        plugins: [{
-            ptype: 'rowexpander',
+//        plugins: [rowExpander],
+          plugins:
+            [{ptype: 'rowexpander',
             rowBodyTpl : GridSpace.tpl
+            //renderer: render(p, record)
         }],
         title:'Devices',
         collapsible: true,

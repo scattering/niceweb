@@ -10,11 +10,11 @@ Ext.onReady(function () {
     var tabs = Ext.createWidget('tabpanel', {
         renderTo: 'gridtab',
         width: 495,
-        height:1000,
+        height:500,
         activeTab: 0,
-        defaults :{
-            bodyPadding: 10
-        },
+//        defaults :{
+//            bodyPadding: 10
+//        },
         //items: [GridSpace.grid]
         //items: [QueueSpace.tree]
         items: [GridSpace.grid, QueueSpace.tree]
