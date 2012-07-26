@@ -4,12 +4,14 @@ Tornado server providing a socket.io repeater for NICE publish-subscribe
 streams.
 """
 
+from pprint import pprint
 import sys
 import os
 import re
 import time
 import functools
 import json
+import gzip
 
 SOCKETIO_CLIENT = 'static/socket.io-0.9.6/socket.io.min.js'
 from tornado import web
@@ -19,18 +21,14 @@ import cookie
 
 ROOT = os.path.normpath(os.path.dirname(__file__))
 
-CAPTURE = False
-CAPTURE_CHANNELS = {}
 CAPTURE_START = time.time()
+CAPTURE_FILE = None
 def store_event(channel, event, args, kw):
-    if CAPTURE:
-        if channel not in CAPTURE_CHANNELS:
-            CAPTURE_CHANNELS[channel] = open("capture"+channel.replace("/","."),"w")
-        file = CAPTURE_CHANNELS[channel]
+    if CAPTURE_FILE is not None:
         if kw: args = [kw]
-        file.write("[%g,\"%s\",%s]\n"
-            % (time.time()-CAPTURE_START, event, json.dumps(args)))
-        file.flush()
+        CAPTURE_FILE.write('[%g,"%s","%s",%s]\n'
+                   % (time.time()-CAPTURE_START, channel,event, json.dumps(args)))
+        CAPTURE_FILE.flush()
 
 def capture(fn):
     """
@@ -52,7 +50,7 @@ class IndexHandler(web.RequestHandler):
     """Regular HTTP handler to serve the index.html page"""
     def get(self):
         self.render('index.html')
-        
+
 class SocketIOHandler(web.RequestHandler):
     """Regular HTTP handler to serve socket.io.js"""
     def get(self):
@@ -106,7 +104,7 @@ class ControlChannel(sio.SocketConnection):
         if self.listener:
             response = self.listener.send(*args, **kw)
             store_event(self.channel, "message", args, kw)            
-   	    return response 
+            return response 
     def on_event(self, name, *args, **kw):
         """
         Received event from browser which needs to be forwarded to
@@ -123,7 +121,7 @@ class ControlChannel(sio.SocketConnection):
         elif self.listener:
             response = self.listener.emit(name, *args, **kw)
             store_event(self.channel, name, args, kw)            
-   	    return response 
+            return response 
 
 class SubscriptionChannel(sio.SocketConnection):
     """
@@ -184,6 +182,7 @@ class SubscriptionChannel(sio.SocketConnection):
         # will often use a dict to represent state, we need to hack around this
         # problem by intercepting the **kw arguments if args is not present.
         self.reset_state(args[0] if args else kw)
+        #print "sending reset to",self.channel
         self.emit('reset', self.state)
 
     def reset_state(self, state):
@@ -193,7 +192,7 @@ class SubscriptionChannel(sio.SocketConnection):
         subscriber channels.
         """
         self.state = state
-        
+
     def initial_state(self):
         """
         Default the initial state returned on subscribe to the entire
@@ -232,56 +231,45 @@ class EventChannel(SubscriptionChannel):
         self.emit('created', event)
 EventChannel._events.update(SubscriptionChannel._events)
 
-class Device(object):
-    
-    def __init__(self):
-        self.nodes = {}
-        self.primary = ''
-        
-    def addnode(self, name, node):
-        self.nodes[name] = node
-    
-    def setprimary(self):
-        if 'softPosition' in self.nodes.keys():
-            self.primary = 'softPosition'
-        else:
-            self.primary = self.nodes.keys()[0]
-
 class DeviceChannel(SubscriptionChannel):
     """
     NICE device model.
     """
-    
+
     def reset_state(self, state):
-        devices = self.configNodes(state)
+        devices, nodes = state
+        _fixup_devices(devices,nodes)
         self.state = devices
-    
+
     def initial_state(self):
+        #print "current state:"; pprint(self.state)
         return self.state
-        
+
 
     # TODO: browser clients should not be able to update state; we could either
     # sign the message using HMAC or somehow make some events require an
     # authenticated connection.
     @sio.event
     @capture
-    def added(self, nodes):
+    def added(self, devices, nodes):
         """
         Nodes added to the instrument.  Forward their details to the
         clients.
         """
-        self.state.update((n['id'],n) for n  in nodes)
-        self.emit('added', nodes)
+        _fixup_devices(devices, nodes)
+        self.state.update(devices)
+        self.emit('added', devices)
 
     @sio.event
     @capture
-    def removed(self, nodeIDs):
+    def removed(self, devices, nodes):
         """
         Nodes removed from the instrument.  Forward their names to the clients.
         """
-        for id in nodeIDS:
-            del self.state[id]
-        self.emit('removed', nodeIDS)
+        deviceIDs = devices.keys()
+        for device in deviceIDs:
+            del self.state[device]
+        self.emit('removed', deviceIDs)
 
     @sio.event
     @capture
@@ -289,28 +277,20 @@ class DeviceChannel(SubscriptionChannel):
         """
         Node value or properties changed.  Forward the details to the clients.
         """
-        delta = dict((n['id'], n) for n in nodes)
-        dev_dict = self.configNodes(delta)
-        self.state.update(dev_dict)
-        self.emit('changed', delta)
+        for node in nodes:
+            self.state[node['deviceID']]['nodes'][node['nodeID']] = node
+        self.emit('changed', nodes)
 
-    def configNodes(self, state):
-        devices ={}
-        
-        for n in state.keys():
-            device_name = n.split('.')[0]
-            node_name = n.split('.')[1]
-            if device_name not in devices.keys():
-                devices[device_name] = Device()
-            node = state[n]
-            devices[device_name].addnode(node_name, node)
-        dev_dict={}
-        for key, value in devices.items():
-            devices[key].setprimary()
-            dev_dict[key] = value.__dict__
-            #devices[key] = value.nodes
-          
-        return dev_dict
+def _fixup_devices(devices, nodes):
+    for v in devices.values():
+        v['nodes'] = {}
+        #print v['primaryNodeID'],v['stateNodeID'],v['visibleNodeIDs']
+        v['primaryNodeID'] = v['primaryNodeID'].split('.')[1] if v['primaryNodeID'] else ''
+        v['stateNodeID'] = v['stateNodeID'].split('.')[1] if v['stateNodeID'] else ''
+        v['visibleNodeIDs'] = [id.split('.')[1] for id in v['visibleNodeIDs']]
+    for v in nodes.values():
+        devices[v['deviceID']]['nodes'][v['nodeID']] = v
+
 
 class QueueChannel(SubscriptionChannel):
     """
@@ -493,7 +473,7 @@ class RouterConnection(sio.SocketConnection):
         'queue': QueueChannel,
         'control': ControlChannel,
         'events': EventChannel,
-         }
+    }
     def get_endpoint(self, endpoint):
         """
         Parse /insturment/channel into specific channel handlers.
@@ -514,9 +494,9 @@ def serve(debug=False):
     Router = sio.TornadioRouter(RouterConnection)
     ext_path='static/ext-all.js'
     routes = Router.apply_routes([
-            (r"/", IndexHandler),
-            (r"/socket.io.js", SocketIOHandler),
-            ])
+        (r"/", IndexHandler),
+        (r"/socket.io.js", SocketIOHandler),
+    ])
 
     settings = dict(
         static_path = os.path.join(ROOT, "static"),
@@ -527,7 +507,7 @@ def serve(debug=False):
         flash_policy_file = os.path.join(ROOT, 'flashpolicy.xml'),
         socket_io_port = 8001,
         debug = debug,
-        )
+    )
 
     # Create socket application
     app = web.Application(routes, **settings)
@@ -539,5 +519,6 @@ if __name__ == "__main__":
     import logging
     logging.getLogger().setLevel(logging.INFO)
     debug = False if len(sys.argv)>1 and sys.argv[1]=='production' else True
-    CAPTURE = True if len(sys.argv)>1 and sys.argv[1]=='capture' else False
+    if len(sys.argv) > 1 and sys.argv[1] == 'capture':
+        CAPTURE_FILE = gzip.open(sys.argv[2]+".gz", "w")
     serve(debug=debug)

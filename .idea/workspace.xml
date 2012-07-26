@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="51f217c8-0102-4b98-9703-8b8f990502f5" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+    <list default="true" id="4fc23d4d-5a97-4f64-a619-a7427ecd2773" name="Default" comment="">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/static/tabdisplay.js" afterPath="$PROJECT_DIR$/static/tabdisplay.js" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/static/tabletest.js" afterPath="$PROJECT_DIR$/static/tabletest.js" />
     </list>
     <ignored path="niceweb.iws" />
@@ -25,26 +25,17 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="tabletest.js" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/static/tabletest.js">
+      <file leaf-file-name="testTable2.html" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/static/testTable2.html">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="203" column="18" selection-start="6998" selection-end="6998" vertical-scroll-proportion="0.8080808">
+            <state line="15" column="3" selection-start="822" selection-end="822" vertical-scroll-proportion="-8.666667">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="expander.js" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/static/expander.js">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="25" column="10" selection-start="615" selection-end="615" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="json.html" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/static/json.html">
+      <file leaf-file-name="testQueue.html" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/static/testQueue.html">
           <provider selected="true" editor-type-id="text-editor">
             <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="-0.0">
               <folding />
@@ -52,19 +43,28 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="test.html" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/static/test.html">
+      <file leaf-file-name="tabdisplay.js" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/static/tabdisplay.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="10" column="0" selection-start="453" selection-end="453" vertical-scroll-proportion="-6.25">
+            <state line="18" column="34" selection-start="475" selection-end="475" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="testTable2.html" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/static/testTable2.html">
+      <file leaf-file-name="queue.js" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/static/queue.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="10" column="57" selection-start="696" selection-end="696" vertical-scroll-proportion="-6.25">
+            <state line="17" column="44" selection-start="551" selection-end="551" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="tabletest.js" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/static/tabletest.js">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="116" column="38" selection-start="4065" selection-end="4065" vertical-scroll-proportion="0.5504587">
               <folding />
             </state>
           </provider>
@@ -83,16 +83,18 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/static/expander.js" />
+        <option value="$PROJECT_DIR$/static/testTable2.html" />
+        <option value="$PROJECT_DIR$/static/queue.js" />
+        <option value="$PROJECT_DIR$/static/tabdisplay.js" />
         <option value="$PROJECT_DIR$/static/tabletest.js" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="307" />
-    <option name="y" value="196" />
-    <option name="width" value="921" />
-    <option name="height" value="784" />
+    <option name="x" value="102" />
+    <option name="y" value="1342" />
+    <option name="width" value="1405" />
+    <option name="height" value="940" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="false">
     <OptionsSetting value="true" id="Add" />
@@ -152,24 +154,6 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="niceweb" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="niceweb" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="static" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ext" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
         </subPane>
       </pane>
       <pane id="Scope">
@@ -186,16 +170,8 @@
   </component>
   <component name="PropertiesComponent">
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="recentsLimit" value="5" />
   </component>
-  <component name="RunManager" selected="JavaScript Debug.expander.js">
-    <configuration default="false" name="expander.js" type="JavascriptDebugSession" factoryName="Local" temporary="true">
-      <JSDebuggerConfigurationSettings>
-        <option name="engineId" value="embedded" />
-        <option name="fileUrl" value="file://$PROJECT_DIR$/static/expander.js" />
-      </JSDebuggerConfigurationSettings>
-      <method />
-    </configuration>
+  <component name="RunManager">
     <configuration default="true" type="JavascriptDebugSession" factoryName="Local">
       <JSDebuggerConfigurationSettings>
         <option name="engineId" value="embedded" />
@@ -203,27 +179,25 @@
       </JSDebuggerConfigurationSettings>
       <method />
     </configuration>
-    <list size="1">
-      <item index="0" class="java.lang.String" itemvalue="JavaScript Debug.expander.js" />
-    </list>
+    <list size="0" />
   </component>
   <component name="ShelveChangesManager" show_recycled="false" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="51f217c8-0102-4b98-9703-8b8f990502f5" name="Default" comment="" />
-      <created>1341934824589</created>
-      <updated>1341934824589</updated>
+      <changelist id="4fc23d4d-5a97-4f64-a619-a7427ecd2773" name="Default" comment="" />
+      <created>1343100026345</created>
+      <updated>1343100026345</updated>
     </task>
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="307" y="196" width="921" height="784" extended-state="0" />
+    <frame x="102" y="1342" width="1405" height="940" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="true" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2622768" sideWeight="0.9734345" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.16594203" sideWeight="0.9976879" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
@@ -294,54 +268,35 @@
     <breakpoint-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/server.py">
+    <entry file="file://$PROJECT_DIR$/static/queue.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="17" column="44" selection-start="551" selection-end="551" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/static/tabdisplay.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="18" column="34" selection-start="475" selection-end="475" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/static/testQueue.html">
       <provider selected="true" editor-type-id="text-editor">
         <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/static/device.html">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/static/simple.html">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="-0.55263156">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/static/testTable2.html">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="57" selection-start="696" selection-end="696" vertical-scroll-proportion="-6.25">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/static/test.html">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="0" selection-start="453" selection-end="453" vertical-scroll-proportion="-6.25">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/static/json.html">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="-0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/static/expander.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="25" column="10" selection-start="615" selection-end="615" vertical-scroll-proportion="0.0">
+        <state line="15" column="3" selection-start="822" selection-end="822" vertical-scroll-proportion="-8.666667">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/static/tabletest.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="203" column="18" selection-start="6998" selection-end="6998" vertical-scroll-proportion="0.8080808">
+        <state line="116" column="38" selection-start="4065" selection-end="4065" vertical-scroll-proportion="0.5504587">
           <folding />
         </state>
       </provider>

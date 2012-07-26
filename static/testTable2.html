@@ -3,16 +3,32 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>Testing</title>
+
     <link rel="stylesheet" type="text/css" href="/static/ext/resources/css/ext-all.css" />
     <link rel="stylesheet" type="text/css" href="/static/ext/examples/shared/example.css" />
-	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.js"></script>
-    <script type="text/javascript" src="/static/ext/bootstrap.js"></script>
+
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.js"></script>
     <script type="text/javascript" src="/static/socket.io-0.9.6/socket.io.js"></script>
+    <script type="text/javascript" charset="utf-8" src="http://cdn.sencha.io/ext-4.1.0-gpl/ext-all.js"></script>
+    <script type="text/javascript">
+       Ext.namespace('ConfigSpace');
+       var params = Ext.urlDecode(location.search.substring(1));
+       ConfigSpace.instrument = params.instrument ? params.instrument : 'sans10m';
+       
+       Ext.Loader.setPath('Ext.ux', 'http://cdn.sencha.io/ext-4.1.0-gpl/examples/ux');
+    </script>
+    <!-- <script type="text/javascript" src="/static/ext/bootstrap.js"></script> -->
+
     <script type="text/javascript" src="/static/tabletest.js"></script>
+    <script type="text/javascript" src="/static/queue.js"></script>
+    <script type="text/javascript" src="/static/tabdisplay.js"></script>
 
 
 </head>
 <body>
 <div id="gridtest"></div>
+<div id="gridtab"></div>
+<div id="nicequeue"></div>
+
 </body>
 </html>
