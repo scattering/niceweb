@@ -6,7 +6,19 @@
   <script src="/socket.io.js"></script>
   <script>
     $(function() {
-        var instrument = 'sans10m';  // FIXME: should be a parameter
+        // stackoverflow: Artem Barger, Feb 26, 2012
+        function getParameterByName(name) {
+           name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+           var regexS = "[\\?&]" + name + "=([^&#]*)";
+           var regex = new RegExp(regexS);
+           var results = regex.exec(window.location.search);
+           if(results == null)
+               return "";
+           else
+               return decodeURIComponent(results[1].replace(/\+/g, " "));
+        }
+        
+        var instrument = getParameterByName('instrument')||'san10m';  // FIXME: should be a parameter
         var root = 'http://' + window.location.hostname + ':8001/' + instrument;
         var device = new io.connect(root+'/device');
         var queue = new io.connect(root+'/queue');

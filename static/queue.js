@@ -1,7 +1,9 @@
 Ext.require([
-    'Ext.tree.*',
-    'Ext.data.*',
-    'Ext.util.*']);
+    'Ext.tree.Panel',
+    'Ext.tree.plugin.TreeViewDragDrop',
+    'Ext.data.Model',
+    'Ext.data.TreeStore'
+    ]);
 
 
 Ext.onReady(function() {
