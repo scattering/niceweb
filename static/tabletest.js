@@ -67,35 +67,32 @@ Ext.onReady(function () {
 
     GridSpace.tpl =
         ['<tpl for ="device.visibleNodeIDs">',
-            '<p><b>{[this.getName(values, parent)]}: </b>{[this.getVal(values, parent)]}</p>',
+            '<p><b>{.}: </b>{[this.getVal(values, parent)]}</p>',
 //        '<p><b>{parent.device.nodes[values].nodeID}</b></p>',
-        {getName: getName,
-        getVal: getVal},
+        {getVal: getVal},
             '</tpl>'];
 //        ['<tpl for="device.nodes">',
 //            '<p><b>{#}:</b></p>',  //{currentValue.val}</p>',
 //            '</tpl>'];
-    function getName(values, parent) {
-        return parent.device.nodes[values].nodeID;
-    }
 
     function getVal(values, parent) {
         return parent.device.nodes[values].currentValue.val;
     }
 //    tpl.overwrite(panel.body, data.kids);
-//        this.rowExpander = new Ext.ux.RowExpander({
+//    GridSpace.grid.rowExpander = new Ext.ux.RowExpander({
+//        ptype: 'rowexpander',
 //            rowBodyTpl: GridSpace.tpl,
 //        renderer: function(p, record) {
 //            if (record.get('listeRetourChaqueJour') != "") {
-//                p.cellAttr = 'rowspan="2"';
-//                return '<div class="x-grid3-row-expander"></div>';
-//            } else {
+////                p.cellAttr = 'rowspan="2"';
+////                return '<div class="x-grid3-row-expander"></div>';
+////            } else {
 //                p.id = '';
 //                return '&#160;';
-//            },
-//        expandOnEnter: false,
-//        expandOnDblClick: false
+//            }
+//        }
 //    });
+
     //field: {xtype: 'numberfield', allowBlank: false}});
     /*GridPanel that displays the data*/
     GridSpace.grid = new Ext.grid.GridPanel({
@@ -112,12 +109,20 @@ Ext.onReady(function () {
         },
         //if other plugins are added, check listener (this.plugins[0]) and make sure
         //that the 0 index plugin is still rowexpander
-//        plugins: [rowExpander],
-          plugins:
-            [{ptype: 'rowexpander',
-            rowBodyTpl : GridSpace.tpl
-            //renderer: render(p, record)
+        plugins: [{ptype: 'rowexpander',
+            rowBodyTpl: GridSpace.tpl,
+            hideTrigger: true,
+            renderer: function(p, record) {
+                if (record.get('listeRetourChaqueJour') != "") {
+                    p.id = '';
+                    return '&#160;';
+                }
+            }
         }],
+          //plugins: [{ptype: 'rowexpander',
+//            rowBodyTpl : GridSpace.tpl
+//            //renderer: render(p, record)
+//        }],
         title:'Devices',
         collapsible: true,
         animCollapse: false
