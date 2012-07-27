@@ -1,5 +1,5 @@
 Ext.require([
-    'Ext.tab.*'
+    'Ext.tab.Panel'
 ]);
 
 Ext.onReady(function () {

@@ -9,15 +9,20 @@
 
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.js"></script>
     <script type="text/javascript" src="/static/socket.io-0.9.6/socket.io.js"></script>
-    <script type="text/javascript" charset="utf-8" src="http://cdn.sencha.io/ext-4.1.0-gpl/ext-all.js"></script>
+    <!-- <script type="text/javascript" src="/static/niceweb-ext.js"></script> -->
+    <script type="text/javascript" charset="utf-8" src="http://cdn.sencha.io/ext-4.1.1-gpl/ext-all.js"></script>
+    <!-- <script type="text/javascript" src="/static/ext-4.1.1/bootstrap.js"></script> -->
+    <!-- <script type="text/javascript" src="/static/ext-4.1.1/builds/ext-core-debug.js"></script> -->
+    <!-- <script type="text/javascript" src="/static/ext-4.1.1/builds/ext-core.js"></script> -->
     <script type="text/javascript">
        Ext.namespace('ConfigSpace');
        var params = Ext.urlDecode(location.search.substring(1));
        ConfigSpace.instrument = params.instrument ? params.instrument : 'sans10m';
        
-       Ext.Loader.setPath('Ext.ux', 'http://cdn.sencha.io/ext-4.1.0-gpl/examples/ux');
+       Ext.Loader.setPath('Ext.ux', 'http://cdn.sencha.io/ext-4.1.1-gpl/examples/ux');
+       // Ext.Loader.setPath('Ext', '/static/ext-4.1.1/src');
+       // Ext.Loader.setPath('Ext.ux', '/static/ext-4.1.1/examples/ux');
     </script>
-    <!-- <script type="text/javascript" src="/static/ext/bootstrap.js"></script> -->
 
     <script type="text/javascript" src="/static/tabletest.js"></script>
     <script type="text/javascript" src="/static/queue.js"></script>

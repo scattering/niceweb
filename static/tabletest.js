@@ -6,9 +6,9 @@ Ext.Loader.setConfig({
 //Ext.Loader.setPath('Ext.ux', '/static/ext/examples/ux');
 
 Ext.require([
-    'Ext.grid.*',
-    'Ext.data.*',
-    'Ext.util.*',
+    //'Ext.ModelManager',
+    'Ext.grid.View', 'Ext.grid.Panel',
+    'Ext.data.Model', 'Ext.data.Store',
     'Ext.ux.RowExpander'
 ]);
 
@@ -44,12 +44,13 @@ Ext.onReady(function () {
     GridSpace.dataArray = [];
     GridSpace.deviceNames = [];
 
-    Ext.regModel('deviceModel', {
+    Ext.define('deviceModel', {
+        extend: "Ext.data.Model",
         fields:[ 'id', 'label', 'position', 'target', 'device' ]
     });
 
     if(Ext.isSafari){
-        Ext.override(Ext.grid.GridView, {
+        Ext.override(Ext.grid.View, {
             layout : function(){
                 this.scroller.dom.style.position = 'static';
             }
