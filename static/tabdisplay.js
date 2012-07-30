@@ -8,8 +8,8 @@ Ext.onReady(function () {
 
     var tabs = Ext.createWidget('tabpanel', {
         renderTo: 'gridtab',
-        width: 495,
-        height:500,
+        width: ConfigSpace.width,
+        height:ConfigSpace.height,
         activeTab: 0,
 //        defaults :{
 //            bodyPadding: 10

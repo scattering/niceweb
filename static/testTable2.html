@@ -20,7 +20,8 @@
        Ext.namespace('ConfigSpace');
        var params = Ext.urlDecode(location.search.substring(1));
        ConfigSpace.instrument = params.instrument ? params.instrument : 'sans10m';
-       
+       ConfigSpace.height = 500;
+       ConfigSpace.width = 495;
        Ext.Loader.setPath('Ext.ux', 'http://cdn.sencha.io/ext-4.1.1-gpl/examples/ux');
        // Ext.Loader.setPath('Ext', '/static/ext-4.1.1/src');
        // Ext.Loader.setPath('Ext.ux', '/static/ext-4.1.1/examples/ux');

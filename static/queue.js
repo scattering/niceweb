@@ -44,21 +44,23 @@ Ext
                 }
             });
 
-            // create the Tree
+            // create the panel that will display the Tree
             QueueSpace.tree = Ext.create('Ext.tree.Panel',
             {
                 store : QueueSpace.treeStore,
                 hideHeaders : true,
                 rootVisible : true,
+                layout: 'fit',
+                autoScroll : true,
                 viewConfig :
                 {
                     plugins : [
                     {
                         ptype : 'treeviewdragdrop'
-                    } ]
+                    } ]                   
                 },
-                height : 600,
-                width : 800,
+                //height : 600,
+                //width : 800,
                 // id : 'myQ',
                 title : ConfigSpace.instrument + ' Queue',
                 // renderTo : 'nicequeue', //Ext.getBody(),
@@ -96,7 +98,8 @@ Ext
                     }
                 }
                 return null;
-            }
+            };
+
             QueueSpace.find_node = function(nodeID)
             {
                 if (nodeID === 0 || nodeID === "0")
@@ -152,6 +155,7 @@ Ext
                         // window.console.log("queue subscribe", qroot);
                         QueueSpace.build_tree(QueueSpace.treeRoot, qroot);
                         QueueSpace.treeRoot.expand();
+                        QueueSpace.tree.doLayout();
                     }
                 });
             });

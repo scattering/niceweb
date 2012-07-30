@@ -99,8 +99,8 @@ Ext.onReady(function () {
         store: GridSpace.store,
         columns: GridSpace.gridColumns,
         stripeRows:true,
-        height:500,
-        width:475,
+        height:ConfigSpace.height,
+        //width:475,
         listeners: {
             itemclick: function(view, cell, rowIdx, cellIndex, e) {
 
