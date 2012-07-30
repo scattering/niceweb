@@ -1,3 +1,10 @@
-.x-grid-cell-first, .x-column-header-first {
+#devicegrid .x-grid-cell-first {
     display: none;
 }
+
+
+/*
+#gritab .x-column-header-first {
+    display: none;
+}
+*/

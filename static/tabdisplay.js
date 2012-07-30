@@ -4,8 +4,7 @@ Ext.require([
 
 Ext.onReady(function () {
 
-    var instrument = 'sans10m';  // FIXME: should be a parameter
-    var root = 'http://' + window.location.hostname + ':8001/' + instrument;
+    Ext.namespace('ConfigSpace');
 
     var tabs = Ext.createWidget('tabpanel', {
         renderTo: 'gridtab',
@@ -17,6 +16,9 @@ Ext.onReady(function () {
 //        },
         //items: [GridSpace.grid]
         //items: [QueueSpace.tree]
-        items: [GridSpace.grid, QueueSpace.tree]
+        items: [
+        { id: 'devicegrid', title: ConfigSpace.instrument + ' devices', items: GridSpace.grid}, 
+        	{id: 'nicequeue', title: ConfigSpace.instrument + ' queue', items: QueueSpace.tree}]
     });
+
 });
