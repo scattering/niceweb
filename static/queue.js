@@ -51,14 +51,14 @@ Ext
                 hideHeaders : true,
                 rootVisible : true,
                 layout: 'fit',
-                autoScroll : true,
-                viewConfig :
-                {
-                    plugins : [
-                    {
-                        ptype : 'treeviewdragdrop'
-                    } ]                   
-                },
+                //autoScroll : true,
+                //viewConfig :
+                //{
+                   // plugins : [
+                    //{
+                        //ptype : 'treeviewdragdrop'
+                    //} ]                   
+               // },
                 //height : 600,
                 //width : 800,
                 // id : 'myQ',

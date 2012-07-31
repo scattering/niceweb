@@ -6,7 +6,11 @@ Ext.onReady(function () {
 
     Ext.namespace('ConfigSpace');
 
-    var tabs = Ext.createWidget('tabpanel', {
+    var tabs = Ext.create('Ext.tab.Panel', {
+    	defaults: {
+        	layout: 'fit',
+        	autoScroll : true
+        },
         renderTo: 'gridtab',
         width: ConfigSpace.width,
         height:ConfigSpace.height,
