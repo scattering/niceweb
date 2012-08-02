@@ -1,10 +1,67 @@
+
 #devicegrid .x-grid-cell-first {
     display: none;
 }
 
 
 /*
+.x-grid-row .x-grid-cell { 
+	font-size: 20px;
+	line-height: 40px;
+}
+.x-grid-cell-inner {
+	line-height: 40px;
+	}
+
+
+img.x-tree-expander {
+	width: 40px;
+	height: 40px;
+	background: no-repeat;
+	background-size: 100%;
+}
+
 #gritab .x-column-header-first {
     display: none;
+}
+*/
+
+.node-style-grey .x-grid-cell-inner  { 
+    color : grey;
+    
+}
+
+.node-style-green .x-grid-cell-inner  { 
+    color : green;
+    
+}
+
+.node-style-black .x-grid-cell-inner  { 
+    color : black;
+    
+}
+
+.x-gecko .x-tree-panel .x-grid-row .x-grid-cell-inner  { 
+    line-height: 18px;
+
+}
+
+.x-tree-panel .x-grid-row .x-grid-cell-inner  { 
+    font-size: 14px;
+}
+
+/*
+.node-style img {
+	width: 30px;
+	height: 30px;
+	background: no-repeat;
+	background-size: 100%;
+}
+
+.node-style .x-grid-cell-inner { 
+	font-size: 36px;
+	line-height: 36px;
+	height: 38px;
+
 }
 */

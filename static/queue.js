@@ -92,7 +92,7 @@ Ext.onReady(function() {
 				bodyStyle : {
 					background : '#FBF9F5',
 					padding : '10px',
-					fontSize : '12px'				
+					fontSize : '12px'
 				}
 			});
 
@@ -108,10 +108,10 @@ Ext.onReady(function() {
 	}
 
 	// format command details as html
-	QueueSpace.generateStatus = function(qnode) {
-		return 'State : ' + qnode.status.state + '<br> ' + 'Meta Data : '
-				+ qnode.status.metaState + '<br>' + 'Errors : '
-				+ array_toString(qnode.status.errors) + '<br>';
+	QueueSpace.generateStatus = function(node_status) {
+		return 'State : ' + node_status.state + '<br> ' + 'Meta Data : '
+				+ node_status.metaState + '<br>' + 'Errors : '
+				+ array_toString(node_status.errors) + '<br>';
 	};
 
 	// Search for node in tree given node id
@@ -148,10 +148,12 @@ Ext.onReady(function() {
 					state : qnode.status.state,
 					metaData : qnode.status.metaState,
 					errors : array_toString(qnode.status.errors),
-					qtip : QueueSpace.generateStatus(qnode),
+					qtip : QueueSpace.generateStatus(qnode.status),
 					qtitle : 'Command ' + qnode.id,
 					expanded : false,
-					leaf : qnode.child.length == 0
+					leaf : qnode.child.length == 0,
+					cls : 'node-style-grey',
+					iconCls : 'node-icon'
 				});
 		QueueSpace.build_tree(commandNode, qnode);
 		return commandNode;
@@ -181,7 +183,7 @@ Ext.onReady(function() {
 								// window.console.log("queue subscribe", qroot);
 								QueueSpace.build_tree(QueueSpace.treeRoot,
 										qroot);
-								QueueSpace.treeRoot.expand();
+								QueueSpace.treeRoot.expand(true);
 								QueueSpace.tree.doLayout();
 							}
 						});
@@ -229,6 +231,7 @@ Ext.onReady(function() {
 			}
 			// window.console.log("added",newCommand.data.id);
 		}
+		
 	});
 
 	QueueSpace.queue.on('removed', function(nodeID) {
@@ -272,20 +275,27 @@ Ext.onReady(function() {
 					treeNode.set('state', node_status.state);
 					treeNode.set('metaData', node_status.metaState);
 					treeNode.set('errors', array_toString(node_status.errors));
-					treeNode.set('qtip', 'something');
-					// if it does not work try this
-					// treeNode.ui.textNode.setAttribute('ext:qtip', 'My dynamic
-					// tooltip');
+					treeNode
+							.set('qtip', QueueSpace.generateStatus(node_status));
+					if (node_status.state == 'FINISHED') {
+						treeNode.set('cls', 'node-style-grey');
+					} else if (node_status.state == ('RUNNING')
+							|| node_status.state == ('CHILDREN')) {
+						treeNode.set('cls', 'node-style-green');
+						//treeNode.parentNode.set('expanded',true);
+					} else {
+						treeNode.set('cls', 'node-style-black');
+					}
 				}
 
 			});
 
 	QueueSpace.queue.on('reset', function(qroot) {
 				// only happens when the server restarts
-				// window.console.log("queue reset", qroot, treeRoot);
+				window.console.log("queue reset", qroot, treeRoot);
 				QueueSpace.treeRoot.removeAll(false);
 				QueueSpace.build_tree(QueueSpace.treeRoot, qroot);
-				QueueSpace.treeRoot.expand();
+				QueueSpace.treeRoot.expand(true);
 			});
 
 });
