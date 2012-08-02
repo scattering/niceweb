@@ -32,7 +32,11 @@ img.x-tree-expander {
 }
 
 .node-style-green .x-grid-cell-inner  { 
-    color : green;
+    color : green;    
+}
+
+.node-style-blue .x-grid-cell-inner  { 
+    color : #000066;
     
 }
 
@@ -50,18 +54,8 @@ img.x-tree-expander {
     font-size: 14px;
 }
 
-/*
-.node-style img {
-	width: 30px;
-	height: 30px;
-	background: no-repeat;
-	background-size: 100%;
+.x-grid-cell-inner img.node-icon {
+    width:16px;
+    background-image:url('/static/images/loading.gif')
 }
 
-.node-style .x-grid-cell-inner { 
-	font-size: 36px;
-	line-height: 36px;
-	height: 38px;
-
-}
-*/

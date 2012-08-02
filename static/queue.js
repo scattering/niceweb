@@ -114,6 +114,28 @@ Ext.onReady(function() {
 				+ array_toString(node_status.errors) + '<br>';
 	};
 
+	/**
+	 * generates color based on command state
+	 */
+	var state_color = function(state) {
+		var color
+
+		switch (state) {
+			case 'FINISHED' :
+				color = 'grey';
+				break;
+			case 'CHILDREN' :
+			case 'RUNNING' :
+				color = 'green';
+				break;
+			case 'QUEUED' :
+				color = 'blue';
+				break;
+			default :
+				color = 'black'
+		}
+		return color;
+	};
 	// Search for node in tree given node id
 	QueueSpace._find_node = function(nodeID, parentNode) {
 		var childNode = parentNode.lastChild;
@@ -152,7 +174,7 @@ Ext.onReady(function() {
 					qtitle : 'Command ' + qnode.id,
 					expanded : false,
 					leaf : qnode.child.length == 0,
-					cls : 'node-style-grey',
+					cls : 'node-style-' + state_color(qnode.status.state),
 					iconCls : 'node-icon'
 				});
 		QueueSpace.build_tree(commandNode, qnode);
@@ -183,8 +205,8 @@ Ext.onReady(function() {
 								// window.console.log("queue subscribe", qroot);
 								QueueSpace.build_tree(QueueSpace.treeRoot,
 										qroot);
-								QueueSpace.treeRoot.expand(true);
-								QueueSpace.tree.doLayout();
+								QueueSpace.treeRoot.expand(false);
+								// QueueSpace.tree.doLayout();
 							}
 						});
 			});
@@ -201,6 +223,7 @@ Ext.onReady(function() {
 		// window.console.log("node " +nodes[0].id+ " added under " +
 		// parentID + " after " + siblingID, nodes[0].status.commandStr,
 		// nodes);
+
 		var parentNode = QueueSpace.find_node(parentID);
 		if (parentNode == null) {
 			window.console.log("could not find", parentID, QueueSpace.treeRoot);
@@ -231,7 +254,7 @@ Ext.onReady(function() {
 			}
 			// window.console.log("added",newCommand.data.id);
 		}
-		
+
 	});
 
 	QueueSpace.queue.on('removed', function(nodeID) {
@@ -260,42 +283,36 @@ Ext.onReady(function() {
 	});
 
 	QueueSpace.queue.on('moved', function(nodeID, parentID, siblingID) {
-				window.console.log("queue moved " + nodeID + " to " + parentID
-						+ " after " + siblingID);
-			});
+		window.console.log("queue moved " + nodeID + " to " + parentID
+				+ " after " + siblingID);
+			// todo implement
+		});
 
 	QueueSpace.queue.on('changed', function(nodeID, node_status) {
-				// window.console.log("node changed " + nodeID,
-				// node_status.commandStr);
-				var treeNode = QueueSpace.find_node(nodeID);
-				if (treeNode == null) {
-					window.console.log("node is not defined " + nodeID);
-				} else {
-					treeNode.set('text', node_status.commandStr);
-					treeNode.set('state', node_status.state);
-					treeNode.set('metaData', node_status.metaState);
-					treeNode.set('errors', array_toString(node_status.errors));
-					treeNode
-							.set('qtip', QueueSpace.generateStatus(node_status));
-					if (node_status.state == 'FINISHED') {
-						treeNode.set('cls', 'node-style-grey');
-					} else if (node_status.state == ('RUNNING')
-							|| node_status.state == ('CHILDREN')) {
-						treeNode.set('cls', 'node-style-green');
-						//treeNode.parentNode.set('expanded',true);
-					} else {
-						treeNode.set('cls', 'node-style-black');
-					}
-				}
+		// window.console.log("node changed " + nodeID,
+		// node_status.commandStr);
+		var treeNode = QueueSpace.find_node(nodeID);
+		if (treeNode == null) {
+			window.console.log("node is not defined " + nodeID);
+		} else {
+			treeNode.set('text', node_status.commandStr);
+			treeNode.set('state', node_status.state);
+			treeNode.set('metaData', node_status.metaState);
+			treeNode.set('errors', array_toString(node_status.errors));
+			treeNode.set('qtip', QueueSpace.generateStatus(node_status));
+			treeNode.set('cls', 'node-style-' + state_color(node_status.state));
+			//TODO: finish icons
+			//treeNode.set('iconCls','node-icon');
+		}
 
-			});
+	});
 
 	QueueSpace.queue.on('reset', function(qroot) {
 				// only happens when the server restarts
-				window.console.log("queue reset", qroot, treeRoot);
+				window.console.log("queue reset", qroot);
 				QueueSpace.treeRoot.removeAll(false);
 				QueueSpace.build_tree(QueueSpace.treeRoot, qroot);
-				QueueSpace.treeRoot.expand(true);
+				QueueSpace.treeRoot.expand(false);
 			});
 
 });
