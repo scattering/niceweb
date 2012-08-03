@@ -9,7 +9,6 @@ Ext.onReady(function() {
 	ConfigSpace.root = 'http://' + window.location.hostname + ':8001/'
 			+ ConfigSpace.instrument;
 	QueueSpace.queue = new io.connect(ConfigSpace.root + '/queue');
-	ConfigSpace.events = new io.connect(ConfigSpace.root + '/events');
 
 	Ext.define('CommandModel', {
 				extend : 'Ext.data.Model',

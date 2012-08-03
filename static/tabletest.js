@@ -39,8 +39,7 @@ Ext.onReady(function () {
 
     ConfigSpace.root = 'http://' + window.location.hostname + ':8001/' + ConfigSpace.instrument;
     GridSpace.device = new io.connect(ConfigSpace.root + '/device');
-    GridSpace.control = new io.connect(ConfigSpace.root + '/control');
-    ConfigSpace.events = new io.connect(ConfigSpace.root + '/events');
+  
     GridSpace.dataArray = [];
     GridSpace.deviceNames = [];
 
