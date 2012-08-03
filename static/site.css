@@ -26,21 +26,21 @@ img.x-tree-expander {
 }
 */
 
-.node-style-grey .x-grid-cell-inner  { 
+.node-style-done .x-grid-cell-inner  { 
     color : grey;
     
 }
 
-.node-style-green .x-grid-cell-inner  { 
+.node-style-run .x-grid-cell-inner  { 
     color : green;    
 }
 
-.node-style-blue .x-grid-cell-inner  { 
+.node-style-queued .x-grid-cell-inner  { 
     color : #000066;
     
 }
 
-.node-style-black .x-grid-cell-inner  { 
+.node-style-default .x-grid-cell-inner  { 
     color : black;
     
 }
@@ -54,8 +54,32 @@ img.x-tree-expander {
     font-size: 14px;
 }
 
-.x-grid-cell-inner img.node-icon {
+.x-grid-cell-inner img.node-icon-run {
     width:16px;
-    background-image:url('/static/images/loading.gif')
+    height: 16px;
+    background-image:url('/static/images/loading.gif');
+}
+
+.x-grid-cell-inner img.node-icon-default {
+    width:16px;
+    height: 16px;
+    background-image:none;
+}
+
+.x-grid-cell-inner img.node-icon-done {
+    width:16px;
+    height: 16px;
+    background-image:url('/static/images/checkmark.png');
+}
+
+.x-grid-cell-inner img.node-icon-queued {
+    width:16px;
+    height: 16px;
+    background-image:url('/static/images/clock-arrow-icon.png');
+}
+.x-grid-cell-inner img.node-icon-error {
+    width:16px;
+    height: 16px;
+    background-image:url('/static/images/error.png');
 }
 

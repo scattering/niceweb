@@ -114,28 +114,30 @@ Ext.onReady(function() {
 				+ array_toString(node_status.errors) + '<br>';
 	};
 
+
 	/**
-	 * generates color based on command state
+	 * generates correct suffix that can be used apply correct css style to a tree node
 	 */
-	var state_color = function(state) {
-		var color
+	var node_css_type = function(state) {
+		var type
 
 		switch (state) {
 			case 'FINISHED' :
-				color = 'grey';
+				type = 'done';
 				break;
 			case 'CHILDREN' :
 			case 'RUNNING' :
-				color = 'green';
+				type = 'run';
 				break;
 			case 'QUEUED' :
-				color = 'blue';
+				type = 'queued';
 				break;
 			default :
-				color = 'black'
+				type = 'default'
 		}
-		return color;
+		return type;
 	};
+
 	// Search for node in tree given node id
 	QueueSpace._find_node = function(nodeID, parentNode) {
 		var childNode = parentNode.lastChild;
@@ -174,8 +176,7 @@ Ext.onReady(function() {
 					qtitle : 'Command ' + qnode.id,
 					expanded : false,
 					leaf : qnode.child.length == 0,
-					cls : 'node-style-' + state_color(qnode.status.state),
-					iconCls : 'node-icon'
+					cls : 'node-style-' + node_css_type(qnode.status.state)
 				});
 		QueueSpace.build_tree(commandNode, qnode);
 		return commandNode;
@@ -186,10 +187,11 @@ Ext.onReady(function() {
 		for (var i = 0; i < qroot.child.length; i++) {
 			var qnode = qroot.child[i];
 			var newCommand = QueueSpace.build_node(qnode);
-			newCommand.set('iconCls', '');
 			// if (tree.isRoot()){ tree.childNodes=[]; };
 			// tree.insertChild(i,newCommand);
 			treeNode.appendChild(newCommand);
+			newCommand.set('iconCls', 'node-icon-'
+							+ node_css_type(newCommand.data.state));
 		}
 	}
 
@@ -252,6 +254,9 @@ Ext.onReady(function() {
 			} else {
 				parentNode.insertBefore(siblingNode, newCommand);
 			}
+			
+			newCommand.set('iconCls', 'node-icon-'
+							+ node_css_type(newCommand.data.state));
 			// window.console.log("added",newCommand.data.id);
 		}
 
@@ -300,9 +305,10 @@ Ext.onReady(function() {
 			treeNode.set('metaData', node_status.metaState);
 			treeNode.set('errors', array_toString(node_status.errors));
 			treeNode.set('qtip', QueueSpace.generateStatus(node_status));
-			treeNode.set('cls', 'node-style-' + state_color(node_status.state));
-			//TODO: finish icons
-			//treeNode.set('iconCls','node-icon');
+			treeNode.set('cls', 'node-style-' + node_css_type(node_status.state));
+			// TODO: finish icons
+			treeNode
+					.set('iconCls', 'node-icon-' + node_css_type(node_status.state));
 		}
 
 	});
