@@ -4,28 +4,6 @@
 }
 
 
-/*
-.x-grid-row .x-grid-cell { 
-	font-size: 20px;
-	line-height: 40px;
-}
-.x-grid-cell-inner {
-	line-height: 40px;
-	}
-
-
-img.x-tree-expander {
-	width: 40px;
-	height: 40px;
-	background: no-repeat;
-	background-size: 100%;
-}
-
-#gritab .x-column-header-first {
-    display: none;
-}
-*/
-
 .node-style-done .x-grid-cell-inner  { 
     color : grey;
     
@@ -57,7 +35,9 @@ img.x-tree-expander {
 .x-grid-cell-inner img.node-icon-run {
     width:16px;
     height: 16px;
-    background-image:url('/static/images/loading.gif');
+    background-image:url('/static/images/runner.png');
+    /* background-image:url('/static/images/listen.png'); */
+    /* background-image:url('/static/images/loading.gif'); */
 }
 
 .x-grid-cell-inner img.node-icon-default {

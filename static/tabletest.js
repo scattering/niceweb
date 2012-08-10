@@ -133,7 +133,9 @@ Ext.onReady(function () {
         GridSpace.device.emit('subscribe', GridSpace.setDeviceModel);
     });
 
-    GridSpace.device.on('reset', GridSpace.setDeviceModel);
+    GridSpace.device.on('reset', function (state) {
+        GridSpace.setDeviceModel(state[0],state[1]);
+    });
 
     GridSpace.device.on('changed', function (nodes) {
         for (var i=0; i < nodes.length; i++) {
@@ -147,11 +149,11 @@ Ext.onReady(function () {
                 }
             }
         }
-        // GridSpace.grid.getView().refresh();
     });
 
-    GridSpace.setDeviceModel = function (data) {
-        console.log("device subscribe", data);
+    GridSpace.setDeviceModel = function (data, structure) {
+        structure = jQuery.parseJSON(structure);
+        console.log("device reset", data, structure);
         GridSpace.dataArray = [];
         // TODO: change this to the device display heirarchy when it is available
         var deviceIDs = GridSpace.sorted_keys(data);

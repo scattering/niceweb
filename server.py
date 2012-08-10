@@ -25,6 +25,7 @@ CAPTURE_START = time.time()
 CAPTURE_FILE = None
 def store_event(channel, event, args, kw):
     if CAPTURE_FILE is not None:
+        #print "storing",event,"from",channel,"to",CAPTURE_FILE
         if kw: args = [kw]
         CAPTURE_FILE.write('[%g,"%s","%s",%s]\n'
                    % (time.time()-CAPTURE_START, channel,event, json.dumps(args)))
@@ -103,7 +104,7 @@ class ControlChannel(sio.SocketConnection):
         """
         if self.listener:
             response = self.listener.send(*args, **kw)
-            store_event(self.channel, "message", args, kw)            
+            #store_event(self.channel, "message", args, kw)
             return response 
     def on_event(self, name, *args, **kw):
         """
@@ -120,7 +121,7 @@ class ControlChannel(sio.SocketConnection):
             self.listener = self
         elif self.listener:
             response = self.listener.emit(name, *args, **kw)
-            store_event(self.channel, name, args, kw)            
+            #store_event(self.channel, name, args, kw)
             return response 
 
 class SubscriptionChannel(sio.SocketConnection):
@@ -141,6 +142,10 @@ class SubscriptionChannel(sio.SocketConnection):
     The *reset* event is emitted by the publisher to set the initial state
     of the channel.
     """
+    # TODO: make sure there is only one publisher per channel; additional
+    # publishers should be disconnected when they emit the initial reset
+    # message.
+
     # Channel-specific subscribers and channel specific state
     _all_feeds = {}
     _all_state = {}
@@ -183,7 +188,7 @@ class SubscriptionChannel(sio.SocketConnection):
         # problem by intercepting the **kw arguments if args is not present.
         self.reset_state(args[0] if args else kw)
         #print "sending reset to",self.channel
-        self.emit('reset', self.state)
+        self.emit('reset', self.initial_state())
 
     def reset_state(self, state):
         """
@@ -229,7 +234,29 @@ class EventChannel(SubscriptionChannel):
         self.state.append(event)
         #print "event channel is", self.channel
         self.emit('created', event)
-EventChannel._events.update(SubscriptionChannel._events)
+
+    @sio.event
+    @capture
+    def acknowledged(self, event_id):
+        pass
+
+    @sio.event
+    @capture
+    def resolved(self, event_id, resolution):
+        pass
+
+class ConsoleChannel(SubscriptionChannel):
+    @sio.event
+    @capture
+    def report(self, **event):
+        self.state.append(event)
+        self.emit('report', event)
+
+class DataChannel(SubscriptionChannel):
+    @sio.event
+    @capture
+    def data(self, json_record):
+        self.emit('data', json.loads(json_record))
 
 class DeviceChannel(SubscriptionChannel):
     """
@@ -237,13 +264,14 @@ class DeviceChannel(SubscriptionChannel):
     """
 
     def reset_state(self, state):
-        devices, nodes = state
+        devices, nodes, structure = state
         _fixup_devices(devices,nodes)
-        self.state = devices
+        self.state = devices, structure
 
     def initial_state(self):
-        #print "current state:"; pprint(self.state)
-        return self.state
+        #print "current state:"; type(self.state)
+        #print "sub",type(self.state[0]),type(self.state[1])
+        return self.state if self.state is not None else (None,"{}")
 
 
     # TODO: browser clients should not be able to update state; we could either
@@ -257,7 +285,7 @@ class DeviceChannel(SubscriptionChannel):
         clients.
         """
         _fixup_devices(devices, nodes)
-        self.state.update(devices)
+        self.state[0].update(devices)
         self.emit('added', devices)
 
     @sio.event
@@ -268,7 +296,7 @@ class DeviceChannel(SubscriptionChannel):
         """
         deviceIDs = devices.keys()
         for device in deviceIDs:
-            del self.state[device]
+            del self.state[0][device]
         self.emit('removed', deviceIDs)
 
     @sio.event
@@ -278,7 +306,7 @@ class DeviceChannel(SubscriptionChannel):
         Node value or properties changed.  Forward the details to the clients.
         """
         for node in nodes:
-            self.state[node['deviceID']]['nodes'][node['nodeID']] = node
+            self.state[0][node['deviceID']]['nodes'][node['nodeID']] = node
         self.emit('changed', nodes)
 
 def _fixup_devices(devices, nodes):
@@ -469,10 +497,12 @@ class RouterConnection(sio.SocketConnection):
     Register the socket.io channel endpoints.
     """
     _channels = {
-        'device': DeviceChannel,
-        'queue': QueueChannel,
         'control': ControlChannel,
         'events': EventChannel,
+        'console': ConsoleChannel,
+        'data': DataChannel,
+        'device': DeviceChannel,
+        'queue': QueueChannel,
     }
     def get_endpoint(self, endpoint):
         """
@@ -520,5 +550,5 @@ if __name__ == "__main__":
     logging.getLogger().setLevel(logging.INFO)
     debug = False if len(sys.argv)>1 and sys.argv[1]=='production' else True
     if len(sys.argv) > 1 and sys.argv[1] == 'capture':
-        CAPTURE_FILE = gzip.open(sys.argv[2]+".gz", "w")
+        CAPTURE_FILE = open(sys.argv[2], "w")
     serve(debug=debug)
