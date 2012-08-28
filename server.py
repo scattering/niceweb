@@ -143,8 +143,8 @@ class SubscriptionChannel(sio.SocketConnection):
     of the channel.
     """
     # TODO: make sure there is only one publisher per channel; additional
-    # publishers should be disconnected when they emit the initial reset
-    # message.
+    # publishers should be disconnected when their reset message is
+    # received.
 
     # Channel-specific subscribers and channel specific state
     _all_feeds = {}

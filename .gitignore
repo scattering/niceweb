@@ -1,6 +1,11 @@
 *.py[co]
 
-# Packages
+# 3rd party libraries
+static/extjs
+static/jqplot
+static/jqplot.science
+
+# Packaging files
 *.egg
 *.egg-info
 dist

@@ -72,17 +72,19 @@ need to again source virtualenvwrapper.sh, then do::
 
     workon niceweb
 
-We have a ZeroC python client to feed NICE status to our proxy server,
-which requires our own socketIO client library to communicate.  This is 
-only needed on the instrument computers, not on the webster repeater. 
-Install the python client from here::
-
-    git clone git://github.com/scattering/socketIO-client.git
-    (cd socketIO-client && python setup.py install)
-
 TornadIO2 needs to be installed from PyPI::
 
     pip install tornadio2
+
+Grab server and dependencies::
+
+    git clone git@github.com:scattering/niceweb.git
+    git clone git@github.com:scattering/jqplot.science.git
+    curl -o jqplot.1.0.3r1117.zip http://cloud.github.com/downloads/scattering/jqplot.science/jqplot.1.0.3r1117.zip
+    unzip jqplot.1.0.3r1117.zip
+    cd niceweb/static
+    ln -s ../../jqplot.science .
+    ln -s ../../jqplot .
 
 
 Example Usage
@@ -98,10 +100,7 @@ Point your browser to localhost:8001.  You should see a mostly empty console.
 In a separate terminal, start the fake instrument::
 
     cd niceweb/test
-    ./feed.py
+    ./playback.py bt4.gz
 
-Back in the browser, you can see change notices every second.   After 4 seconds,
-type "move A3.position 5" and click submit.  This will send the move command
-through the proxy to the feed.py fake instrument script, which will then
-pretend that the move was successful and send a new change notice.
-
+This feeds a captured BT4 vm test session back to the server so you can see the measurement progress
+as it is happening.
