@@ -18,11 +18,10 @@ Ext.onReady(function () {
 //        defaults :{
 //            bodyPadding: 10
 //        },
-        //items: [GridSpace.grid]
-        //items: [QueueSpace.tree]
         items: [
         { id: 'devicegrid', title: ConfigSpace.instrument + ' devices', items: GridSpace.grid}, 
-        	{id: 'nicequeue', title: ConfigSpace.instrument + ' queue', items: QueueSpace.tree}]
+        { id: 'nicequeue',  title: ConfigSpace.instrument + ' queue',   items: QueueSpace.tree}
+        ]
     });
 
 });
