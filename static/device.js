@@ -1,9 +1,3 @@
-//my file
-Ext.Loader.setConfig({
-    enabled: true
-});
-
-//Ext.Loader.setPath('Ext.ux', '/static/ext/examples/ux');
 
 Ext.require([
     //'Ext.ModelManager',
@@ -13,31 +7,9 @@ Ext.require([
 ]);
 
 Ext.onReady(function () {
-    /* FILE ASSOCIATIONS TABLE, Andrew Tracer, 6/8/2011
-
-     Field:
-     -filename, the name of the file
-     - accepts any string
-     -filetype, the type of file (e.g., measurement or background)
-     - combobox options MEA or BAC
-     -group, associating a bunch of files (e.g., measurement and
-     background from one experiment)
-     - accepts lone integers and comma separated integers
-
-     Editing:
-     -Double-click on a cell to edit an individual record's field values.
-     -Shift + right-click will allow you to edit the filetype and group of all selected rows.
-     -the group field will accept a single integer or a list of integers.
-     The latter option is to allow association of a single file
-     with multiple groups
-
-     */
-
-    //var GridSpace = GridSpace || {};
 
     Ext.namespace('GridSpace','ConfigSpace');
 
-    ConfigSpace.root = 'http://' + window.location.hostname + ':8001/' + ConfigSpace.instrument;
     GridSpace.device = new io.connect(ConfigSpace.root + '/device');
   
     GridSpace.dataArray = [];
@@ -66,33 +38,14 @@ Ext.onReady(function () {
 
     GridSpace.tpl =
         ['<tpl for ="device.visibleNodeIDs">',
-            '<p><b>{.}: </b>{[this.getVal(values, parent)]}</p>',
-//        '<p><b>{parent.device.nodes[values].nodeID}</b></p>',
-        {getVal: getVal},
-            '</tpl>'];
-//        ['<tpl for="device.nodes">',
-//            '<p><b>{#}:</b></p>',  //{currentValue.val}</p>',
-//            '</tpl>'];
+         '<p><b>{.}: </b>{[this.getVal(values, parent)]}</p>',
+         {getVal: getVal},
+         '</tpl>'];
 
     function getVal(values, parent) {
         return parent.device.nodes[values].currentValue.val;
     }
-//    tpl.overwrite(panel.body, data.kids);
-//    GridSpace.grid.rowExpander = new Ext.ux.RowExpander({
-//        ptype: 'rowexpander',
-//            rowBodyTpl: GridSpace.tpl,
-//        renderer: function(p, record) {
-//            if (record.get('listeRetourChaqueJour') != "") {
-////                p.cellAttr = 'rowspan="2"';
-////                return '<div class="x-grid3-row-expander"></div>';
-////            } else {
-//                p.id = '';
-//                return '&#160;';
-//            }
-//        }
-//    });
 
-    //field: {xtype: 'numberfield', allowBlank: false}});
     /*GridPanel that displays the data*/
     GridSpace.grid = new Ext.grid.GridPanel({
         store: GridSpace.store,
@@ -118,10 +71,6 @@ Ext.onReady(function () {
                 }
             }
         }],
-          //plugins: [{ptype: 'rowexpander',
-//            rowBodyTpl : GridSpace.tpl
-//            //renderer: render(p, record)
-//        }],
         title:'Devices',
         collapsible: true,
         animCollapse: false

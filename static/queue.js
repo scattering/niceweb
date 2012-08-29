@@ -6,8 +6,6 @@ Ext.onReady(function() {
 	Ext.QuickTips.init();
 
 	Ext.namespace('QueueSpace', 'ConfigSpace');
-	ConfigSpace.root = 'http://' + window.location.hostname + ':8001/'
-			+ ConfigSpace.instrument;
 	QueueSpace.queue = new io.connect(ConfigSpace.root + '/queue');
 
 	Ext.define('CommandModel', {
@@ -212,18 +210,11 @@ Ext.onReady(function() {
 						});
 			});
 
-	// Nodes added to the queue. The nodes parameter is the array of
-	// nodes
+	// Nodes added to the queue. The nodes parameter is the array of nodes
 	// to add. Each node in the list may contain children. The nodes are
 	// to be added after siblingID within parentID. If siblingID is 0,
-	// then
-	// add the nodes before the first sibling.
+	// then add the nodes before the first sibling.
 	QueueSpace.queue.on('added', function(nodes, parentID, siblingID) {
-
-		// var node = tree.getNodeById(parentID);
-		// window.console.log("node " +nodes[0].id+ " added under " +
-		// parentID + " after " + siblingID, nodes[0].status.commandStr,
-		// nodes);
 
 		var parentNode = QueueSpace.find_node(parentID);
 		if (parentNode == null) {

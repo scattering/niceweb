@@ -13,7 +13,6 @@ import functools
 import json
 import gzip
 
-SOCKETIO_CLIENT = 'static/socket.io-0.9.6/socket.io.min.js'
 from tornado import web
 import tornadio2 as sio
 
@@ -51,11 +50,6 @@ class IndexHandler(web.RequestHandler):
     """Regular HTTP handler to serve the index.html page"""
     def get(self):
         self.render('index.html')
-
-class SocketIOHandler(web.RequestHandler):
-    """Regular HTTP handler to serve socket.io.js"""
-    def get(self):
-        self.render(SOCKETIO_CLIENT)
 
 class ControlChannel(sio.SocketConnection):
     """
@@ -105,24 +99,25 @@ class ControlChannel(sio.SocketConnection):
         if self.listener:
             response = self.listener.send(*args, **kw)
             #store_event(self.channel, "message", args, kw)
-            return response 
+            return response
     def on_event(self, name, *args, **kw):
         """
         Received event from browser which needs to be forwarded to
         NICE web proxy client.  If the event is "listen", then this
-        is the web proxy client, and it is registering itself to receive
-        messages.
+        is the NICE client, and it is registering itself to receive
+        messages, otherwise it is a message sent from a browser to the
+        NISE server.
         """
         if name == "listen":
             # On connection to the internal server, the NICE web proxy will
-            # register itself as a control listener  which can receive arbitrary
+            # register itself as a control listener which can receive
             # arbitrary events.
-            # TODO: This needs to support multiple instruments
+            # TODO: make sure there is only one listener
             self.listener = self
         elif self.listener:
             response = self.listener.emit(name, *args, **kw)
             #store_event(self.channel, name, args, kw)
-            return response 
+            return response
 
 class SubscriptionChannel(sio.SocketConnection):
     """
@@ -255,8 +250,25 @@ class ConsoleChannel(SubscriptionChannel):
 class DataChannel(SubscriptionChannel):
     @sio.event
     @capture
-    def data(self, json_record):
-        self.emit('data', json.loads(json_record))
+    def data(self, **record):
+        # Note: may want instrument specific handling of the data so that we only send
+        # a summary of the detector image to the server, not the whole detector.  We
+        # will still want to store the individual detector frames so that we can
+        # return them to the client on request..
+        #print "data command",record['command']
+        if record['command'] == "Configure":
+            self.state = []
+        # Ignore intermediate counts; client can pull them off the device stream
+        if record['command'] == "Counts" and record['status'] not in ('complete','abort'):
+            return
+        self.state.append(record)
+        #print "emitting data",record['command']
+        self.emit('record', record)
+    def initial_state(self):
+        #print "current state:"; type(self.state)
+        #print "sub",type(self.state[0]),type(self.state[1])
+        #print "initial state",(len(self.state) if self.state else 'no state')
+        return {'records':self.state} if self.state is not None else {'records':[]}
 
 class DeviceChannel(SubscriptionChannel):
     """
@@ -307,6 +319,9 @@ class DeviceChannel(SubscriptionChannel):
         """
         for node in nodes:
             self.state[0][node['deviceID']]['nodes'][node['nodeID']] = node
+        # May want to do bandwidth limiting, an only send updates to big nodes
+        # such as 2-D detector and ROI mask every minute rather than every
+        # time they are updated.
         self.emit('changed', nodes)
 
 def _fixup_devices(devices, nodes):
@@ -333,7 +348,7 @@ class QueueChannel(SubscriptionChannel):
     complete queue.  A queue node looks like::
 
         node = {
-            "status": { 
+            "status": {
                 "commandStr": string,
                 "errors": [string, ...],
                 "isBreakPoint": boolean,
@@ -342,12 +357,12 @@ class QueueChannel(SubscriptionChannel):
                 }
             "id": int,
             "child": [node, ...],
-            } 
+            }
 
     Subscribers should expect the following events::
 
        queue.on('added', function (nodes, parentID, siblingID) {})
-           add the nodes and all its children as a child of the parent node 
+           add the nodes and all its children as a child of the parent node
            after the sibling node, or at the beginning if sibling is 0.
        queue.on('removed', function (nodeID) {})
            remove the node
@@ -478,7 +493,7 @@ def queue_find(queue, nodeID):
 
 def queue_find_elder_sibling(parent, siblingID):
     """
-    Locate the index of the elder sibling within the children of the 
+    Locate the index of the elder sibling within the children of the
     parent node.
 
     Return -1 if there is no elder sibling (i.e., if siblingID is 0).
@@ -487,7 +502,7 @@ def queue_find_elder_sibling(parent, siblingID):
     """
     if siblingID == 0:
         return -1
-    for index,node in enumerate(parent['child']): 
+    for index,node in enumerate(parent['child']):
         if siblingID == node['id']:
             return index
     raise KeyError("Sibling node %s not found"%siblingID)
@@ -525,7 +540,6 @@ def serve(debug=False):
     ext_path='static/ext-all.js'
     routes = Router.apply_routes([
         (r"/", IndexHandler),
-        (r"/socket.io.js", SocketIOHandler),
     ])
 
     settings = dict(
