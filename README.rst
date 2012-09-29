@@ -62,7 +62,7 @@ Use virtualenv to isolate the python environment::
 
 Use virtualenv to isolate the python environment::
 
-    mkvirutalenv --system-site-packages niceweb
+    mkvirtualenv --system-site-packages niceweb
 
 Note that you can use this virtual environment from eclipse by setting
 the pydev interpreter to ~/.virtualenvs/niceweb/bin/python.
