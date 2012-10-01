@@ -49,7 +49,7 @@ Installation
 
 Install support packages for python::
 
-    Ubuntu:  sudo apt-get install python-virtualenvwrapper
+    Ubuntu:  sudo apt-get install virtualenvwrapper
     Ubuntu:  sudo apt-get install python-tornado
 
     RedHat:  sudo yum install python-virtualenvwrapper   # 2.3-3.el6
