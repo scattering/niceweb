@@ -12,7 +12,7 @@ Ext.onReady(function() {
 
     Ext.define('ConsoleModel', {
         extend: "Ext.data.Model",
-        fields:[ 'commandID', 'eventID', 'level', 'message', 'timestamp' ]
+        fields:[ 'commandID', 'eventID', 'level', 'message', 'timestamp' ]  
     }); 
     
     ConsoleSpace.store = Ext.create('Ext.data.Store', {model: 'ConsoleModel'}); 
@@ -37,27 +37,28 @@ Ext.onReady(function() {
         collapsible: true,
         animCollapse: false
     });
-	
-	ConsoleSpace.view = Ext.create('Ext.panel.Panel', {
-        items: [{
-            html: ConsoleSpace.html,
-            xtype: 'panel' }]})
 
     ConsoleSpace.feed.on('report', function(msg) {
 		ConsoleSpace.add_message(msg);
-			// todo implement
     });
     
     ConsoleSpace.add_many = function(msgs) {
         for (var i in msgs) {
-            ConsoleSpace.add_message(msgs[i]);
+            ConsoleSpace.add_message(msgs[i], true);
         }
-    }
-
-    ConsoleSpace.add_message = function(msg) {
-        ConsoleSpace.messages.push(msg);
         ConsoleSpace.update_view();
     }
+
+    ConsoleSpace.add_message = function(msg, noupdate) {
+        ConsoleSpace.messages.push(msg);
+        if (!noupdate) ConsoleSpace.update_view();
+    }
+    
+    ConsoleSpace.grid.on('afterlayout', function(a,b,c) { 
+        var view = a.view;
+        var numrows = view.getNodes().length;
+        view.focusRow(numrows-1);
+    });
     
     ConsoleSpace.update_view = function() {
         ConsoleSpace.grid.store.loadData(ConsoleSpace.messages);
