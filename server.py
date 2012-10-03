@@ -40,6 +40,7 @@ def capture(fn):
     constructor option.  Consider doing so if other event streams need to be
     captured.
     """
+    
     @functools.wraps(fn)
     def wrapper(self, *args, **kw):
         store_event(self.channel, fn.func_name, args, kw)
@@ -100,14 +101,21 @@ class ControlChannel(sio.SocketConnection):
             response = self.listener.send(*args, **kw)
             #store_event(self.channel, "message", args, kw)
             return response
+            
     def on_event(self, name, *args, **kw):
         """
         Received event from browser which needs to be forwarded to
         NICE web proxy client.  If the event is "listen", then this
         is the NICE client, and it is registering itself to receive
         messages, otherwise it is a message sent from a browser to the
-        NISE server.
+        NICE server.
         """
+        # Note: tornadio has the weird notion that if a method is called
+        # with a single dictionary as an argument, then it should be
+        # treated as a set of keyword arguments.
+        #print "event received: ", name, "args: ", args, "kw: ", kw, "listener: ", self.listener
+        if (len(args) == 0) and 'args' in kw:
+            args = kw['args']
         if name == "listen":
             # On connection to the internal server, the NICE web proxy will
             # register itself as a control listener which can receive
@@ -281,7 +289,7 @@ class DeviceChannel(SubscriptionChannel):
         self.state = devices, structure
 
     def initial_state(self):
-        #print "current state:"; type(self.state)
+        #print "current state:", self.state
         #print "sub",type(self.state[0]),type(self.state[1])
         return self.state if self.state is not None else (None,"{}")
 
@@ -317,7 +325,9 @@ class DeviceChannel(SubscriptionChannel):
         """
         Node value or properties changed.  Forward the details to the clients.
         """
+        if self.state is None: self.state = {}
         for node in nodes:
+            #print node
             self.state[0][node['deviceID']]['nodes'][node['nodeID']] = node
         # May want to do bandwidth limiting, an only send updates to big nodes
         # such as 2-D detector and ROI mask every minute rather than every
@@ -531,7 +541,7 @@ class RouterConnection(sio.SocketConnection):
         except KeyError:
             pass # invalid channel name
 
-def serve(debug=False):
+def serve(debug=False, sio_port=8001):
     """
     Run the NICE repeater, forwarding subscription streams to the web.
     """
@@ -549,7 +559,7 @@ def serve(debug=False):
         #login_url = "/login",
         flash_policy_port = 843,
         flash_policy_file = os.path.join(ROOT, 'flashpolicy.xml'),
-        socket_io_port = 8001,
+        socket_io_port = sio_port,
         debug = debug,
     )
 
@@ -562,7 +572,33 @@ def serve(debug=False):
 if __name__ == "__main__":
     import logging
     logging.getLogger().setLevel(logging.INFO)
-    debug = False if len(sys.argv)>1 and sys.argv[1]=='production' else True
-    if len(sys.argv) > 1 and sys.argv[1] == 'capture':
-        CAPTURE_FILE = open(sys.argv[2], "w")
-    serve(debug=debug)
+    
+    import sys
+    import getopt
+    
+    longopts = ["capture=","port=","debug="]
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "c:p:d:", longopts)
+        if args:
+            raise getopt.GetoptError("server.py only accepts options")
+    except getopt.GetoptError, exc:
+        print str(exc)
+        usage()
+        sys.exit(1)
+    
+    debug=False
+    SIO_PORT=8001
+    for name,value in opts:
+        if name in ("-c", "--capture"):
+            CAPTURE_FILE = open(value, 'w')
+        elif name in ("-p", "--port"):  
+            SIO_PORT = int(value)
+        elif name in ("-d", "--debug"):
+            debug = True
+        else:
+            print "unknown option",name
+    
+    #debug = False if len(sys.argv)>1 and sys.argv[1]=='production' else True
+    #if len(sys.argv) > 1 and sys.argv[1] == 'capture':
+    #    CAPTURE_FILE = open(sys.argv[2], "w")
+    serve(debug=debug, sio_port=SIO_PORT)

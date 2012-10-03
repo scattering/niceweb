@@ -10,7 +10,7 @@ Ext.onReady(function () {
 
     Ext.namespace('GridSpace','ConfigSpace');
 
-    GridSpace.device = new io.connect(ConfigSpace.root + '/device');
+    GridSpace.device = io.connect(ConfigSpace.root + '/device');
   
     GridSpace.dataArray = [];
     GridSpace.deviceNames = [];
