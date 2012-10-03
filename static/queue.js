@@ -6,7 +6,7 @@ Ext.onReady(function() {
 	Ext.QuickTips.init();
 
 	Ext.namespace('QueueSpace', 'ConfigSpace');
-	QueueSpace.queue = new io.connect(ConfigSpace.root + '/queue');
+	QueueSpace.queue = io.connect(ConfigSpace.root + '/queue');
 
 	Ext.define('CommandModel', {
 				extend : 'Ext.data.Model',

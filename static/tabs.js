@@ -20,7 +20,8 @@ Ext.onReady(function () {
 //        },
         items: [
         { id: 'devicegrid', title: ConfigSpace.instrument + ' devices', items: GridSpace.grid}, 
-        { id: 'nicequeue',  title: ConfigSpace.instrument + ' queue',   items: QueueSpace.tree}
+        { id: 'nicequeue',  title: ConfigSpace.instrument + ' queue',   items: QueueSpace.tree},
+        { id: 'niceconsole', title: ConfigSpace.instrument + ' console output', items: ConsoleSpace.grid} 
         ]
     });
 
