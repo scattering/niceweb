@@ -6,7 +6,7 @@
         <title>
         </title>
         <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/jquery.mobile/1.1.1/jquery.mobile-1.1.1.min.css" />
-        <link rel="stylesheet" href="my.css" />
+        <link rel="stylesheet" href="/static/my.css" />
         <style>
             /* App custom styles */
         </style>
@@ -16,21 +16,23 @@
         </script>
         
         <script type="text/javascript" src="/static/socket.io-0.9.6/socket.io.min.js"></script>
+        <script src="/static/my.js">
+        </script>
         <script src="/static/geturlvars.js"></script>
         <script type="text/javascript">
             function treeToHTML(tree, ihtml) {
                 var ihtml = ihtml ? ihtml : "";
                 var elements = tree.children.elements;
                 if (elements.length > 0) {
-                    ihtml += "<div data-role='collapsible-set'>\n";
+                    ihtml += "<div data-role='collapsible-set'>";
                     for (var i in elements) {
                         var el = elements[i];
                         if (el.children.elementClass == 'java.lang.Object') {
-                            ihtml += "<h4>" + el.nodeID + ": <span id='device_" + el.nodeID + "'></span></h4>\n";
+                            ihtml += "<h4>" + el.nodeID + ": <span id='device_" + el.nodeID + "'></span></h4>";
                         } 
                         else {
-                            ihtml += "<div data-role='collapsible'>\n";
-                            ihtml += '<h3>' + el.nodeID + "</h3>\n";
+                            ihtml += "<div data-role='collapsible'>";
+                            ihtml += '<h3>' + el.nodeID + "</h3>";
                             ihtml += treeToHTML(el);
                             ihtml += "</div>\n";
                         }
@@ -137,8 +139,8 @@
                     structure = $.parseJSON(structure);
                     $.extend(device_tree, tree, false);
                     $.extend(device_hierarchy, structure, false);
-                    $('#content').html(treeToHTML(device_hierarchy));
-                    $('#content').trigger('create');
+                    $('#content').html(treeToHTML(device_hierarchy)).trigger('create');
+                    //$('#content').trigger('create');
                     shown_devices = getTreeDevices(device_hierarchy);
                     update_devices();
                     
@@ -146,12 +148,10 @@
                 //$('#page1').html(treeToHTML(device_hierarchy));
             });
         </script>
-        <script src="my.js">
-        </script>
     </head>
     <body class="ui-mobile-viewport ui-overlay-c">
         <!-- Home -->
-        <div data-role="page" id="page1" data-url="page1" tabindex="0" class="ui-page ui-body-c ui-page-active" >
+        <div data-role="page" id="page1" >
             <div data-role="content" id="content">
                 Loading...
             </div>
