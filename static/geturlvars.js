@@ -1,4 +1,4 @@
-$.extend({
+jQuery.extend({
   getUrlVars: function(){
     var vars = [], hash;
     var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
@@ -10,6 +10,6 @@ $.extend({
     return vars;
   },
   getUrlVar: function(name){
-    return $.getUrlVars()[name];
+    return jQuery.getUrlVars()[name];
   }
 });
