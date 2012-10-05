@@ -31,10 +31,11 @@
                     for (var i in elements) {
                         var el = elements[i];
                         if (el.children.elementClass == 'java.lang.Object') {
-                            ihtml += "<h4>" + el.nodeID + ": <span id='device_" + el.nodeID + "'></span></h4>";
+                            //ihtml += "<h4>" + el.nodeID + ": <span id='device_" + el.nodeID + "'></span></h4>";
+                            ihtml += "<div class='ui-block-a'>" + el.nodeID + "</div><div class='ui-block-b' id='device_"+el.nodeID+"'></div>";
                         } 
                         else {
-                            ihtml += "<div data-role='collapsible'>";
+                            ihtml += "<div data-role='collapsible' class='ui-grid-a'>";
                             ihtml += '<h3>' + el.nodeID + "</h3>";
                             ihtml += treeToHTML(el);
                             ihtml += "</div>\n";
@@ -62,16 +63,16 @@
                 return device_list
             }
             
-            function getDeviceByDottedName(dottedname) {
-                subnames = dottedname.split('.');
-                if (!(device_tree.hasOwnProperty(subnames[0]))) { return null }
-                var dev = device_tree[subnames[0]];
-                for (var i=1; i<subnames.length; i++) {
-                    if (!(dev.nodes.hasOwnProperty(subnames[i]))) { return null }
-                    dev = dev.nodes[subnames[i]];
-                }
-                return dev      
-            }
+            //function getDeviceByDottedName(dottedname) {
+            //    subnames = dottedname.split('.');
+            //    if (!(device_tree.hasOwnProperty(subnames[0]))) { return null }
+            //    var dev = device_tree[subnames[0]];
+            //    for (var i=1; i<subnames.length; i++) {
+            //        if (!(dev.nodes.hasOwnProperty(subnames[i]))) { return null }
+            //        dev = dev.nodes[subnames[i]];
+            //    }
+            //    return dev      
+            //}
             
             function getInitialDeviceValue(dottedname) {
                 var names = dottedname.split('.', 1);
@@ -81,13 +82,13 @@
                 if (names.length == 2) {
                     var nodename = names[1];
                     if (dev.nodes && dev.nodes[nodename] && dev.nodes[nodename].currentValue) {
-                        return dev.nodes[nodename].currentValue.val.toString();
+                        return dev.nodes[nodename].currentValue.val;
                     } else { 
                         return "";
                     }
                 } else {
                     if (dev.primaryNodeID && dev.primaryNodeID != "") { 
-                        return dev.nodes[dev.primaryNodeID].currentValue.val.toString();  
+                        return dev.nodes[dev.primaryNodeID].currentValue.val;  
                     } else {
                         return ""; 
                     }
@@ -115,6 +116,9 @@
                 for (var i in shown_devices) {
                     var devname = shown_devices[i];
                     var val = getInitialDeviceValue(devname);
+                    if (typeof(val) == "number") {
+                        val = val.toFixed(4);
+                    }
                     $('#device_'+devname).html(val.toString());
                 }
                 
@@ -124,6 +128,7 @@
                 $('#content').html('Loading...' + Instrument);
                 Root = 'http://' + window.location.hostname + ':' + window.location.port + '/' + Instrument;
                 document.title = Instrument + ' status';
+                $('#instrument_header').html(Instrument);
                 
                 device_tree = {};
                 device_hierarchy = {};
@@ -157,7 +162,12 @@
     </head>
     <body class="ui-mobile-viewport ui-overlay-c">
         <!-- Home -->
-        <div data-role="page" id="page1" >
+        <div data-role="page" id="page1" data-theme='b' >
+        <div data-theme="e" data-role="header">
+                <h3 id="instrument_header">
+                    Header
+                </h3>
+            </div>
             <div data-role="content" id="content">
                 Loading...
             </div>
