@@ -143,6 +143,10 @@
                     for (var i=0; i < nodes.length; i++) {
                         var node = nodes[i];
                         if (shown_devices.indexOf(node.deviceID) >=0) {
+                            var val = node.currentValue.val;
+                            if (typeof(val) == "number") {
+                                val = val.toFixed(4);
+                            }
                             setDeviceDisplayValue(node.deviceID, node.currentValue.val);
                             //$('#device_'+node.deviceID).html(node.currentValue.val.toString());
                         } 
