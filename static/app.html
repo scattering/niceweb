@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>
+        </title>
+        <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/jquery.mobile/1.1.1/jquery.mobile-1.1.1.min.css" />
+        <link rel="stylesheet" href="my.css" />
+        <style>
+            /* App custom styles */
+        </style>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js">
+        </script>
+        <script src="https://ajax.aspnetcdn.com/ajax/jquery.mobile/1.1.1/jquery.mobile-1.1.1.min.js">
+        </script>
+        
+        <script type="text/javascript" src="/static/socket.io-0.9.6/socket.io.min.js"></script>
+        <script src="/static/geturlvars.js"></script>
+        <script type="text/javascript">
+            function treeToHTML(tree, ihtml) {
+                var ihtml = ihtml ? ihtml : "";
+                var elements = tree.children.elements;
+                if (elements.length > 0) {
+                    ihtml += "<div data-role='collapsible-set'>\n";
+                    for (var i in elements) {
+                        var el = elements[i];
+                        if (el.children.elementClass == 'java.lang.Object') {
+                            ihtml += "<h4>" + el.nodeID + ": <span id='device_" + el.nodeID + "'></span></h4>\n";
+                        } 
+                        else {
+                            ihtml += "<div data-role='collapsible'>\n";
+                            ihtml += '<h3>' + el.nodeID + "</h3>\n";
+                            ihtml += treeToHTML(el);
+                            ihtml += "</div>\n";
+                        }
+                    }
+                    ihtml += "</div>";
+                }
+                return ihtml
+            }
+            
+            function getTreeDevices(tree, device_list) {
+                var device_list = device_list ? device_list : [];
+                var elements = tree.children.elements;
+                if (elements.length > 0) {
+                    for (var i in elements) {
+                        var el = elements[i];
+                        if (el.children.elementClass == 'java.lang.Object') {
+                            device_list.push(el.nodeID);
+                        }
+                        else { 
+                            device_list = device_list.concat(getTreeDevices(el));
+                        }
+                    }
+                }
+                return device_list
+            }
+            
+            function getDeviceByDottedName(dottedname) {
+                subnames = dottedname.split('.');
+                if (!(device_tree.hasOwnProperty(subnames[0]))) { return null }
+                var dev = device_tree[subnames[0]];
+                for (var i=1; i<subnames.length; i++) {
+                    if (!(dev.nodes.hasOwnProperty(subnames[i]))) { return null }
+                    dev = dev.nodes[subnames[i]];
+                }
+                return dev      
+            }
+            
+            function getInitialDeviceValue(dottedname) {
+                var names = dottedname.split('.', 1);
+                var devname = names[0]; 
+                if (!(device_tree.hasOwnProperty(devname))) { return ""; }
+                var dev = device_tree[devname];
+                if (names.length == 2) {
+                    var nodename = names[1];
+                    if (dev.nodes && dev.nodes[nodename] && dev.nodes[nodename].currentValue) {
+                        return dev.nodes[nodename].currentValue.val.toString();
+                    } else { 
+                        return "";
+                    }
+                } else {
+                    if (dev.primaryNodeID && dev.primaryNodeID != "") { 
+                        return dev.nodes[dev.primaryNodeID].currentValue.val.toString();  
+                    } else {
+                        return ""; 
+                    }
+                }
+            }
+            
+            function setDeviceDisplayValue(dottedname, value) {
+                var names = dottedname.split('.', 1);
+                var devname = names[0]; 
+                if (!(device_tree.hasOwnProperty(devname))) { return }
+                var dev = device_tree[devname];
+                if (names.length == 2) {
+                    var nodename = names[1];
+                    if (dev.primaryNodeID && nodename == dev.primaryNodeID) {
+                        $('#device_'+dottedname).html(value.toString());
+                    }
+                } else { // only device name provided, so update display
+                    if (dev.primaryNodeID && dev.primaryNodeID != "") { 
+                        $('#device_'+dottedname).html(value.toString());
+                    }
+                }
+            }
+            
+            function update_devices() {
+                for (var i in shown_devices) {
+                    var devname = shown_devices[i];
+                    var val = getInitialDeviceValue(devname);
+                    $('#device_'+devname).html(val.toString());
+                }
+                
+            }
+            $(document).ready(function () {
+                Instrument = jQuery.getUrlVar('instrument') ? jQuery.getUrlVar('instrument') : "BT4";
+                Root = 'http://' + window.location.hostname + ':' + window.location.port + '/' + Instrument;
+                document.title = Instrument + ' status';
+                
+                device_tree = {};
+                device_hierarchy = {};
+                shown_devices = [];
+                Device = io.connect(Root + '/device');
+                Device.on('changed', function (nodes) {
+                    for (var i=0; i < nodes.length; i++) {
+                        var node = nodes[i];
+                        if (shown_devices.indexOf(node.deviceID) >=0) {
+                            setDeviceDisplayValue(node.deviceID, node.currentValue.val);
+                            //$('#device_'+node.deviceID).html(node.currentValue.val.toString());
+                        } 
+                    }
+                });
+                Device.emit('subscribe', function(tree, structure) {
+                    structure = $.parseJSON(structure);
+                    $.extend(device_tree, tree, false);
+                    $.extend(device_hierarchy, structure, false);
+                    $('#content').html(treeToHTML(device_hierarchy));
+                    $('#content').trigger('create');
+                    shown_devices = getTreeDevices(device_hierarchy);
+                    update_devices();
+                    
+                });
+                //$('#page1').html(treeToHTML(device_hierarchy));
+            });
+        </script>
+        <script src="my.js">
+        </script>
+    </head>
+    <body class="ui-mobile-viewport ui-overlay-c">
+        <!-- Home -->
+        <div data-role="page" id="page1" data-url="page1" tabindex="0" class="ui-page ui-body-c ui-page-active" >
+            <div data-role="content" id="content">
+                Loading...
+            </div>
+        </div>
+        <script>
+            //App custom javascript
+        </script>
+    </body>
+</html>
