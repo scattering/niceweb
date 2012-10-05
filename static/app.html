@@ -116,6 +116,7 @@
             }
             $(document).ready(function () {
                 Instrument = jQuery.getUrlVar('instrument') ? jQuery.getUrlVar('instrument') : "BT4";
+                $('#content').html('Loading...' + Instrument);
                 Root = 'http://' + window.location.hostname + ':' + window.location.port + '/' + Instrument;
                 document.title = Instrument + ' status';
                 
