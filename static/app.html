@@ -32,14 +32,15 @@
                         var el = elements[i];
                         if (el.children.elementClass == 'java.lang.Object') {
                             //ihtml += "<h4>" + el.nodeID + ": <span id='device_" + el.nodeID + "'></span></h4>";
+                            ihtml += "<div class='ui-grid-a'>";
                             ihtml += "<div class='ui-block-a'>" + el.nodeID + "</div><div class='ui-block-b' id='device_"+el.nodeID+"'></div>";
+                            ihtml += "</div>";
                         } 
                         else {
                             ihtml += "<div data-role='collapsible'>";
                             ihtml += '<h3>' + el.nodeID + "</h3>";
-                            ihtml += "<div class='ui-grid-a'>";
                             ihtml += treeToHTML(el);
-                            ihtml += "</div></div>\n";
+                            ihtml += "</div>\n";
                         }
                     }
                     ihtml += "</div>";
