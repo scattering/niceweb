@@ -128,7 +128,10 @@
                 device_tree = {};
                 device_hierarchy = {};
                 shown_devices = [];
-                Device = io.connect(Root + '/device');
+                Device = io.connect(Root + '/device', {
+                    'connect timeout': 10000,
+                    'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
+                });
                 Device.on('changed', function (nodes) {
                     for (var i=0; i < nodes.length; i++) {
                         var node = nodes[i];

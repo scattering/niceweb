@@ -557,6 +557,7 @@ def serve(debug=False, sio_port=8001):
         #cookie_secret = cookie.get_cookie(),
         #xsrf_cookies = True,
         #login_url = "/login",
+        gzip = True,
         flash_policy_port = 10843,
         flash_policy_file = os.path.join(ROOT, 'flashpolicy.xml'),
         socket_io_port = sio_port,
