@@ -28,13 +28,26 @@
                 var elements = tree.children.elements;
                 if (elements.length > 0) {
                     ihtml += "<div data-role='collapsible-set'>";
-                    for (var i in elements) {
+                    for (var i in elements) {                        
                         var el = elements[i];
                         if (el.children.elementClass == 'java.lang.Object') {
                             //ihtml += "<h4>" + el.nodeID + ": <span id='device_" + el.nodeID + "'></span></h4>";
+                            split_name = el.nodeID.split('.');
+                            var devname = split_name[0];
+                            var nodeID;
+                            if (split_name.length > 1) {
+                                // then we have a node ID
+                                nodeID = el.nodeID;
+                            } else {
+                                // we have a device name, look up the primary node ID
+                                var device = device_tree[el.nodeID];
+                                nodeID = device.nodes[device.primaryNodeID].id;
+                            }
+                            
                             ihtml += "<div class='ui-grid-a'>";
-                            ihtml += "<div class='ui-block-a'>" + el.nodeID + "</div><div class='ui-block-b' id='device_"+el.nodeID+"'></div>";
+                            ihtml += "<div class='ui-block-a'>" + el.nodeID + "</div><div class='ui-block-b' id='device_"+ nodeID.replace('.', '_') +"'></div>";
                             ihtml += "</div>";
+                            shown_devices.push(nodeID);
                         } 
                         else {
                             ihtml += "<div data-role='collapsible'>";
@@ -48,6 +61,7 @@
                 return ihtml
             }
             
+            /*
             function getTreeDevices(tree, device_list) {
                 var device_list = device_list ? device_list : [];
                 var elements = tree.children.elements;
@@ -64,6 +78,7 @@
                 }
                 return device_list
             }
+            */
             
             //function getDeviceByDottedName(dottedname) {
             //    subnames = dottedname.split('.');
@@ -121,7 +136,7 @@
                     if (typeof(val) == "number") {
                         val = val.toFixed(4);
                     }
-                    $('#device_'+devname).html(val.toString());
+                    $('#device_'+devname.replace('.','_')).html(val.toString());
                 }
                 
             }
@@ -158,7 +173,7 @@
                     $.extend(device_hierarchy, structure, false);
                     $('#content').html(treeToHTML(device_hierarchy)).trigger('create');
                     //$('#content').trigger('create');
-                    shown_devices = getTreeDevices(device_hierarchy);
+                    //shown_devices = getTreeDevices(device_hierarchy);
                     update_devices();
                     
                 });
