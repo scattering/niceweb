@@ -92,11 +92,12 @@
             //}
             
             function getInitialDeviceValue(dottedname) {
-                var names = dottedname.split('.', 1);
+                var names = dottedname.split('.', 2);
                 var devname = names[0]; 
                 if (!(device_tree.hasOwnProperty(devname))) { return ""; }
                 var dev = device_tree[devname];
                 if (names.length == 2) {
+
                     var nodename = names[1];
                     if (dev.nodes && dev.nodes[nodename] && dev.nodes[nodename].currentValue) {
                         return dev.nodes[nodename].currentValue.val;
