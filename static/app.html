@@ -8,7 +8,30 @@
         <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/jquery.mobile/1.1.1/jquery.mobile-1.1.1.min.css" />
         <link rel="stylesheet" href="/static/my.css" />
         <style>
-            /* App custom styles */
+            .ui-li-static {
+                padding: 0.25em 6px;
+            }
+            .ui-grid-b {
+                vertical-align: middle;
+            }
+            .ui-block-a {
+                padding-top: 1em;
+                text-align: left;
+            }
+            .ui-block-b {
+                padding-top: 1em;
+                text-align: right;
+            }
+            .ui-block-c {
+                text-align: right;
+            }
+            .ui-btn {
+                padding: 3px;
+                margin: 3px;
+            }
+            .hidden-button {
+                display: None;
+            }
         </style>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js">
         </script>
@@ -23,6 +46,43 @@
         </script>
         <script src="/static/geturlvars.js"></script>
         <script type="text/javascript">
+            function treeToHTML(tree, ihtml) {
+                var ihtml = ihtml ? ihtml : "";
+                
+                var elements = tree.children.elements;
+                if (elements.length > 0) {
+                    ihtml += "<div data-role='collapsible'>";
+                    ihtml += '<h3>' + tree.nodeID + "</h3>";
+                    ihtml += "<div data-role='collapsible-set'>";
+                    for (var i in elements) {                        
+                        var el = elements[i];
+                        ihtml += treeToHTML(el);
+                    }
+                    ihtml += "</div>";
+                    ihtml += "</div>\n";
+                } else {
+                    var split_name = tree.nodeID.split('.');
+                    var devname = split_name[0];
+                    var nodeID;
+                    if (split_name.length > 1) {
+                        // then we have a node ID
+                        nodeID = tree.nodeID;
+                    } else {
+                        // we have a device name, look up the primary node ID
+                        var device = device_tree[tree.nodeID];
+                        nodeID = device.nodes[device.primaryNodeID].id;
+                    }
+                    ihtml += "<div class='ui-grid-b'>";
+                    ihtml += "<div class='ui-block-a'>" + tree.nodeID + "</div><div class='ui-block-b' id='device_"+ nodeID.replace('.', '_') +"'></div>";
+                    ihtml += '<div class="ui-block-c move-button"><a data-role="button" data-theme="e" data-inline="false" data-transition="slide" href="jog.html" data-icon="gear" data-iconpos="left" >Move</a></div>';
+                    ihtml += "</div>";
+                    shown_devices.push(nodeID);
+                }
+                return ihtml
+            }
+                  
+            
+            /*
             function treeToHTML(tree, ihtml) {
                 var ihtml = ihtml ? ihtml : "";
                 var elements = tree.children.elements;
@@ -43,9 +103,10 @@
                                 var device = device_tree[el.nodeID];
                                 nodeID = device.nodes[device.primaryNodeID].id;
                             }
-                            
-                            ihtml += "<div class='ui-grid-a'>";
+                            //ihtml += "<
+                            ihtml += "<div class='ui-grid-b'>";
                             ihtml += "<div class='ui-block-a'>" + el.nodeID + "</div><div class='ui-block-b' id='device_"+ nodeID.replace('.', '_') +"'></div>";
+                            ihtml += '<div class="ui-block-c"><a data-role="button" data-inline="false" data-transition="slide" href="jog.html" data-icon="gear" data-iconpos="left" >Move</a></div>';
                             ihtml += "</div>";
                             shown_devices.push(nodeID);
                         } 
@@ -60,6 +121,7 @@
                 }
                 return ihtml
             }
+            */
             
             /*
             function getTreeDevices(tree, device_list) {
@@ -155,6 +217,10 @@
                     'connect timeout': 10000,
                     'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
                 });
+                Control = io.connect(Root + '/control', {
+                    'connect timeout': 10000,
+                    'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
+                });
                 Device.on('changed', function (nodes) {
                     for (var i=0; i < nodes.length; i++) {
                         var node = nodes[i];
@@ -176,8 +242,15 @@
                     //$('#content').trigger('create');
                     //shown_devices = getTreeDevices(device_hierarchy);
                     update_devices();
-                    
+                    Control.emit('isactive', function(response) {
+                        if (response == "active") {
+                            $('.move-button').show();
+                        }
+                    });
                 });
+                
+                
+                
                 //$('#page1').html(treeToHTML(device_hierarchy));
             });
         </script>

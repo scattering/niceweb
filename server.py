@@ -123,11 +123,10 @@ class ControlChannel(sio.SocketConnection):
             # TODO: make sure there is only one listener
             self.listener = self
         elif name == "isactive":
-            print "checking active status"
             if self.listener:
-                return True
+                return "active"
             else: 
-                return False
+                return "inactive"
         elif self.listener:
             response = self.listener.emit(name, *args, **kw)
             #store_event(self.channel, name, args, kw)
