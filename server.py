@@ -52,6 +52,22 @@ class IndexHandler(web.RequestHandler):
     def get(self):
         self.render('index.html')
 
+class RestHandler(web.RequestHandler):
+    """
+    RESTful interface to channel state
+
+    The router will be set up to take a url path such as::
+
+        http://localhost:8001/state/bt4/device
+
+    and translate this into a request for the current state on the
+    device subscription for the bt4 instrument.
+    """
+    def get(self, instrument, channel):
+        channel_class = CHANNELS[channel]
+        state = channel_class.channel_state("/".join(("",instrument,channel)))
+        self.write(state)
+
 class ControlChannel(sio.SocketConnection):
     """
     Forward control messages to listening NICE server.
@@ -159,12 +175,18 @@ class SubscriptionChannel(sio.SocketConnection):
     _all_state = {}
     def __init__(self, session, endpoint=None):
         super(SubscriptionChannel,self).__init__(session, endpoint=endpoint)
+        #print "endpoint",endpoint
         #print "session",session
         #self.session = session
         self.channel = endpoint
         self._all_feeds.setdefault(endpoint, set())
         self._all_state.setdefault(endpoint, None)
 
+    @classmethod
+    def channel_state(cls, channel):
+        print "channels",cls._all_state.keys()
+        #print "channel",channel
+        return cls.initial_state(cls._all_state[channel])
     @property
     def state(self):
         return self._all_state[self.channel]
@@ -184,7 +206,7 @@ class SubscriptionChannel(sio.SocketConnection):
         #print "subscribing to",self.channel,self.session
         #print "channels",self._all_state.keys()
         self.feeds.add(self)
-        return self.initial_state()
+        return self.initial_state(self.state)
 
     @sio.event
     @capture
@@ -196,7 +218,7 @@ class SubscriptionChannel(sio.SocketConnection):
         # problem by intercepting the **kw arguments if args is not present.
         self.reset_state(args[0] if args else kw)
         #print "sending reset to",self.channel
-        self.emit('reset', self.initial_state())
+        self.emit('reset', self.initial_state(self.state))
 
     def reset_state(self, state):
         """
@@ -206,7 +228,8 @@ class SubscriptionChannel(sio.SocketConnection):
         """
         self.state = state
 
-    def initial_state(self):
+    @classmethod
+    def initial_state(cls, state):
         """
         Default the initial state returned on subscribe to the entire
         state of the channel.  Specific channel handlers can override
@@ -214,7 +237,7 @@ class SubscriptionChannel(sio.SocketConnection):
         example they only want to send information to the browser one
         page at a time.
         """
-        return self.state
+        return state
 
     def emit(self, event, *args, **kw):
         """
@@ -277,11 +300,13 @@ class DataChannel(SubscriptionChannel):
         self.state.append(record)
         #print "emitting data",record['command']
         self.emit('record', record)
-    def initial_state(self):
+    @classmethod
+    def initial_state(cls, state):
         #print "current state:"; type(self.state)
         #print "sub",type(self.state[0]),type(self.state[1])
         #print "initial state",(len(self.state) if self.state else 'no state')
-        return {'records':self.state} if self.state is not None else {'records':[]}
+        return {'records':state} if state is not None else {'records':[]}
+         
 
 class DeviceChannel(SubscriptionChannel):
     """
@@ -289,14 +314,15 @@ class DeviceChannel(SubscriptionChannel):
     """
 
     def reset_state(self, state):
-        devices, nodes, structure, control_host = state
+        devices, nodes, structure = state
         _fixup_devices(devices,nodes)
-        self.state = devices, structure, control_host
+        self.state = devices, structure, structure
 
-    def initial_state(self):
+    @classmethod
+    def initial_state(cls, state):
         #print "current state:", self.state
         #print "sub",type(self.state[0]),type(self.state[1])
-        return self.state if self.state is not None else (None,"{}")
+        return state if state is not None else (None,"{}","")
 
 
     # TODO: browser clients should not be able to update state; we could either
@@ -522,11 +548,8 @@ def queue_find_elder_sibling(parent, siblingID):
             return index
     raise KeyError("Sibling node %s not found"%siblingID)
 
-class RouterConnection(sio.SocketConnection):
-    """
-    Register the socket.io channel endpoints.
-    """
-    _channels = {
+# Socket.io handler class for the given channel
+CHANNELS = {
         'control': ControlChannel,
         'events': EventChannel,
         'console': ConsoleChannel,
@@ -534,17 +557,31 @@ class RouterConnection(sio.SocketConnection):
         'device': DeviceChannel,
         'queue': QueueChannel,
     }
+class RouterConnection(sio.SocketConnection):
+    """
+    Manage the top level socket IO connection.
+    """
+    def on_open(self, request):
+        pass
+        #print "opened connection",request
+    def on_close(self):
+        pass
+        #print "closed"
     def get_endpoint(self, endpoint):
         """
         Parse /insturment/channel into specific channel handlers.
         """
         try:
             _,instrument,channel = endpoint.split('/', 3)
-            return self._channels[channel]
+            return CHANNELS[channel]
         except ValueError:
             pass # Not /instrument/channel
         except KeyError:
             pass # invalid channel name
+
+    @sio.event
+    def controller(self):
+        return NICE_CONTROLLER_URL
 
 def serve(debug=False, sio_port=8001):
     """
@@ -555,6 +592,7 @@ def serve(debug=False, sio_port=8001):
     ext_path='static/ext-all.js'
     routes = Router.apply_routes([
         (r"/", IndexHandler),
+        (r"/state/(?P<instrument>[^/]*)/(?P<channel>[^/]*)",RestHandler),
     ])
 
     settings = dict(
@@ -582,9 +620,9 @@ if __name__ == "__main__":
     import sys
     import getopt
     
-    longopts = ["capture=","port=","debug="]
+    longopts = ["capture=","port=","nice=","debug"]
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "c:p:d:", longopts)
+        opts, args = getopt.getopt(sys.argv[1:], "c:p:n:d", longopts)
         if args:
             raise getopt.GetoptError("server.py only accepts options")
     except getopt.GetoptError, exc:
@@ -593,6 +631,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     debug=False
+    NICE_CONTROLLER_URL = "http://sparkle.ncnr.nist.gov:8001"
     SIO_PORT=8001
     for name,value in opts:
         if name in ("-c", "--capture"):
@@ -601,6 +640,8 @@ if __name__ == "__main__":
             SIO_PORT = int(value)
         elif name in ("-d", "--debug"):
             debug = True
+        elif name in ("-n", "--nice"):
+            NICE_CONTROLLER_URL = value
         else:
             print "unknown option",name
     
