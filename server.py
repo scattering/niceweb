@@ -12,6 +12,7 @@ import time
 import functools
 import json
 import gzip
+import socket
 
 from tornado import web
 import tornadio2 as sio
@@ -316,13 +317,13 @@ class DeviceChannel(SubscriptionChannel):
     def reset_state(self, state):
         devices, nodes, structure = state
         _fixup_devices(devices,nodes)
-        self.state = devices, structure, structure
+        self.state = devices, structure
 
     @classmethod
     def initial_state(cls, state):
         #print "current state:", self.state
         #print "sub",type(self.state[0]),type(self.state[1])
-        return state if state is not None else (None,"{}","")
+        return state if state is not None else (None,{})
 
 
     # TODO: browser clients should not be able to update state; we could either
@@ -581,6 +582,7 @@ class RouterConnection(sio.SocketConnection):
 
     @sio.event
     def controller(self):
+        print "requested controller"
         return NICE_CONTROLLER_URL
 
 def serve(debug=False, sio_port=8001):
@@ -631,7 +633,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     debug=False
-    NICE_CONTROLLER_URL = "http://sparkle.ncnr.nist.gov:8001"
+    NICE_CONTROLLER_URL = "http://%s:8001"%socket.gethostbyname(socket.gethostname())
     SIO_PORT=8001
     for name,value in opts:
         if name in ("-c", "--capture"):

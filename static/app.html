@@ -206,7 +206,8 @@
             $(document).ready(function () {
                 Instrument = jQuery.getUrlVar('instrument') ? jQuery.getUrlVar('instrument') : "BT4";
                 $('#content').html('Loading...' + Instrument);
-                Root = 'http://' + window.location.hostname + ':' + window.location.port + '/' + Instrument;
+                var BaseURL = 'http://' + window.location.hostname + ':' + window.location.port;
+                Root = BaseURL + '/' +Instrument;
                 document.title = Instrument + ' status';
                 $('#instrument_header').html(Instrument);
                 
@@ -217,11 +218,21 @@
                     'connect timeout': 10000,
                     'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
                 });
-                //Control = io.connect(Root + '/control', {
-                //    'connect timeout': 10000,
-                //    'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
-                //});
+                server = io.connect(BaseURL);
                 Control = null;
+                server.emit('controller', function(ControlHost) {
+                    if (ControlHost) {
+                        Control = io.connect(ControlHost + '/' + Instrument + '/control', {
+                            'connect timeout': 10000,
+                            'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
+                        });
+                        Control.emit('isactive', function(response) {
+                            if (response == "active") {
+                                $('.move-button').show();
+                            }
+                        });
+                    }
+                });
                 
                 Device.on('changed', function (nodes) {
                     for (var i=0; i < nodes.length; i++) {
@@ -236,26 +247,14 @@
                         } 
                     }
                 });
-                Device.emit('subscribe', function(tree, structure, control_host) {
+                Device.emit('subscribe', function(tree, structure) {
                     structure = $.parseJSON(structure);
                     $.extend(device_tree, tree, false);
                     $.extend(device_hierarchy, structure, false);
-                    ControlHost = control_host;
                     $('#content').html(treeToHTML(device_hierarchy)).trigger('create');
                     //$('#content').trigger('create');
                     //shown_devices = getTreeDevices(device_hierarchy);
                     update_devices();
-                    if (ControlHost) {
-                        Control = io.connect(ControlHost + '/' + Instrument + '/control', {
-                            'connect timeout': 10000,
-                            'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
-                        });
-                        Control.emit('isactive', function(response) {
-                            if (response == "active") {
-                                $('.move-button').show();
-                            }
-                        });
-                    }
                 });
                 
                 
