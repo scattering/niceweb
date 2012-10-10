@@ -289,9 +289,9 @@ class DeviceChannel(SubscriptionChannel):
     """
 
     def reset_state(self, state):
-        devices, nodes, structure = state
+        devices, nodes, structure, control_host = state
         _fixup_devices(devices,nodes)
-        self.state = devices, structure
+        self.state = devices, structure, control_host
 
     def initial_state(self):
         #print "current state:", self.state

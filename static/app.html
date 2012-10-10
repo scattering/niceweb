@@ -220,7 +220,8 @@
                 Control = io.connect(Root + '/control', {
                     'connect timeout': 10000,
                     'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
-                });
+                }); 
+                
                 Device.on('changed', function (nodes) {
                     for (var i=0; i < nodes.length; i++) {
                         var node = nodes[i];
@@ -248,6 +249,8 @@
                         }
                     });
                 });
+                
+                
                 
                 
                 
