@@ -66,7 +66,7 @@ class RestHandler(web.RequestHandler):
     """
     def get(self, instrument, channel):
         channel_class = CHANNELS[channel]
-        state = channel_class.channel_state("/".join(("",instrument,channel)))
+        state = channel_class.get_restful_state(self.request, "/".join(("",instrument,channel)))
         self.write(state)
 
 class ControlChannel(sio.SocketConnection):
@@ -184,10 +184,10 @@ class SubscriptionChannel(sio.SocketConnection):
         self._all_state.setdefault(endpoint, None)
 
     @classmethod
-    def channel_state(cls, channel):
-        print "channels",cls._all_state.keys()
+    def get_restful_state(cls, request, channel):
+        #print "channels",cls._all_state.keys()
         #print "channel",channel
-        return cls.initial_state(cls._all_state[channel])
+        return cls.restful_state(request, cls._all_state[channel])
     @property
     def state(self):
         return self._all_state[self.channel]
@@ -228,6 +228,13 @@ class SubscriptionChannel(sio.SocketConnection):
         subscriber channels.
         """
         self.state = state
+
+    @classmethod
+    def restful_state(cls, request, state):
+        """
+        RESTful state defaults to initial state.
+        """
+        return cls.initial_state(state)
 
     @classmethod
     def initial_state(cls, state):
@@ -324,6 +331,11 @@ class DeviceChannel(SubscriptionChannel):
         #print "current state:", self.state
         #print "sub",type(self.state[0]),type(self.state[1])
         return state if state is not None else (None,{})
+
+    @classmethod
+    def restful_state(cls, request, state):
+        #print state
+        return {'devices':state[0], 'view':state[1]}
 
 
     # TODO: browser clients should not be able to update state; we could either

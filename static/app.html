@@ -218,7 +218,7 @@
                     'connect timeout': 10000,
                     'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
                 });
-                server = io.connect(BaseURL);
+                var server = io.connect(BaseURL);
                 Control = null;
                 server.emit('controller', function(ControlHost) {
                     if (ControlHost) {
@@ -232,6 +232,7 @@
                             }
                         });
                     }
+                    server.disconnect();
                 });
                 
                 Device.on('changed', function (nodes) {
