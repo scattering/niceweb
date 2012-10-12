@@ -31,7 +31,9 @@
                     } else {
                         // we have a device name, look up the primary node ID
                         var device = device_tree[tree.nodeID];
-                        nodeID = device.nodes[device.primaryNodeID].id;
+                        if (device) {
+                            nodeID = device.nodes[device.primaryNodeID].id;
+                        } 
                     }
                     ihtml += "<div class='ui-grid-b'>";
                     ihtml += "<div class='ui-block-a'>" + tree.nodeID + "</div><div class='ui-block-b' id='device_"+ nodeID.replace('.', '_') +"'></div>";
@@ -171,7 +173,7 @@
                 var Root = BaseURL + '/' +Instrument;
                 document.title = Instrument + ' status';
                 $('#instrument_header').html(Instrument);
-                
+             setTimeout(function(){  // give "Loading...instrument" time to render 
                 Devices = io.connect(Root + '/device', {
                     'connect timeout': 10000,
                     'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
@@ -217,6 +219,7 @@
                     update_devices();
                     if (controller_connected) $('.move-button').show();
                 });
+             },50);
                 
                 
                 //$('#page1').html(treeToHTML(device_hierarchy));
