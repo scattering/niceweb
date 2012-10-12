@@ -132,7 +132,7 @@ class ControlChannel(sio.SocketConnection):
         # treated as a set of keyword arguments.
         #print "event received: ", name, "args: ", args, "kw: ", kw, "listener: ", self.listener
         if (len(args) == 0) and 'args' in kw:
-            args = kw['args']
+            args,kw = kw['args'],{}
         if name == "listen":
             # On connection to the internal server, the NICE web proxy will
             # register itself as a control listener which can receive
@@ -145,6 +145,7 @@ class ControlChannel(sio.SocketConnection):
             else: 
                 return "inactive"
         elif self.listener:
+            #print "control event",args,kw
             response = self.listener.emit(name, *args, **kw)
             #store_event(self.channel, name, args, kw)
             return response
@@ -657,9 +658,9 @@ if __name__ == "__main__":
     import sys
     import getopt
     
-    longopts = ["capture=","port=","nice=","debug"]
+    longopts = ["capture=","port=","controller=","debug"]
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "c:p:n:d", longopts)
+        opts, args = getopt.getopt(sys.argv[1:], "C:c:p:n:d", longopts)
         if args:
             raise getopt.GetoptError("server.py only accepts options")
     except getopt.GetoptError, exc:
@@ -671,13 +672,13 @@ if __name__ == "__main__":
     NICE_CONTROLLER_URL = "http://%s:8001"%socket.gethostbyname(socket.gethostname())
     SIO_PORT=8001
     for name,value in opts:
-        if name in ("-c", "--capture"):
+        if name in ("-C", "--capture"):
             CAPTURE_FILE = open(value, 'w')
         elif name in ("-p", "--port"):  
             SIO_PORT = int(value)
         elif name in ("-d", "--debug"):
             debug = True
-        elif name in ("-n", "--nice"):
+        elif name in ("-c", "--controller"):
             NICE_CONTROLLER_URL = value
         else:
             print "unknown option",name
