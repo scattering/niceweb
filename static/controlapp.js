@@ -1,5 +1,8 @@
 (function (){
-            // shared state
+            // socket.io connections are globals
+            Devices = null;
+            Controller = null;
+            // shared state within the device panel
             var device_tree = {};
             var device_hierarchy = {};
             var shown_devices = [];
@@ -13,8 +16,7 @@
                     ihtml += '<h3>' + tree.nodeID + "</h3>";
                     ihtml += "<div data-role='collapsible-set'>";
                     for (var i in elements) {                        
-                        var el = elements[i];
-                        ihtml += treeToHTML(el.value);
+                        ihtml += treeToHTML(elements[i]);
                     }
                     ihtml += "</div>";
                     ihtml += "</div>\n";
@@ -169,19 +171,18 @@
                 document.title = Instrument + ' status';
                 $('#instrument_header').html(Instrument);
                 
-                var Device = io.connect(Root + '/device', {
+                Devices = io.connect(Root + '/device', {
                     'connect timeout': 10000,
                     'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
                 });
                 var server = io.connect(BaseURL);
-                var Control = null;
                 server.emit('controller', function(ControlHost) {
                     if (ControlHost) {
-                        Control = io.connect(ControlHost + '/' + Instrument + '/control', {
+                        Controller = io.connect(ControlHost + '/' + Instrument + '/control', {
                             'connect timeout': 10000,
                             'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
                         });
-                        Control.emit('isactive', function(response) {
+                        Controller.emit('isactive', function(response) {
                             if (response == "active") {
                                 $('.move-button').show();
                             }
@@ -190,7 +191,7 @@
                     //server.disconnect();
                 });
                 
-                Device.on('changed', function (nodes) {
+                Devices.on('changed', function (nodes) {
                     for (var i=0; i < nodes.length; i++) {
                         var node = nodes[i];
                         if (shown_devices.indexOf(node.id) >=0) {
@@ -203,8 +204,7 @@
                         } 
                     }
                 });
-                Device.emit('subscribe', function(tree, structure) {
-                    structure = $.parseJSON(structure);
+                Devices.emit('subscribe', function(tree, structure) {
                     $.extend(device_tree, tree, false);
                     $.extend(device_hierarchy, structure, false);
                     $('#content').html(treeToHTML(device_hierarchy)).trigger('create');
