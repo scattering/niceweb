@@ -3,18 +3,17 @@
             var device_tree = {};
             var device_hierarchy = {};
             var shown_devices = [];
+            var controller_connected = true;
 
             function treeToHTML(tree, ihtml) {
                 var ihtml = ihtml ? ihtml : "";
                 
-                var elements = tree.children;
-                if (elements.length > 0) {
+                if (tree.children.length > 0) {
                     ihtml += "<div data-role='collapsible'>";
                     ihtml += '<h3>' + tree.nodeID + "</h3>";
                     ihtml += "<div data-role='collapsible-set'>";
-                    for (var i in elements) {                        
-                        var el = elements[i];
-                        ihtml += treeToHTML(el.value);
+                    for (var i in tree.children) {                        
+                        ihtml += treeToHTML(tree.children[i]);
                     }
                     ihtml += "</div>";
                     ihtml += "</div>\n";
@@ -182,12 +181,15 @@
                             'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
                         });
                         Control.emit('isactive', function(response) {
-                            if (response == "active") {
+                            controller_connected = (response == "active");
+                            if (controller_connected) {
                                 $('.move-button').show();
+                            } else {
+                                $('.move-button').hide();
                             }
                         });
                     }
-                    //server.disconnect();
+                    server.disconnect();
                 });
                 
                 Device.on('changed', function (nodes) {
@@ -211,6 +213,7 @@
                     //$('#content').trigger('create');
                     //shown_devices = getTreeDevices(device_hierarchy);
                     update_devices();
+                    if (controller_connected) $('.move-button').show();
                 });
                 
                 
