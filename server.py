@@ -660,7 +660,7 @@ if __name__ == "__main__":
     
     longopts = ["capture=","port=","controller=","debug"]
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "C:c:p:n:d", longopts)
+        opts, args = getopt.getopt(sys.argv[1:], "C:c:p:d", longopts)
         if args:
             raise getopt.GetoptError("server.py only accepts options")
     except getopt.GetoptError, exc:
