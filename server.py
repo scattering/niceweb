@@ -594,7 +594,6 @@ class RouterConnection(sio.SocketConnection):
 
     @sio.event
     def controller(self):
-        print "requested controller"
         return NICE_CONTROLLER_URL
 
 def serve(debug=False, sio_port=8001):
@@ -626,6 +625,30 @@ def serve(debug=False, sio_port=8001):
 
     # Server application
     sio.SocketServer(app)
+
+def usage():
+    print """\
+usage: server.py [options]
+
+  --port=integer
+
+       Port number for server connections.  Default is 8001
+
+  --capture=filename
+
+       Save the entire published data streams to a file so they can be replayed
+       with test/playback.py
+
+  --nice=URL
+
+       URL for the NICE controller.  Defaults to the host that the server is running on.
+    
+  --debug
+
+       Run the tornado server in debug mode, which provides error messages on the
+       client and triggers restart when the server file changes.
+
+"""
 
 if __name__ == "__main__":
     import logging
