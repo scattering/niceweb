@@ -32,11 +32,13 @@
             .move-button {
                 display: None;
             }
+            .jog_popup {
+                text-align: center;
+            }
         </style>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js">
-        </script>
-        <script src="https://ajax.aspnetcdn.com/ajax/jquery.mobile/1.1.1/jquery.mobile-1.1.1.min.js">
-        </script>
+        <link rel="stylesheet" href="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.css" />
+        <script src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
+        <script src="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.js"></script>
         
         <script type="text/javascript">
             WEB_SOCKET_SWF_LOCATION = "/static/socket.io-0.9.10/WebSocketMain.swf";
@@ -57,7 +59,32 @@
             </div>
             <div data-role="content" id="content">
                 Loading...
+                
             </div>
+            <div data-role="popup" id="popupJog" data-theme="a" class="ui-corner-all jog_popup">
+                <div data-role="header" data-theme="e">
+		            <h1>Move</h1>
+		            <a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-iconpos="notext" class="ui-btn-right">Close</a>
+	            </div><!-- /header -->
+                <div data-role="content" data-theme="d">
+                    <h3>
+                        <div id="jog_motor_name">Motorname:</div>
+                        <div id="jog_motor_value" deviceid="">value</div>
+                    </h3>
+		            <p><a onclick="jogUp();" data-role="button" data-theme='e' data-icon="arrow-u" data-iconpos="right" data-inline='true' class='jog_button'>up</a></p>
+		            <div data-role="fieldcontain">
+	                     <label for="number">Jog step:</label>
+	                     <input type="number" name="number" id="jog_step_value" value="0.1" step=0.01 />
+			        </div>
+		            <p><a onclick="jogDown();" data-role="button" data-theme='e' data-icon="arrow-d" data-iconpos="right" data-inline='true' class='jog_button'>down</a></p>
+		            <p><p>
+		            <div data-role="fieldcontain">
+	                     <label for="number">Target:</label>
+	                     <input type="number" name="number" id="motor_target" value="" step=0.01 />
+			        </div>
+			        <p><a onclick="moveToTarget();" data-role="button" data-theme='e'>Go</a></p>
+			    </div>
+	        </div>
         </div>
         <script>
             //App custom javascript

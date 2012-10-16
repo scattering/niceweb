@@ -2,13 +2,20 @@
             // socket.io connections are globals
             Devices = null;
             Controller = null;
+            active_device = null; // for moving motors in jog panel
+            shown_devices= null;
+            update_devices = null;
 
             // shared state
-            var device_tree = {};
-            var device_hierarchy = {};
-            var shown_devices = [];
-            var controller_connected = true;
-
+            device_tree = {};
+            device_hierarchy = {};
+            shown_devices = [];
+            var controller_connected = false;
+            
+            $('#popupJog').popup();
+            
+            
+            
             function treeToHTML(tree, ihtml) {
                 var ihtml = ihtml ? ihtml : "";
                 
@@ -36,8 +43,8 @@
                         } 
                     }
                     ihtml += "<div class='ui-grid-b'>";
-                    ihtml += "<div class='ui-block-a'>" + tree.nodeID + "</div><div class='ui-block-b' id='device_"+ nodeID.replace('.', '_') +"'></div>";
-                    ihtml += '<div class="ui-block-c move-button"><a data-role="button" data-theme="e" data-inline="false" data-transition="slide" href="jog.html" data-icon="gear" data-iconpos="left" >Move</a></div>';
+                    ihtml += "<div class='ui-block-a'>" + tree.nodeID + "</div><div class='ui-block-b' deviceid='"+ nodeID.replace('.', '_') +"'></div>";
+                    ihtml += '<div class="ui-block-c move-button"><a data-role="button" data-theme="e" data-inline="false" data-transition="slide" onclick="jogPanel(\''+nodeID+'\');" data-icon="gear" data-iconpos="left" >Move</a></div>';
                     ihtml += "</div>";
                     shown_devices.push(nodeID);
                 }
@@ -139,33 +146,57 @@
             }
             
             function setDeviceDisplayValue(dottedname, value) {
-                var names = dottedname.split('.', 1);
+                //console.log('setting ', dottedname, 'to', value);
+                var names = dottedname.split('.', 2);
                 var devname = names[0]; 
                 if (!(device_tree.hasOwnProperty(devname))) { return }
                 var dev = device_tree[devname];
                 if (names.length == 2) {
                     var nodename = names[1];
                     if (dev.primaryNodeID && nodename == dev.primaryNodeID) {
-                        $('#device_'+dottedname).html(value.toString());
+                        $('div[deviceID|="'+dottedname.replace('.','_') +'"]').html(value.toString());
                     }
                 } else { // only device name provided, so update display
                     if (dev.primaryNodeID && dev.primaryNodeID != "") { 
-                        $('#device_'+dottedname.replace('.', '_')).html(value.toString());
+                        $('div[deviceID|="'+devname.replace('.','_') +'"]').html(value.toString());
                     }
                 }
             }
             
-            function update_devices() {
+            update_devices = function() {
                 for (var i in shown_devices) {
                     var devname = shown_devices[i];
                     var val = getInitialDeviceValue(devname);
                     if (typeof(val) == "number") {
                         val = val.toFixed(4);
                     }
-                    $('#device_'+devname.replace('.','_')).html(val.toString());
+                    $('div[deviceID|="'+devname.replace('.','_') +'"]').html(val.toString());
                 }
                 
             }
+            
+            jogPanel = function(nodeID) {
+                active_device = nodeID; // global 
+                $('#jog_motor_name').html(nodeID.toString());
+                $('#jog_motor_value').attr('deviceid', nodeID.replace('.','_'));
+                update_devices();
+                $('#motor_target').attr('value', $('#jog_motor_value').html());
+                $('#popupJog').popup('open');
+            }
+            
+            jogUp = function() {
+                var step = parseFloat($('#jog_step_value')[0].value);
+                Controller.emit('move', [active_device.toString(), step.toString()], true);
+            }
+            jogDown = function() {
+                var step = -1.0 * parseFloat($('#jog_step_value')[0].value);
+                Controller.emit('move', [active_device.toString(), step.toString()], true);
+            }
+            moveToTarget = function() {
+                var destination = $('#motor_target')[0].value;
+                Controller.emit('move', [active_device.toString(), destination.toString()], false);
+            }
+            
             function connect() {
                 var Instrument = jQuery.getUrlVar('instrument') ? jQuery.getUrlVar('instrument') : "BT4";
                 $('#content').html('Loading...' + Instrument);
@@ -200,12 +231,16 @@
                 Devices.on('changed', function (nodes) {
                     for (var i=0; i < nodes.length; i++) {
                         var node = nodes[i];
+                        if (device_tree.hasOwnProperty(node.deviceID) && device_tree[node.deviceID].nodes.hasOwnProperty(node.nodeID)) {
+                            device_tree[node.deviceID].nodes[node.nodeID] = node;
+                        }
                         if (shown_devices.indexOf(node.id) >=0) {
                             var val = node.currentValue.val;
                             if (typeof(val) == "number") {
                                 val = val.toFixed(4);
                             }
                             setDeviceDisplayValue(node.id, val);
+                            
                             //$('#device_'+node.deviceID).html(node.currentValue.val.toString());
                         } 
                     }
