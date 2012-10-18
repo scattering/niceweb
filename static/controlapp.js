@@ -45,8 +45,10 @@
                     }
                     */
                     ihtml += "<div class='ui-grid-b'>";
-                    ihtml += "<div class='ui-block-a'>" + tree.nodeID + "</div>";
-                    ihtml += "<div class='ui-block-b' deviceid='"+ nodeID.replace('.', '_') +"'>"+tree.value+"</div>";
+                    //ihtml += "<div class='ui-block-a'>" + tree.nodeID + "</div>";
+                    //ihtml += "<div class='ui-block-b' deviceid='"+ nodeID.replace('.', '_') +"'>"+tree.value+"</div>";
+                    ihtml += "<div class='device-name'>" + tree.nodeID + "</div>";
+                    ihtml += "<div class='device-value' deviceid='"+ nodeID.replace('.', '_') +"'>"+tree.value+"</div>";
                     ihtml += '<div class="ui-block-c move-button"><a data-role="button" data-theme="e" data-inline="false" onclick="jogPanel(\''+nodeID+'\');" data-icon="gear" data-iconpos="left" >Move</a></div>';
                     ihtml += "</div>";
                     shown_devices[nodeID] = tree.value;
