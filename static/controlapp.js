@@ -14,8 +14,6 @@
             
             $('#popupJog').popup();
             
-            
-            
             function treeToHTML(tree, ihtml) {
                 var ihtml = ihtml ? ihtml : "";
                 
@@ -23,9 +21,11 @@
                     ihtml += "<div data-role='collapsible'>";
                     ihtml += '<h3>' + tree.nodeID + "</h3>";
                     ihtml += "<div data-role='collapsible-set'>";
+                    ihtml += '<ul data-role="listview" data-filter="false" data-theme="d">';
                     for (var i in tree.children) {                        
                         ihtml += treeToHTML(tree.children[i]);
                     }
+                    ihtml += "</ul>";
                     ihtml += "</div>";
                     ihtml += "</div>\n";
                 } else {
@@ -44,13 +44,11 @@
                         } 
                     }
                     */
-                    ihtml += "<div class='ui-grid-b'>";
-                    //ihtml += "<div class='ui-block-a'>" + tree.nodeID + "</div>";
-                    //ihtml += "<div class='ui-block-b' deviceid='"+ nodeID.replace('.', '_') +"'>"+tree.value+"</div>";
-                    ihtml += "<div class='device-name'>" + tree.nodeID + "</div>";
-                    ihtml += "<div class='device-value' deviceid='"+ nodeID.replace('.', '_') +"'>"+tree.value+"</div>";
-                    ihtml += '<div class="ui-block-c move-button"><a data-role="button" data-theme="e" data-inline="false" onclick="jogPanel(\''+nodeID+'\');" data-icon="gear" data-iconpos="left" >Move</a></div>';
-                    ihtml += "</div>";
+                    ihtml += "<li>";
+                    ihtml += '<a  class="ui-grid-a" onclick="jogPanel(\''+nodeID+'\');" data-icon="gear" data-iconpos="right" >';
+                    ihtml += "<span class='ui-block-a device-name'>" + tree.nodeID + ':  </span>';
+                    ihtml += "<span class='ui-block-b device-value' deviceid='"+ nodeID.replace('.', '_') +"'>"+tree.value+"</span>";
+                    ihtml += "</a></li>";
                     shown_devices[nodeID] = tree.value;
                 }
                 return ihtml
@@ -80,7 +78,7 @@
             }
             
             function setDeviceDisplayValue(dottedname, value) {
-                $('div[deviceID|="'+dottedname.replace('.','_') +'"]').html(value.toString());
+                $('span[deviceID|="'+dottedname.replace('.','_') +'"]').html(value.toString());
             }
             
             update_devices = function() {
@@ -90,7 +88,7 @@
                     if (typeof(val) == "number") {
                         val = val.toFixed(4);
                     }
-                    $('div[deviceID|="'+devname.replace('.','_') +'"]').html(val.toString());
+                    $('span[deviceID|="'+devname.replace('.','_') +'"]').html(val.toString());
                 }
                 
             }
@@ -181,9 +179,7 @@
                     //$.extend(device_tree, tree, false);
                     $.extend(device_hierarchy, structure, false);
                     $('#content').html(treeToHTML(device_hierarchy)).trigger('create');
-                    //$('#content').trigger('create');
-                    //shown_devices = getTreeDevices(device_hierarchy);
-                    //update_devices();
+                    update_devices();
                     if (controller_connected) $('.move-button').show();
                 });
                 

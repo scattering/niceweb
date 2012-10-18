@@ -12,23 +12,19 @@
                 padding: 0.25em 6px;
             }
             .ui-block-a {
-                margin-top: 10px;
                 text-align: left;
             }
             .ui-block-b {
-                margin-top: 10px;
                 text-align: right;
             }
             .ui-block-c {
                 text-align: right;
             }
             .device-name {
-                display: inline-block;
-                float: left;
+                color: red;
             }
             .device-value {
-                display: inline-block;
-                float: left;
+                color: blue;
             }
             .ui-btn {
                 padding: 3px;
@@ -74,7 +70,7 @@
                 <div data-role="content" data-theme="d">
                     <h3>
                         <div id="jog_motor_name">Motorname:</div>
-                        <div id="jog_motor_value" deviceid="">value</div>
+                        <span id="jog_motor_value" deviceid="">value</span>
                     </h3>
 		            <p><a onclick="jogUp();" data-role="button" data-theme='e' data-icon="arrow-u" data-iconpos="right" data-inline='true' class='jog_button'>up</a></p>
 		            <div data-role="fieldcontain">
