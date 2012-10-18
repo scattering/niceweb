@@ -91,7 +91,11 @@
                     }
                     $('span[deviceID|="'+devname.replace('.','_') +'"]').html(val.toString());
                 }
-                
+                if (controller_connected) { 
+                    $('.ui-icon-arrow-r').show();
+                } else {
+                    $('.ui-icon-arrow-r').hide();
+                }                
             }
             
             
@@ -188,7 +192,6 @@
                     $.extend(device_hierarchy, structure, false);
                     $('#content').html(treeToHTML(device_hierarchy)).trigger('create');
                     update_devices();
-                    if (controller_connected) $('.move-button').show();
                 });
                 
             }
