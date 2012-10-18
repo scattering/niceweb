@@ -148,6 +148,7 @@
                 server.emit('controller', function(ControlHost) {
                     if (ControlHost) {
                         Controller = io.connect(ControlHost + '/' + Instrument + '/control', {
+                            'rememberTransport': false,
                             'connect timeout': 10000,
                             'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
                         });

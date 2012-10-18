@@ -605,6 +605,90 @@ CHANNELS = {
         'device': DeviceChannel,
         'queue': QueueChannel,
     }
+    
+from tornadio2.router import HandshakeHandler, TornadioRouter, version_info, ioloop, DEFAULT_SETTINGS, PROTOCOLS
+from tornadio2 import persistent, polling, sessioncontainer, session, proto, preflight, stats
+
+class BaseHandler(HandshakeHandler):
+    def set_default_headers(self):
+        print "setting default headers"
+        self.set_header("Access-Control-Allow-Origin", "drneutron.org")
+        self.set_header("Access-Control-Allow-Credentials", "true")
+
+class MyRouter(TornadioRouter):
+    """TornadIO2 Router that allows specifying your own Handler"""
+
+    def __init__(self,
+                 connection,
+                 user_settings=dict(),
+                 namespace='socket.io',
+                 io_loop=None,
+                 handler=HandshakeHandler):
+        """Constructor.
+
+        `connection`
+            SocketConnection class instance
+        `user_settings`
+            Settings
+        `namespace`
+            Router namespace, defaulted to 'socket.io'
+        `io_loop`
+            IOLoop instance, optional.
+        """
+
+        # TODO: Version check
+        if version_info[0] < 2:
+            raise Exception('TornadIO2 requires Tornado 2.0 or higher.')
+
+        # Store connection class
+        self._connection = connection
+
+        # Initialize io_loop
+        self.io_loop = io_loop or ioloop.IOLoop.instance()
+        
+        # set the handler
+        self.handler = handler
+        
+        # Settings
+        self.settings = DEFAULT_SETTINGS.copy()
+        if user_settings:
+            self.settings.update(user_settings)
+
+        # Sessions
+        self._sessions = sessioncontainer.SessionContainer()
+
+        check_interval = self.settings['session_check_interval']
+        self._sessions_cleanup = ioloop.PeriodicCallback(self._sessions.expire,
+                                                         check_interval,
+                                                         self.io_loop)
+        self._sessions_cleanup.start()
+
+        # Stats
+        self.stats = stats.StatsCollector()
+        self.stats.start(self.io_loop)
+
+        # Initialize URLs
+        self._transport_urls = [
+            (r'/%s/(?P<version>\d+)/$' % namespace,
+                self.handler,
+                dict(server=self))
+            ]
+
+        for t in self.settings.get('enabled_protocols', dict()):
+            proto = PROTOCOLS.get(t)
+
+            if not proto:
+                # TODO: Error logging
+                continue
+
+            # Only version 1 is supported
+            self._transport_urls.append(
+                (r'/%s/1/%s/(?P<session_id>[^/]+)/?' %
+                    (namespace, t),
+                    proto,
+                    dict(server=self))
+                )
+        
 class RouterConnection(sio.SocketConnection):
     """
     Manage the top level socket IO connection.
@@ -636,7 +720,7 @@ def serve(debug=False, sio_port=8001):
     Run the NICE repeater, forwarding subscription streams to the web.
     """
     # Create tornadio server
-    Router = sio.TornadioRouter(RouterConnection)
+    Router = MyRouter(RouterConnection, handler=BaseHandler)
     ext_path='static/ext-all.js'
     routes = Router.apply_routes([
         (r"/", IndexHandler),
