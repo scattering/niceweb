@@ -30,8 +30,8 @@
                 padding: 3px;
                 margin: 3px;
             }
-            .move-button {
-                display: None;
+            .ui-icon-arrow-r {
+                display: none;
             }
             .jog_popup {
                 text-align: center;
@@ -84,6 +84,16 @@
 	                     <input type="number" name="number" id="motor_target" value="" step=0.01 />
 			        </div>
 			        <p><a onclick="moveToTarget();" data-role="button" data-theme='e'>Go</a></p>
+			    </div>
+	        </div>
+	        <div data-role="popup" id="popupNoControl" data-theme="a" class="ui-corner-all jog_popup">
+                <div data-role="header" data-theme="a">
+		            <h1>No Control</h1>
+		            <a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-iconpos="notext" class="ui-btn-right">Close</a>
+	            </div><!-- /header -->
+                <div data-role="content" data-theme="d">
+                    <h3>You do not have a control connection</h3>
+                    <h4>(you are probably outside the firewall)</h4>
 			    </div>
 	        </div>
         </div>

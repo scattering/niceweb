@@ -10,7 +10,8 @@
             // shared state
             device_hierarchy = {};
             shown_devices = {};
-            var controller_connected = false;
+            controller_connected = false;
+            no_control_warning_shown = false;
             
             $('#popupJog').popup();
             
@@ -45,7 +46,7 @@
                     }
                     */
                     ihtml += "<li>";
-                    ihtml += '<a  class="ui-grid-a" onclick="jogPanel(\''+nodeID+'\');" data-icon="gear" data-iconpos="right" >';
+                    ihtml += '<a  class="ui-grid-a move-button" onclick="jogPanel(\''+nodeID+'\');" data-icon="gear" data-iconpos="right" >';
                     ihtml += "<span class='ui-block-a device-name'>" + tree.nodeID + ':  </span>';
                     ihtml += "<span class='ui-block-b device-value' deviceid='"+ nodeID.replace('.', '_') +"'>"+tree.value+"</span>";
                     ihtml += "</a></li>";
@@ -101,7 +102,13 @@
                 $('#jog_motor_value').attr('deviceid', nodeID.replace('.','_'));
                 update_devices();
                 $('#motor_target').attr('value', $('#jog_motor_value').html());
-                $('#popupJog').popup('open');
+                if (controller_connected == true) {
+                    $('#popupJog').popup('open');
+                }
+                else if (no_control_warning_shown == false) {
+                    $('#popupNoControl').popup('open');
+                    no_control_warning_shown = true;
+                }
             }
             
             moveToTarget = function() {
@@ -147,9 +154,9 @@
                         Controller.emit('isactive', function(response) {
                             controller_connected = (response == "active");
                             if (controller_connected) {
-                                $('.move-button').show();
+                                $('.ui-icon-arrow-r').show();
                             } else {
-                                $('.move-button').hide();
+                                $('.ui-icon-arrow-r').hide();
                             }
                         });
                     }
