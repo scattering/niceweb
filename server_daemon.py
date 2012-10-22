@@ -19,7 +19,7 @@ import tornadio2 as sio
 
 import cookie
 
-ROOT = os.path.normpath(os.path.dirname(__file__))
+ROOT = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
 
 CAPTURE_START = time.time()
 CAPTURE_FILE = None
@@ -51,7 +51,7 @@ def capture(fn):
 class IndexHandler(web.RequestHandler):
     """Regular HTTP handler to serve the index.html page"""
     def get(self):
-        self.render('index.html')
+        self.render(os.path.join(ROOT, 'index.html'))
 
 class RestHandler(web.RequestHandler):
     """
