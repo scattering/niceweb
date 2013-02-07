@@ -19,7 +19,7 @@ import tornadio2 as sio
 
 import cookie
 
-ROOT = os.path.normpath(os.path.dirname(__file__))
+ROOT = os.path.normpath(os.path.abspath(os.path.dirname(__file__)))
 
 CAPTURE_START = time.time()
 CAPTURE_FILE = None
@@ -51,7 +51,7 @@ def capture(fn):
 class IndexHandler(web.RequestHandler):
     """Regular HTTP handler to serve the index.html page"""
     def get(self):
-        self.render('index.html')
+        self.render(os.path.join(ROOT, 'index.html'))
 
 class RestHandler(web.RequestHandler):
     """
@@ -326,9 +326,9 @@ class DeviceChannel(SubscriptionChannel):
     """
 
     def reset_state(self, state):
-        devices, nodes = state
+        devices, nodes, structure = state
         _fixup_devices(devices,nodes)
-        self.state = devices 
+        self.state = devices, structure
 
     @classmethod
     def initial_state(cls, state):
@@ -407,7 +407,7 @@ class DeviceChannel(SubscriptionChannel):
         if self.state is None: self.state = {}
         for node in nodes:
             #print node
-            self.state[node['deviceID']]['nodes'][node['nodeID']] = node
+            self.state[0][node['deviceID']]['nodes'][node['nodeID']] = node
         # May want to do bandwidth limiting, an only send updates to big nodes
         # such as 2-D detector and ROI mask every minute rather than every
         # time they are updated.
@@ -437,9 +437,6 @@ class QueueChannel(SubscriptionChannel):
     complete queue.  A queue node looks like::
 
         node = {
-            "id": int,
-            "parentID": int,
-            "children": [node, ...],
             "status": {
                 "commandStr": string,
                 "errors": [string, ...],
@@ -447,26 +444,23 @@ class QueueChannel(SubscriptionChannel):
                 "metaState": string,
                 "state": "QUEUED|RUNNING|CHILDREN|FINISHED|SKIPPED",
                 }
-            },
-            "origin": int,
-
-    Queue path is a list of integers.
-
-    Queue status is "IDLE|STOPPING|BUSY|SUSPENDED|SUSPENDING|SHUTDOWN".
+            "id": int,
+            "child": [node, ...],
+            }
 
     Subscribers should expect the following events::
 
-       queue.on('added', function (path, node) {})
+       queue.on('added', function (nodes, parentID, siblingID) {})
            add the nodes and all its children as a child of the parent node
            after the sibling node, or at the beginning if sibling is 0.
-       queue.on('removed', function (path) {})
+       queue.on('removed', function (nodeID) {})
            remove the node
-       queue.on('moved', function (oldpath, newpath, node) {})
+       queue.on('removed children', function (nodeID) {})
+           remove all children of the node
+       queue.on('moved', function (nodeID, parentID, siblingID) {})
            remove the node and add it to parent after sibling
-       queue.on('changed', function (path, status) {})
+       queue.on('changed', function (nodeID, status) {})
            update the status of the node
-       queue.on('status', function (queue_status) {})
-           update the status of the queue
        queue.on('reset', function (node) {})
            replace the queue with the given queue
 
@@ -479,79 +473,128 @@ class QueueChannel(SubscriptionChannel):
     # authenticated connection.
     @sio.event
     @capture
-    def added(self, path, node):
+    def added(self, nodes, parentID, prevID):
         """
         Node added to the queue.  Forward the details to the
         clients.
         """
-        queue_add(self.state, path, node)
+        queue_add(self.state, nodes, parentID, prevID)
         #print "queue add",[n['id'] for n in nodes]
-        self.emit('added', path, node)
+        self.emit('added', nodes, parentID, prevID)
 
     @sio.event
     @capture
-    def removed(self, path, node):
+    def removed(self, nodeIDs, parentID, index):
         """
         Nodes removed from the queue.  Forward them to the clients.
         """
-        #print "queue remove",nodeIDs[0]
-        queue_remove(self.state, path)
-        self.emit('removed', path)
+        if len(nodeIDs) == 1:
+            #print "queue remove",nodeIDs[0]
+            queue_remove(self.state, nodeIDs[0])
+            self.emit('removed', nodeIDs[0])
+        else:
+            parent, index = queue_find(self.state, nodeIDs[0])
+            parent['child'] = []
+            #print "queue remove children",parent['id']
+            self.emit('removed_children', parent['id'])
 
     @sio.event
     @capture
-    def moved(self, old, new, node):
+    def moved(self, nodeID, parentID, prevID):
         """
         Nodes moved from the instrument.  Forward their names to the clients.
         """
         #print "queue move",nodeID,parentID,prevID
-        queue_remove(self.state, old)
-        queue_add(self.state, new, node)
-        self.emit('moved', old, new, node)
+        queue_move(nodeID, parentID, prevID)
+        self.emit('moved', nodeID, parentID, prevID)
 
     @sio.event
     @capture
-    def changed(self, path, nodeID, status):
+    def changed(self, nodeID, status):
         """
-        Node state changed.  Forward the details to the clients.
+        Node value or properties changed.  Forward the details to the clients.
         """
-        queue_update(self.state, path, status)
+        queue_update_status(self.state, nodeID, status)
         #print "queue change",nodeID
-        self.emit('changed', path, status)
+        self.emit('changed', nodeID, status)
 
-    @sio.event
-    @capture
-    def status(self, status):
-        """
-        Queue state changed.
-        """
-        self.state[1] = status 
-        self.emit('status', status)
-
-def queue_update(queue, path, status):
+def queue_update_status(queue, nodeID, status):
     """
     Update the status on a node.
     """
-    root = queue[0]
-    for idx in path: root = root['children'][idx]
-    root['status'] = status
+    try:
+        parent, index = queue_find(queue, nodeID)
+        existing_node = parent['child'][index]
+        existing_node['status'] = status
+    except KeyError:
+        import pprint; pprint.pprint(queue)
+        print "could not find",nodeID
+        raise
 
-def queue_remove(queue, path):
+def queue_move(queue, nodeID, parentID, prevID):
+    """
+    Move a node to a new position within the queue.
+    """
+    parent, index = queue_find(queue, nodeID)
+    node = parent['child'][index]
+    del parent['child'][index]
+    queue_add(queue, [node], parentID, prevID)
+
+def queue_remove(queue, nodeID):
     """
     Remove a set of nodes from the queue.
     """
-    root = queue[0]
-    for idx in path[:-1]: root = root['children'][idx]
-    del root['children'][path[-1]]
+    parent, index = queue_find(queue, nodeID)
+    del parent['child'][index]
 
-def queue_add(queue, path, node):
+def queue_add(queue, nodes, parentID, prevID):
     """
-    Add a node to the queue in a given position
+    Add a node to the queue given its parent and elder sibling.
     """
-    root = queue[0]
-    for idx in path[:-1]: root = root['children'][idx]
-    root['children'].insert(path[-1], node)
+    if parentID == 0:
+        parent = queue
+    else:
+        grand_parent, parent_index = queue_find(queue, parentID)
+        parent = grand_parent['child'][parent_index]
+    sibling_index = queue_find_elder_sibling(parent, prevID)
+    for i,node in enumerate(nodes):
+        parent['child'].insert(sibling_index+1+i, node)
 
+def queue_find(queue, nodeID):
+    """
+    Find nodeID within the queue.
+
+    Uses a reverse depth first search since most changes happen at the
+    near the end of the queue.
+
+    Returns the parent node and the index within the children.
+
+    Raise KeyError if the node is not found, or if node is the root node.
+    """
+    for index,node in reversed(list(enumerate(queue['child']))):
+        if node['id'] == nodeID:
+            return queue, index
+        try:
+            return queue_find(node, nodeID)
+        except KeyError:
+            pass
+    raise KeyError("Node %s is not found"%nodeID)
+
+def queue_find_elder_sibling(parent, siblingID):
+    """
+    Locate the index of the elder sibling within the children of the
+    parent node.
+
+    Return -1 if there is no elder sibling (i.e., if siblingID is 0).
+
+    Raise KeyError if the elder sibling is not in the list of children.
+    """
+    if siblingID == 0:
+        return -1
+    for index,node in enumerate(parent['child']):
+        if siblingID == node['id']:
+            return index
+    raise KeyError("Sibling node %s not found"%siblingID)
 
 # Socket.io handler class for the given channel
 CHANNELS = {
@@ -568,7 +611,7 @@ from tornadio2 import persistent, polling, sessioncontainer, session, proto, pre
 
 class BaseHandler(HandshakeHandler):
     def set_default_headers(self):
-        print "setting default headers"
+        #print "setting default headers"
         self.set_header("Access-Control-Allow-Origin", "drneutron.org")
         self.set_header("Access-Control-Allow-Credentials", "true")
 
@@ -704,7 +747,9 @@ def serve(debug=False, sio_port=8001):
 
 def usage():
     print """\
-usage: server.py [options]
+usage: server_daemon.py start|stop|restart [options]
+  
+  "stop" and "restart" do not require any options.
 
   --port=integer
 
@@ -732,17 +777,20 @@ if __name__ == "__main__":
     
     import sys
     import getopt
+    from daemon import Daemon
     
     longopts = ["capture=","port=","controller=","debug"]
     try:
         opts, args = getopt.getopt(sys.argv[1:], "C:c:p:d", longopts)
-        if args:
-            raise getopt.GetoptError("server.py only accepts options")
+        print opts, args
+        if len(args) != 1:
+            raise getopt.GetoptError("server_daemon.py requires one argument: start|stop|restart plus options")
     except getopt.GetoptError, exc:
         print str(exc)
         usage()
         sys.exit(1)
     
+
     debug=False
     NICE_CONTROLLER_URL = "http://%s:8001"%socket.gethostbyname(socket.gethostname())
     SIO_PORT=8001
@@ -758,7 +806,30 @@ if __name__ == "__main__":
         else:
             print "unknown option",name
     
+    def run(self):
+        serve(debug=debug, sio_port=SIO_PORT)
+
+    Daemon.run = run
+    daemon = Daemon('/tmp/niceweb_server_daemon.pid')
+
+    if 'start' == args[0]:
+        print "starting server: for PID, see /tmp/niceweb_server_daemon.pid"
+        daemon.start()
+    elif 'stop' == args[0]:
+        print "stopping server"
+        daemon.stop()
+    elif 'restart' == args[0]:
+        print "restarting server: for PID, see /tmp/niceweb_server_daemon.pid"
+        daemon.restart()
+    else:
+        print "Unknown command"
+        sys.exit(2)
+	
+    
+    
+    
     #debug = False if len(sys.argv)>1 and sys.argv[1]=='production' else True
     #if len(sys.argv) > 1 and sys.argv[1] == 'capture':
     #    CAPTURE_FILE = open(sys.argv[2], "w")
-    serve(debug=debug, sio_port=SIO_PORT)
+    #serve(debug=debug, sio_port=SIO_PORT)
+    sys.exit(0)

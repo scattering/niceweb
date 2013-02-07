@@ -14,6 +14,6 @@ def get_cookie():
             fid.write(cookie)
     else:
         with open(cookie_file, 'rb') as fid:
-            cookie = fid.read(cookie)
+            cookie = fid.read()
 
     return cookie
