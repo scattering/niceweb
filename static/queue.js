@@ -70,7 +70,7 @@ Ext.onReady(function() {
 						// property on
 						// the panel
 						fn : function(event) {
-							// console.log(event);
+							//console.log(event);
 							// var nodes = QueueSpace.tree.getSelectionModel()
 							// .getSelection();
 							// Ext.MessageBox.show({
@@ -184,20 +184,22 @@ Ext.onReady(function() {
 		}
 	}
 	QueueSpace.remove_node = function(path) {
-		//window.console.log("queue removed ",path);
+		//console.log("queue removed ",path);
 		var treeNode = QueueSpace.find_node(path);
 		if (treeNode == null) {
-			window.console.log(
+			console.log(
 				"node does not exist and cannot be removed ",
 				path);
 		} else {
+			// TODO: should remove node and all its children, but that raises
+			// "TypeError: 'undefined' does not have p.indexOf" or some such.
 			// Don't know if we need to remove children
 			//treeNode.removeAll(true);
-			treeNode.remove(true);
+			treeNode.remove(false);
 		}
 	}
 	QueueSpace.add_node = function(path, node) {
-		//window.console.log("queue added ",path);
+		//console.log("queue added ",path);
 		var parentNode = QueueSpace.find_parent(path);
 		if (parentNode.isLeaf()) {
 			parentNode.set('leaf', false);
@@ -217,13 +219,13 @@ Ext.onReady(function() {
 	QueueSpace.queue.on('connect', function() {
 
 				// first time the web client connects to the repeater.
-				// window.console.log("queue connect");
+				//console.log("queue connect");
 				// ask for initial state and all messages
 				QueueSpace.queue.emit('subscribe', function(queue) {
 							if (queue== undefined) {
-								window.console.log("no feed");
+								console.log("no feed");
 							} else {
-								// window.console.log("queue subscribe", qroot);
+								//console.log("queue subscribe", queue);
 								QueueSpace.build_tree(QueueSpace.treeRoot,
 										queue[0]);
 								QueueSpace.treeRoot.expand(false);
@@ -244,10 +246,10 @@ Ext.onReady(function() {
 		});
 
 	QueueSpace.queue.on('changed', function(path, node_status) {
-		//window.console.log("node changed ",path);
+		//console.log("node changed ",path);
 		var treeNode = QueueSpace.find_node(path);
 		if (treeNode == null) {
-			window.console.log("node is not defined ",path);
+			console.log("node is not defined ",path);
 		} else {
 			treeNode.set('text', node_status.commandStr);
 			treeNode.set('state', node_status.state);
@@ -264,7 +266,7 @@ Ext.onReady(function() {
 
 	QueueSpace.queue.on('reset', function(queue) {
 				// only happens when the server restarts
-				//window.console.log("queue reset", queue);
+				//console.log("queue reset", queue);
 				QueueSpace.treeRoot.removeAll(false);
 				QueueSpace.build_tree(QueueSpace.treeRoot, queue[0]);
 				QueueSpace.treeRoot.expand(false);
