@@ -22,7 +22,7 @@
     <script type="text/javascript">
        Ext.namespace('ConfigSpace');
        var params = Ext.urlDecode(location.search.substring(1));
-       ConfigSpace.instrument = params.instrument ? params.instrument : 'sans10m';
+       ConfigSpace.instrument = params.instrument ? params.instrument : 'ngb';
        ConfigSpace.root = 'http://' + window.location.hostname + ':' + window.location.port + '/' + ConfigSpace.instrument;
        ConfigSpace.height = 500;
        ConfigSpace.width = 495;

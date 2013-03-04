@@ -70,7 +70,7 @@ Ext.onReady(function() {
 						// property on
 						// the panel
 						fn : function(event) {
-							// console.log(event);
+							//console.log(event);
 							// var nodes = QueueSpace.tree.getSelectionModel()
 							// .getSelection();
 							// Ext.MessageBox.show({
@@ -135,29 +135,21 @@ Ext.onReady(function() {
 		return type;
 	};
 
-	// Search for node in tree given node id
-	QueueSpace._find_node = function(nodeID, parentNode) {
-		var childNode = parentNode.lastChild;
-		while (childNode !== undefined && childNode !== null) {
-			if (childNode.data.id == nodeID) {
-				return childNode;
-			} else {
-				var grandchild = QueueSpace._find_node(nodeID, childNode);
-				if (grandchild !== null) {
-					return grandchild;
-				}
-				childNode = childNode.previousSibling;
-			}
+	// Find the node given the path
+	QueueSpace.find_node= function(path) {
+		root = QueueSpace.treeRoot;
+		for (var i = 0; i < path.length; i++) {
+			root = root.childNodes[path[i]];
 		}
-		return null;
+		return root;
 	};
-
-	QueueSpace.find_node = function(nodeID) {
-		if (nodeID === 0 || nodeID === "0") {
-			return QueueSpace.treeRoot;
-		} else {
-			return QueueSpace._find_node(nodeID, QueueSpace.treeRoot);
+	// Find the node given the path
+	QueueSpace.find_parent= function(path) {
+		root = QueueSpace.treeRoot;
+		for (var i = 0; i < path.length-1; i++) {
+			root = root.childNodes[path[i]];
 		}
+		return root;
 	};
 
 	// Construct a tree node from a queue item. If the queue
@@ -172,7 +164,7 @@ Ext.onReady(function() {
 					qtip : QueueSpace.generateStatus(qnode.status),
 					qtitle : 'Command ' + qnode.id,
 					expanded : false,
-					leaf : qnode.child.length == 0,
+					leaf : qnode.children.length == 0,
 					cls : 'node-style-' + node_css_type(qnode.status.state)
 				});
 		QueueSpace.build_tree(commandNode, qnode);
@@ -181,8 +173,8 @@ Ext.onReady(function() {
 	// Construct a tree from a list of top level nodes, and add
 	// them to the root.
 	QueueSpace.build_tree = function(treeNode, qroot) {
-		for (var i = 0; i < qroot.child.length; i++) {
-			var qnode = qroot.child[i];
+		for (var i = 0; i < qroot.children.length; i++) {
+			var qnode = qroot.children[i];
 			var newCommand = QueueSpace.build_node(qnode);
 			// if (tree.isRoot()){ tree.childNodes=[]; };
 			// tree.insertChild(i,newCommand);
@@ -191,19 +183,51 @@ Ext.onReady(function() {
 							+ node_css_type(newCommand.data.state));
 		}
 	}
+	QueueSpace.remove_node = function(path) {
+		//console.log("queue removed ",path);
+		var treeNode = QueueSpace.find_node(path);
+		if (treeNode == null) {
+			console.log(
+				"node does not exist and cannot be removed ",
+				path);
+		} else {
+			// TODO: should remove node and all its children, but that raises
+			// "TypeError: 'undefined' does not have p.indexOf" or some such.
+			// Don't know if we need to remove children
+			//treeNode.removeAll(true);
+			treeNode.remove(false);
+		}
+	}
+	QueueSpace.add_node = function(path, node) {
+		//console.log("queue added ",path);
+		var parentNode = QueueSpace.find_parent(path);
+		if (parentNode.isLeaf()) {
+			parentNode.set('leaf', false);
+		}
+		var newCommand = QueueSpace.build_node(node);
+
+		var index = path[path.length-1];
+		if (index >= parentNode.childNodes.length) {
+			parentNode.appendChild(newCommand);
+                } else {
+			parentNode.insertChild(index, newCommand);
+                }
+		newCommand.set('iconCls', 'node-icon-' + node_css_type(newCommand.data.state));
+	}
+
 
 	QueueSpace.queue.on('connect', function() {
 
 				// first time the web client connects to the repeater.
-				// window.console.log("queue connect");
+				//console.log("queue connect");
 				// ask for initial state and all messages
-				QueueSpace.queue.emit('subscribe', function(qroot) {
-							if (qroot == undefined) {
-								window.console.log("no feed");
+				QueueSpace.queue.emit('subscribe', function(queue) {
+							if (queue== undefined) {
+								console.log("no feed");
 							} else {
-								// window.console.log("queue subscribe", qroot);
+								//console.log("queue subscribe", queue);
 								QueueSpace.build_tree(QueueSpace.treeRoot,
-										qroot);
+										queue[0]);
 								QueueSpace.treeRoot.expand(false);
 								// QueueSpace.tree.doLayout();
 							}
@@ -214,81 +238,18 @@ Ext.onReady(function() {
 	// to add. Each node in the list may contain children. The nodes are
 	// to be added after siblingID within parentID. If siblingID is 0,
 	// then add the nodes before the first sibling.
-	QueueSpace.queue.on('added', function(nodes, parentID, siblingID) {
-
-		var parentNode = QueueSpace.find_node(parentID);
-		if (parentNode == null) {
-			window.console.log("could not find", parentID, QueueSpace.treeRoot);
-			return;
-		}
-		if (parentNode.isLeaf()) {
-			parentNode.set('leaf', false);
-		}
-
-		var siblingNode;
-		if (siblingID == 0) {
-			siblingNode = parentNode.firstChild;
-		} else {
-			siblingNode = QueueSpace.find_node(siblingID);
-			if (siblingNode == null) {
-				window.console.log("could not find", siblingID,
-						QueueSpace.treeRoot);
-				return;
-			}
-			siblingNode = siblingNode.nextSibling;
-		}
-		for (var j = 0; j < nodes.length; j++) {
-			var newCommand = QueueSpace.build_node(nodes[j]);
-			if (siblingNode == null) {
-				parentNode.appendChild(newCommand);
-			} else {
-				parentNode.insertBefore(siblingNode, newCommand);
-			}
-			
-			newCommand.set('iconCls', 'node-icon-'
-							+ node_css_type(newCommand.data.state));
-			// window.console.log("added",newCommand.data.id);
-		}
-
-	});
-
-	QueueSpace.queue.on('removed', function(nodeID) {
-				// window.console.log("queue removed " + nodeID);
-				var treeNode = QueueSpace.find_node(nodeID);
-				if (treeNode == null) {
-					window.console.log(
-							"node %s does not exist and cannot be removed ",
-							nodeID);
-				} else {
-					treeNode.remove(false);
-				}
-			});
-
-	QueueSpace.queue.on('removed children', function(nodeID) {
-		var treeNode = QueueSpace.find_node(nodeID);
-		// window.console.log("removing node",treeNode);
-		if (treeNode == null) {
-			window.console
-					.log(
-							"children cannot be removed because the node %s does not exist ",
-							nodeID);
-		} else {
-			treeNode.removeAll(false);
-		}
-	});
-
-	QueueSpace.queue.on('moved', function(nodeID, parentID, siblingID) {
-		window.console.log("queue moved " + nodeID + " to " + parentID
-				+ " after " + siblingID);
-			// todo implement
+	QueueSpace.queue.on('added', QueueSpace.add_node);
+	QueueSpace.queue.on('removed', QueueSpace.remove_node);
+	QueueSpace.queue.on('moved', function(oldpath, newpath, node) {
+		QueueSpace.remove_node(oldpath);
+		QueueSpace.add_node(newpath, node);
 		});
 
-	QueueSpace.queue.on('changed', function(nodeID, node_status) {
-		// window.console.log("node changed " + nodeID,
-		// node_status.commandStr);
-		var treeNode = QueueSpace.find_node(nodeID);
+	QueueSpace.queue.on('changed', function(path, node_status) {
+		//console.log("node changed ",path);
+		var treeNode = QueueSpace.find_node(path);
 		if (treeNode == null) {
-			window.console.log("node is not defined " + nodeID);
+			console.log("node is not defined ",path);
 		} else {
 			treeNode.set('text', node_status.commandStr);
 			treeNode.set('state', node_status.state);
@@ -303,11 +264,11 @@ Ext.onReady(function() {
 
 	});
 
-	QueueSpace.queue.on('reset', function(qroot) {
+	QueueSpace.queue.on('reset', function(queue) {
 				// only happens when the server restarts
-				window.console.log("queue reset", qroot);
+				//console.log("queue reset", queue);
 				QueueSpace.treeRoot.removeAll(false);
-				QueueSpace.build_tree(QueueSpace.treeRoot, qroot);
+				QueueSpace.build_tree(QueueSpace.treeRoot, queue[0]);
 				QueueSpace.treeRoot.expand(false);
 			});
 

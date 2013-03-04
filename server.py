@@ -326,9 +326,9 @@ class DeviceChannel(SubscriptionChannel):
     """
 
     def reset_state(self, state):
-        devices, nodes, structure = state
+        devices, nodes = state
         _fixup_devices(devices,nodes)
-        self.state = devices, structure
+        self.state = devices 
 
     @classmethod
     def initial_state(cls, state):
@@ -407,7 +407,7 @@ class DeviceChannel(SubscriptionChannel):
         if self.state is None: self.state = {}
         for node in nodes:
             #print node
-            self.state[0][node['deviceID']]['nodes'][node['nodeID']] = node
+            self.state[node['deviceID']]['nodes'][node['nodeID']] = node
         # May want to do bandwidth limiting, an only send updates to big nodes
         # such as 2-D detector and ROI mask every minute rather than every
         # time they are updated.
@@ -437,6 +437,9 @@ class QueueChannel(SubscriptionChannel):
     complete queue.  A queue node looks like::
 
         node = {
+            "id": int,
+            "parentID": int,
+            "children": [node, ...],
             "status": {
                 "commandStr": string,
                 "errors": [string, ...],
@@ -444,23 +447,26 @@ class QueueChannel(SubscriptionChannel):
                 "metaState": string,
                 "state": "QUEUED|RUNNING|CHILDREN|FINISHED|SKIPPED",
                 }
-            "id": int,
-            "child": [node, ...],
-            }
+            },
+            "origin": int,
+
+    Queue path is a list of integers.
+
+    Queue status is "IDLE|STOPPING|BUSY|SUSPENDED|SUSPENDING|SHUTDOWN".
 
     Subscribers should expect the following events::
 
-       queue.on('added', function (nodes, parentID, siblingID) {})
+       queue.on('added', function (path, node) {})
            add the nodes and all its children as a child of the parent node
            after the sibling node, or at the beginning if sibling is 0.
-       queue.on('removed', function (nodeID) {})
+       queue.on('removed', function (path) {})
            remove the node
-       queue.on('removed children', function (nodeID) {})
-           remove all children of the node
-       queue.on('moved', function (nodeID, parentID, siblingID) {})
+       queue.on('moved', function (oldpath, newpath, node) {})
            remove the node and add it to parent after sibling
-       queue.on('changed', function (nodeID, status) {})
+       queue.on('changed', function (path, status) {})
            update the status of the node
+       queue.on('status', function (queue_status) {})
+           update the status of the queue
        queue.on('reset', function (node) {})
            replace the queue with the given queue
 
@@ -473,128 +479,79 @@ class QueueChannel(SubscriptionChannel):
     # authenticated connection.
     @sio.event
     @capture
-    def added(self, nodes, parentID, prevID):
+    def added(self, path, node):
         """
         Node added to the queue.  Forward the details to the
         clients.
         """
-        queue_add(self.state, nodes, parentID, prevID)
+        queue_add(self.state, path, node)
         #print "queue add",[n['id'] for n in nodes]
-        self.emit('added', nodes, parentID, prevID)
+        self.emit('added', path, node)
 
     @sio.event
     @capture
-    def removed(self, nodeIDs, parentID, index):
+    def removed(self, path, node):
         """
         Nodes removed from the queue.  Forward them to the clients.
         """
-        if len(nodeIDs) == 1:
-            #print "queue remove",nodeIDs[0]
-            queue_remove(self.state, nodeIDs[0])
-            self.emit('removed', nodeIDs[0])
-        else:
-            parent, index = queue_find(self.state, nodeIDs[0])
-            parent['child'] = []
-            #print "queue remove children",parent['id']
-            self.emit('removed_children', parent['id'])
+        #print "queue remove",nodeIDs[0]
+        queue_remove(self.state, path)
+        self.emit('removed', path)
 
     @sio.event
     @capture
-    def moved(self, nodeID, parentID, prevID):
+    def moved(self, old, new, node):
         """
         Nodes moved from the instrument.  Forward their names to the clients.
         """
         #print "queue move",nodeID,parentID,prevID
-        queue_move(nodeID, parentID, prevID)
-        self.emit('moved', nodeID, parentID, prevID)
+        queue_remove(self.state, old)
+        queue_add(self.state, new, node)
+        self.emit('moved', old, new, node)
 
     @sio.event
     @capture
-    def changed(self, nodeID, status):
+    def changed(self, path, nodeID, status):
         """
-        Node value or properties changed.  Forward the details to the clients.
+        Node state changed.  Forward the details to the clients.
         """
-        queue_update_status(self.state, nodeID, status)
+        queue_update(self.state, path, status)
         #print "queue change",nodeID
-        self.emit('changed', nodeID, status)
+        self.emit('changed', path, status)
 
-def queue_update_status(queue, nodeID, status):
+    @sio.event
+    @capture
+    def status(self, status):
+        """
+        Queue state changed.
+        """
+        self.state[1] = status 
+        self.emit('status', status)
+
+def queue_update(queue, path, status):
     """
     Update the status on a node.
     """
-    try:
-        parent, index = queue_find(queue, nodeID)
-        existing_node = parent['child'][index]
-        existing_node['status'] = status
-    except KeyError:
-        import pprint; pprint.pprint(queue)
-        print "could not find",nodeID
-        raise
+    root = queue[0]
+    for idx in path: root = root['children'][idx]
+    root['status'] = status
 
-def queue_move(queue, nodeID, parentID, prevID):
-    """
-    Move a node to a new position within the queue.
-    """
-    parent, index = queue_find(queue, nodeID)
-    node = parent['child'][index]
-    del parent['child'][index]
-    queue_add(queue, [node], parentID, prevID)
-
-def queue_remove(queue, nodeID):
+def queue_remove(queue, path):
     """
     Remove a set of nodes from the queue.
     """
-    parent, index = queue_find(queue, nodeID)
-    del parent['child'][index]
+    root = queue[0]
+    for idx in path[:-1]: root = root['children'][idx]
+    del root['children'][path[-1]]
 
-def queue_add(queue, nodes, parentID, prevID):
+def queue_add(queue, path, node):
     """
-    Add a node to the queue given its parent and elder sibling.
+    Add a node to the queue in a given position
     """
-    if parentID == 0:
-        parent = queue
-    else:
-        grand_parent, parent_index = queue_find(queue, parentID)
-        parent = grand_parent['child'][parent_index]
-    sibling_index = queue_find_elder_sibling(parent, prevID)
-    for i,node in enumerate(nodes):
-        parent['child'].insert(sibling_index+1+i, node)
+    root = queue[0]
+    for idx in path[:-1]: root = root['children'][idx]
+    root['children'].insert(path[-1], node)
 
-def queue_find(queue, nodeID):
-    """
-    Find nodeID within the queue.
-
-    Uses a reverse depth first search since most changes happen at the
-    near the end of the queue.
-
-    Returns the parent node and the index within the children.
-
-    Raise KeyError if the node is not found, or if node is the root node.
-    """
-    for index,node in reversed(list(enumerate(queue['child']))):
-        if node['id'] == nodeID:
-            return queue, index
-        try:
-            return queue_find(node, nodeID)
-        except KeyError:
-            pass
-    raise KeyError("Node %s is not found"%nodeID)
-
-def queue_find_elder_sibling(parent, siblingID):
-    """
-    Locate the index of the elder sibling within the children of the
-    parent node.
-
-    Return -1 if there is no elder sibling (i.e., if siblingID is 0).
-
-    Raise KeyError if the elder sibling is not in the list of children.
-    """
-    if siblingID == 0:
-        return -1
-    for index,node in enumerate(parent['child']):
-        if siblingID == node['id']:
-            return index
-    raise KeyError("Sibling node %s not found"%siblingID)
 
 # Socket.io handler class for the given channel
 CHANNELS = {

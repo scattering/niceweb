@@ -78,7 +78,7 @@ Ext.onReady(function () {
 
 
     GridSpace.device.on('connect', function () {
-        console.log("device connect");
+        //console.log("device connect");
         GridSpace.device.emit('subscribe', GridSpace.setDeviceModel);
     });
 
@@ -102,7 +102,7 @@ Ext.onReady(function () {
 
     GridSpace.setDeviceModel = function (data, structure) {
         structure = jQuery.parseJSON(structure);
-        console.log("device reset", data, structure);
+        //console.log("device reset", data, structure);
         GridSpace.dataArray = [];
         // TODO: change this to the device display heirarchy when it is available
         var deviceIDs = GridSpace.sorted_keys(data);
