@@ -130,7 +130,9 @@
                 $('#motor_target').attr('value', new_destination.toPrecision(4));
                 Controller.emit('move', [active_device.toString(), new_destination.toString()], false);
             }
-            
+            stopAll = function() {
+                Controller.emit('console', 'stop');
+            }
             
             function connect() {
                 var Instrument = jQuery.getUrlVar('instrument') ? jQuery.getUrlVar('instrument') : "BT4";
