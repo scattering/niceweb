@@ -268,6 +268,11 @@ class DataChannel(SubscriptionChannel):
         # will still want to store the individual detector frames so that we can
         # return them to the client on request..
         #print "data command",record['command']
+        if record['command'] == 'newdata':
+            # we want to reset the state if a 'newdata' command comes in during a scan.
+            pass
+        if record['command'] == 'newpoint':
+            self.in_datastream = True        
         if record['command'] == "Configure":
             self.state = []
         # Ignore intermediate counts; client can pull them off the device stream

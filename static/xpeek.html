@@ -28,7 +28,7 @@
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/heatmapRenderer.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/colorbarRenderer.js"></script>
 
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/plotting_api.js"></script>
+    <script type="text/javascript" src="plotting_api2.js"></script>
     <script type="text/javascript" src="http://drneutron.org/static/lib/plotting/jqplot/jqplot.FixedAspect.js"></script>
     <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactors_nonprototype.js"></script>
     <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactor_plugin_base.js"></script>
@@ -36,10 +36,19 @@
     <script type="text/javascript">
         window.onload = function() {
             series = new Object();
+            series.streams = {};
+            //series.columns = {};
+            //series.xydata = [];
             seriesdata = new Array();
             //data_ended = false; // trigger at the end of a data set.
             plot = null;
-            preferred_xaxis = ['A04', 'A03']; // make these the x-axis, if they are available
+            preferred_xaxis = ['A04', 'A03', 'A10', 'A08', 'A02', 'A01', 'QZ', 'QH', 'QK', 'QL']; // make these the x-axis, if they are available
+            for (var i=1; i<40; i++) {
+                var xa = 'A' + (i < 10 ? '0' : '') + i.toFixed();
+                if (preferred_xaxis.indexOf(xa) < 0) {
+                    preferred_xaxis.push(xa);
+                }
+            }
             in_datastream = false;
             remake_plot = false;
             xaxis = null;
@@ -70,75 +79,104 @@
                 remake_plot = true;
                 updatePlot(series, xaxis);
             }
-
-            var makePlot = function(series) {
-                plottable_data = {
-                    'type': '1d',
-                    'title': name,
-                    'options': {'axes': {'xaxis': {'label':'A4'}, 'yaxis': {'label':'Counts'}},'series': []},
-                    'clear_existing': true,
-                    'data': []
-                }
-                for (sername in series) {
-                    var ser = series[sername];
-                    if (ser.PT && ser.PT.length > 0) {
-                        plottable_data.options.series.push({'label': sername});
-                        var data = []
-                        for (var i=0; i<ser.PT.length; i++) {
-                            data.push([ser.PT[i], ser.A04]);
-                        }
-                        plottable_data.data.push(data);
-                    }
-                }
-                if (plottable_data.data.length > 0) {
-                    plot = plottingAPI([plottable_data], 'plot');
-                }
-                
-            }
             
                         
-            var updatePlot = function(series, xaxis) {
-                plottable_data = {
+            var updatePlot = function(series, xaxis, lineid, new_lin_xydata, new_log_xydata) {
+                var blank_plottable_data = {
                     'type': '1d',
                     'title': "XPeek data",
                     'options': {'axes': {'xaxis': {'label': xaxis}, 'yaxis': {'label':'Counts'}},'series': []},
                     'clear_existing': false,
+                    'transform': 'lin',
+                    'lin_data': [],
+                    'log_data': [],
                     'data': []
                 }
                 var plotdata = [];
-                var ser;
-                for (sername in series) {
-                    var serdata = [];
-                    ser = series[sername];
-                    for (var i=0; i<ser.PT.length; i++) {
-                        serdata.push([ser[xaxis][i], ser['DATA'][i]]);
-                    }
-                    plottable_data.data.push(jQuery.extend(true, [], serdata));
-                    plottable_data.options.series.push({'label': sername});
-                    plottable_data.title = String(ser.runid) + ' :: ' + String(ser.comment);
-                    plotdata.push(jQuery.extend(true, [], serdata));
-                }
+                //if (!('plottable_data' in series)) { series.plottable_data = blank_plottable_data; }
+                
                 if (remake_plot == true) {
-                    plottingAPI([plottable_data], 'plot');
-                    plot = plot1d;
+                    remake_plot = false;
+                    series.plottable_data = {
+                        'type': '1d',
+                        'title': "XPeek data",
+                        'options': {'axes': {'xaxis': {'label': xaxis}, 'yaxis': {'label':'Counts'}},'series': []},
+                        'clear_existing': false,
+                        'transform': 'lin',
+                        'lin_data': [],
+                        'log_data': [],
+                        'data': []
+                    }
+                    var ser;
+                    series.plottable_data.options.series = [];
+                    series.plottable_data.data = [];
+                    for (sername in series.streams) {
+                        //var serdata = [];
+                        ser = series.streams[sername];
+                        series.plottable_data.options.series.push({'label': sername});
+                        series.plottable_data.lin_data.push(ser.lin_xydata);
+                        series.plottable_data.log_data.push(ser.log_xydata);
+                        series.plottable_data.title = String(ser.runid) + ' :: ' + String(ser.comment);
+                    }
+                    
+                    series.plottable_data.data = series.plottable_data.lin_data;
+                    //console.log(series.plottable_data);
+                    
+                    plottingAPI([series.plottable_data], 'plot');
+                    //plot = plot1d;
                     //$('#plot')[0].innerHTML = "";
                     //plot = jQuery.jqplot('plot', plotdata, {cursor:{show: true, zoom:true}});
-                    remake_plot = false;
+                    
                 } else {
                     //console.log(plotdata.length, plot.series.length);
+                    /*
                     for (var j=0; j<plotdata.length; j++) {
                         plot.series[j].data = plotdata[j];
                         jQuery.extend(true, plot.data, plotdata);
                         //plot.drawSeries(j);
                         plot.replot();
+                        plot.resetAxesScale();
+                        plot.replot();
                     }
+                    */
+                    var active_series;
+                    for (var j=0; j<plot.series.length; j++) {
+                        if (plot1d.series[j].label == lineid) {
+                            active_series = plot1d.series[j];
+                            break;
+                        }
+                    }
+                    if (active_series == null) { console.log('series ' + lineid + ' not found.'); return; }
+                    //console.log(series.plottable_data);
+                    if (series.plottable_data.transform == 'log') {
+                        active_series._plotData.push(new_log_xydata);
+                        //active_series.data.push([new_xydata[0], Math.log(new_xydata[1])]);
+                    } else {
+                        active_series._plotData.push(new_lin_xydata);
+                        //active_series.data.push(new_xydata); 
+                    }
+                    //plot.data[j].push(new_xydata);
+                    
+                    var pd = series.plottable_data;
+                    // plot.data = (pd.transform == 'log') ? pd.log_data : pd.lin_data;
+                    if (plot1d.plugins.cursor._zoom.isZoomed) {
+                        plot1d.drawSeries(j);
+                    } else {
+                        plot1d.resetAxesScale();
+                        plot1d.replot();
+                    }
+                    //plot1d.drawSeries(j);
+                    // handle the error for not-found series here
                 }
             }
             
-            var getXAxis = function(state) {
+            var getXAxis = function(state, exclude_names) {
+                var exclude_names = (exclude_names == null) ? [] : exclude_names;
                 for (var i=0; i<preferred_xaxis.length; i++) {
                     var xaxis = preferred_xaxis[i];
-                    if (xaxis in state) { return xaxis }
+                    if ((xaxis in state) && (exclude_names.indexOf(xaxis) < 0)) { 
+                        return xaxis 
+                    }
                 }
                 return Object.keys(state)[0]
             }
@@ -146,43 +184,66 @@
             var addPoint = function(series, lineid, state) {
                 //var remake_plot = false; // flag to trigger calling jqplot() again.
                 //console.log('adding point: ', state, (lineid in series));
-                if (!(lineid in series)) { 
-                    series[lineid] = {};
-                    remake_plot = true; 
+                if (!(lineid in series.streams)) { 
+                    series.streams[lineid] = {};
+                    //remake_plot = true; 
                 }
-                var ser = series[lineid];
+                var ser = series.streams[lineid];
                 //console.log('ser: ', ser);
                 for (item in state) {
-                    if (!(item in ser)) { ser[item] = []; }
-                    ser[item].push(state[item]);
+                    if (!('columns' in ser)) { ser.columns = {}; }
+                    if (!(item in ser.columns)) { ser.columns[item] = []; }
+                    ser.columns[item].push(state[item]);
                 }
-                if (xaxis == null) { xaxis = getXAxis(state); }
+                if (xaxis == null) { xaxis = getXAxis(state, exclude_names); }
                 
-                if (in_datastream == true) { 
-                    updatePlot(series, xaxis);
+                var new_lin_xydata = [state[xaxis], state['DATA']];
+                var new_log_xydata = [state[xaxis], Math.log(state['DATA'])/Math.LN10];
+                
+                ser.lin_xydata.push(new_lin_xydata);
+                ser.log_xydata.push(new_log_xydata);
+                
+                if (in_datastream == true) {                  
+                    updatePlot(series, xaxis, lineid, new_lin_xydata, new_log_xydata);
                 }
             }    
 
             var processRecord = function(record) {
                 var lineid = record.lineid;
                 //console.log(record);
-                if (record.command == 'newdata') {
-                    if (in_datastream == true) {
+                if (record.command == 'Configure') {
+                    /*if (in_datastream == true) {
                         series = new Object();
-                        xaxis = null;
+                        series.streams = {};
+                        //xaxis = null;
+                        xaxis = record.primary;
                         in_datastream = false;
-                    }
+                    }*/
+                    
+                    series = new Object();
+                    series.streams = {};
+                    xaxis = null;
+                    exclude_names = [];
+                    //xaxis = record.primary;
+                    //in_datastream = false;
                     remake_plot = true;
-                    series[lineid] = new Object();
-                    series[lineid]['comment'] = record.comment;
-                    series[lineid]['runid'] = record.runid;
+                    
                     //console.log("runid:", record.runid, "comment:", record.comment);
+                } else if (record.command == 'newdata') {
+                    var ser = new Object();
+                    series.streams[lineid] = ser;
+                    ser.columns = {};
+                    ser.lin_xydata = [];
+                    ser.log_xydata = [];
+                    ser['comment'] = record.comment;
+                    ser['runid'] = record.runid;
+                    // do all this in "configure"?
                 } else if (record.command == 'enddata') {
                     data_ended = true;
                 } else if (record.command == 'newpoint') {
-                    in_datastream = true;
+                    //in_datastream = true;
                     addPoint(series, lineid, record.pointdata);
-                    //$('#metadata').innerHTML = "<b>ETA: </b>" + String(record.eta);
+                    $('#metadata').html("<b>ETA: </b>" + String(record.eta));
                     //jQuery.extend(true, series, newpoint);
                 } else { 
                     console.log("update data, unrecognized command: ",record); 

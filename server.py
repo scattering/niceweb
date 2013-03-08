@@ -11,7 +11,7 @@ import channels
 #from channels import ControlChannel, EventChannel, ConsoleChannel, DataChannel, DeviceChannel, QueueChannel
 from channels import CHANNELS
 
-from tornado import web
+from tornado import web, ioloop
 import tornadio2 as sio
 from tornadio2.router import HandshakeHandler, TornadioRouter, version_info, ioloop, DEFAULT_SETTINGS, PROTOCOLS
 from tornadio2 import persistent, polling, sessioncontainer, session, proto, preflight, stats
@@ -49,8 +49,9 @@ class RestHandler(web.RequestHandler):
     and translate this into a request for the current state on the
     device subscription for the bt4 instrument.
     """
+    CHANNELS = CHANNELS
     def get(self, instrument, channel):
-        channel_class = CHANNELS[channel]
+        channel_class = self.CHANNELS[channel]
         state = channel_class.get_restful_state(self.request, "/".join(("",instrument,channel)))
         self.write(state)
 
@@ -139,6 +140,7 @@ class RouterConnection(sio.SocketConnection):
     """
     Manage the top level socket IO connection.
     """
+    CHANNELS = CHANNELS
     def on_open(self, request):
         pass
         #print "opened connection",request
@@ -147,7 +149,7 @@ class RouterConnection(sio.SocketConnection):
         #print "closed"
     def get_endpoint(self, endpoint):
         """
-        Parse /insturment/channel into specific channel handlers.
+        Parse /instrument/channel into specific channel handlers.
         """
         try:
             _,instrument,channel = endpoint.split('/', 3)
@@ -166,13 +168,11 @@ DEFAULT_ROUTER = MyRouter(RouterConnection, handler=BaseHandler)
 class NICERepeater(object):
     """ system for serving a repeater for NICE data """
     def __init__(self,
-                channels=CHANNELS,
                 router=DEFAULT_ROUTER,
                 web_settings=WEB_SETTINGS,
                 index_handler=IndexHandler,
                 rest_handler=RestHandler):               
-                
-        self.channels = channels
+               
         self.router = router
         self.web_settings = web_settings
         self.index_handler = index_handler
@@ -193,9 +193,9 @@ class NICERepeater(object):
 
         # Create socket application
         self.app = web.Application(routes, **self.web_settings)
-
+        print self.web_settings
         # Server application
-        sio.SocketServer(self.app)
+        sio.SocketServer(self.app, auto_start=False)
 
 
 def usage():
@@ -261,3 +261,4 @@ if __name__ == "__main__":
     
     repeater = NICERepeater()
     repeater.serve()
+    ioloop.IOLoop.instance().start()
