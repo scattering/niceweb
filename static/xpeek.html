@@ -18,21 +18,21 @@
     <!-- <script type="text/javascript" src="/static/ext-4.1.1/bootstrap.js"></script> -->
     <!-- <script type="text/javascript" src="/static/ext-4.1.1/builds/ext-core-debug.js"></script> -->
     <!-- <script type="text/javascript" src="/static/ext-4.1.1/builds/ext-core.js"></script> -->
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jquery.jqplot.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.canvasTextRenderer.min.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.canvasAxisLabelRenderer.min.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.canvasAxisTickRenderer.min.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/src/jquery.jqplot.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/src/plugins/jqplot.canvasTextRenderer.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/src/plugins/jqplot.canvasAxisLabelRenderer.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/src/plugins/jqplot.canvasAxisTickRenderer.js"></script>
 	<script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jquery.jqplot.InteractiveLegend.js"></script>
-	<script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.mobile.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.cursor.js"></script>
+<!--	<script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.mobile.js"></script>-->
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/src/plugins/jqplot.cursor.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/heatmapRenderer.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/colorbarRenderer.js"></script>
 
     <script type="text/javascript" src="plotting_api2.js"></script>
     <script type="text/javascript" src="http://drneutron.org/static/lib/plotting/jqplot/jqplot.FixedAspect.js"></script>
-    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactors_nonprototype.js"></script>
-    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactor_plugin_base.js"></script>
-    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/rectangle_interactor_plugin.js"></script>
+<!--    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactors_nonprototype.js"></script>-->
+<!--    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactor_plugin_base.js"></script>-->
+<!--    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/rectangle_interactor_plugin.js"></script>-->
     <script type="text/javascript">
         window.onload = function() {
             series = new Object();
@@ -97,16 +97,7 @@
                 
                 if (remake_plot == true) {
                     remake_plot = false;
-                    series.plottable_data = {
-                        'type': '1d',
-                        'title': "XPeek data",
-                        'options': {'axes': {'xaxis': {'label': xaxis}, 'yaxis': {'label':'Counts'}},'series': []},
-                        'clear_existing': false,
-                        'transform': 'lin',
-                        'lin_data': [],
-                        'log_data': [],
-                        'data': []
-                    }
+                    
                     var ser;
                     series.plottable_data.options.series = [];
                     series.plottable_data.data = [];
@@ -224,9 +215,20 @@
                     series.streams = {};
                     xaxis = null;
                     exclude_names = [];
+                    series.plottable_data = {
+                        'type': '1d',
+                        'title': "XPeek data",
+                        'options': {'axes': {'xaxis': {'label': xaxis}, 'yaxis': {'label':'Counts'}},'series': []},
+                        'clear_existing': false,
+                        'transform': 'lin',
+                        'lin_data': [],
+                        'log_data': [],
+                        'data': []
+                    }
+                    jQuery.extend(true, series.plottable_data.options, record.plot_opts);
                     //xaxis = record.primary;
                     //in_datastream = false;
-                    remake_plot = true;
+                    
                     
                     //console.log("runid:", record.runid, "comment:", record.comment);
                 } else if (record.command == 'newdata') {
@@ -237,13 +239,14 @@
                     ser.log_xydata = [];
                     ser['comment'] = record.comment;
                     ser['runid'] = record.runid;
+                    remake_plot = true;
                     // do all this in "configure"?
                 } else if (record.command == 'enddata') {
                     data_ended = true;
                 } else if (record.command == 'newpoint') {
                     //in_datastream = true;
                     addPoint(series, lineid, record.pointdata);
-                    $('#metadata').html("<b>ETA: </b>" + String(record.eta));
+                    $('#extras').html("<b>ETA: </b>" + String(record.eta));
                     //jQuery.extend(true, series, newpoint);
                 } else { 
                     console.log("update data, unrecognized command: ",record); 
@@ -251,7 +254,7 @@
             }
 
             var Instrument = jQuery.getUrlVar('instrument') ? jQuery.getUrlVar('instrument') : "BT4";
-            $('#content').html('Loading...' + Instrument);
+            $('#plot').html('Loading...' + Instrument);
             var BaseURL = 'http://' + window.location.hostname + ':' + window.location.port;
             var Root = BaseURL + '/' +Instrument;
             document.title = Instrument + ' status';
@@ -270,7 +273,8 @@
 
 </head>
 <body>
-<div id="plot" style="width:700px;height:350px;">I am a plot</div>
+<div id="plot" style="width:700px;height:350px;"></div>
+<div id="extras" />
 <div id="metadata" />
 </body>
 </html>
