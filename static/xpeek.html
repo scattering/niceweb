@@ -65,7 +65,7 @@
             }
             
             var resetData = function(state) {     
-                console.log("reset data",state, state.records.length);
+                //console.log("reset data",state, state.records.length);
                 if (!('records' in state)) { 
                     //console.log('no records!'); return; 
                 }
@@ -99,6 +99,7 @@
                     remake_plot = false;
                     
                     var ser;
+                    series.plottable_data.options.axes.xaxis.label = xaxis;
                     series.plottable_data.options.series = [];
                     series.plottable_data.data = [];
                     for (sername in series.streams) {
@@ -186,7 +187,7 @@
                     if (!(item in ser.columns)) { ser.columns[item] = []; }
                     ser.columns[item].push(state[item]);
                 }
-                if (xaxis == null) { xaxis = getXAxis(state, exclude_names); }
+                if (xaxis == null) { xaxis = getXAxis(state); }
                 
                 var new_lin_xydata = [state[xaxis], state['DATA']];
                 var new_log_xydata = [state[xaxis], Math.log(state['DATA'])/Math.LN10];
