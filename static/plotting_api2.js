@@ -1,4 +1,4 @@
-var debug = true;
+var debug = false;
 var prevtype = null;
 var types = { lin: {
                 incr: function(i, step) { return i + step; },
