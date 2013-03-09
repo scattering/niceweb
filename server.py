@@ -195,7 +195,8 @@ class NICERepeater(object):
         self.app = web.Application(routes, **self.web_settings)
         print self.web_settings
         # Server application
-        sio.SocketServer(self.app, auto_start=False)
+        #sio.SocketServer(self.app, auto_start=False)
+        sio.SocketServer(self.app)
 
 
 def usage():
