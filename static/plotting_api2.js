@@ -4,13 +4,13 @@ var types = { lin: {
                 incr: function(i, step) { return i + step; },
                 step: function(min,max,n) { return (max-min)/n; },
                 index: function(value,min,step) { return Math.floor((value-min)/step); },
-                dist: function(r,min,max) { return min + (max - min) * r; },
+                dist: function(r,min,max) { return min + (max - min) * r; }
               },
               log: {
                 incr: function(i, step) { return Math.exp(Math.log(i) + Math.log(step)); },
                 step: function(min,max,n) { return Math.exp((Math.log(max)-Math.log(min))/n); },
                 index: function(step,min,value) { return Math.floor(Math.log((value/min)/step)); },
-                dist: function(r,min,max) { return Math.exp(Math.log(min) + Math.log(max / min) * r); },
+                dist: function(r,min,max) { return Math.exp(Math.log(min) + Math.log(max / min) * r); }
               }
             };
 var plots = [];
