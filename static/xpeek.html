@@ -26,6 +26,7 @@
 
     <script type="text/javascript" src="plotting_api2.js"></script>
     <script type="text/javascript" src="webdata_client.js"></script>
+    <script type="text/javascript" src="webdata_BT1_client.js"></script>
     <script type="text/javascript" src="http://drneutron.org/static/lib/plotting/jqplot/jqplot.FixedAspect.js"></script>
 <!--    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactors_nonprototype.js"></script>-->
 <!--    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactor_plugin_base.js"></script>-->
@@ -39,7 +40,12 @@
             document.title = Instrument + ' status';
             
             var dataChannel = new io.connect(Root + '/data');
-            w = new webData();
+            if (Instrument == "BT1") {
+                w = new webData_BT1();
+            } else {
+                w = new webData();
+            }
+            w.init();
             dataChannel.on('connect', function () {
                 dataChannel.emit('subscribe', function(state) { webData.prototype.resetData.call(w, state); });
             });

@@ -31,18 +31,20 @@ function cosPeak(x, params) {
     return params.FIT_P1 + params.FIT_P2 * Math.cos(x*params.FIT_P3 + params.FIT_P4);
 }
 
-webData = function(opts) {
+webData = function() {};
+webData.prototype = new Object();
+webData.prototype.constructor = webData;
+webData.prototype.init = function(opts) {
     this.fit_points = 101;
     this.preferred_xaxis = XAXIS_ORDER;
     this.trigger_remake = false;
+    this.plot_opts = {};
     jQuery.extend(true, this, opts);
     this.fit_functions = {
             "FP": gaussianPeak,
             "ISCAN": cosPeak
         }
 }
-webData.prototype = new Object();
-webData.prototype.constructor = webData;
 
 webData.prototype.resetData = function(state) {
     //console.log("reset data",state, state.records.length);
@@ -170,7 +172,7 @@ webData.prototype.processRecord = function(record) {
         //console.log('configure', record);
         this.series = new Series();
         exclude_names = [];
-        jQuery.extend(true, this.series.plottable_data.options, record.plot_opts);
+        jQuery.extend(true, this.series.plottable_data.options, this.plot_opts);
     } else if (record.command == 'newdata') {
         var ser = new Object();
         this.series.streams[lineid] = ser;
