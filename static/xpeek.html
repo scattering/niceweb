@@ -37,6 +37,7 @@
         window.onload = function() {
             series = new Object();
             series.streams = {};
+            FIT_POINTS = 101;
             //series.columns = {};
             //series.xydata = [];
             seriesdata = new Array();
@@ -198,8 +199,39 @@
                 if (in_datastream == true) {                  
                     updatePlot(series, xaxis, lineid, new_lin_xydata, new_log_xydata);
                 }
-            }    
-
+            }
+            
+            var gaussianPeak = function(x, params) {
+                var bkg = params.FIT_P1 + params.FIT_P2*x + params.FIT_P3 * x * x;
+                var peak = params.FIT_P4 * Math.exp( -((x-params.FIT_P5)*1.665109/params.FIT_P6)**2 );
+                return peak + bkg;
+            }
+            
+            var cosPeak = function(x, params) {
+                return self.FIT_P1 + self.FIT_P2 * Math.cos(x*params.FIT_P3 + params.FIT_P4);
+            }  
+            
+            var makeFitData = function(fields, xmin, xmax) {
+                var fit_ser = new Object();
+                fit_ser.columns = {};
+                fit_ser.lin_xydata = [];
+                fit_ser.log_xydata = [];
+                
+                var fit_functions = {
+                    "FP": gaussianPeak,
+                    "ISCAN": cosPeak
+                }
+                var fit_fn = fit_functions[fields.TYPE]
+                var range = xmax - xmin;
+                var stepsize = range / (FIT_POINTS - 1);
+                for (var i=0; i<FIT_POINTS; i++) {
+                    var x = xmin + stepsize * i;
+                    fit_ser.lin_xdata.push([x, fit_fn(x)]);
+                    fit_ser.log_xdata.push([x, Math.log(fit_fn(x)) / Math.LN10]); 
+                }
+                return fit_ser;
+            }
+            
             var processRecord = function(record) {
                 var lineid = record.lineid;
                 //console.log(record);
@@ -244,6 +276,17 @@
                     // do all this in "configure"?
                 } else if (record.command == 'enddata') {
                     data_ended = true;
+                    var peaktypes = ['FP', 'ISCAN'];
+                    if (peaktypes.indexOf(record.fields.TYPE) < 0) { 
+                        return 
+                    } else {
+                        var xdata = series.streams[lineid].columns[xaxis];
+                        var xmin = Math.min.apply(Math, xdata);
+                        var xmax = Math.max.apply(Math, xdata);
+                        var peak_ser = makeFitData(record.fields, xmin, xmax);                        
+                        series.streams[lineid + '_fit'] = peak_ser;
+                        remake_plot = true;
+                    }  
                 } else if (record.command == 'newpoint') {
                     //in_datastream = true;
                     addPoint(series, lineid, record.pointdata);
