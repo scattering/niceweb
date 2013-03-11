@@ -14,7 +14,7 @@ var types = { lin: {
               }
             };
 var plots = [];
-var plot = null; // starting with just one plot.
+//var plot = null; // starting with just one plot.
 
 function array_to_rgb(array) {
   return 'rgb(' + array[0] + ',' + array[1] + ',' + array[2] + ')';
@@ -26,7 +26,7 @@ function logTickFormatter(format, val) {
     return $.jqplot.DefaultTickFormatter(format, new_val)
 }
 
-function render1dplot(data, transform, plotid, plot_options) {
+function render1dplot(plot_obj, data, transform, plotid, plot_options) {
     
     var options = {
         title: data.title,
@@ -76,18 +76,18 @@ function render1dplot(data, transform, plotid, plot_options) {
     jQuery.extend(true, options, data.options);
     jQuery.extend(true, options, plot_options);
     $('#'+plotid).empty();
-    plot1d = $.jqplot(plotid, data.data, options);
-    plot1d.type = '1d';
+    plot_obj = $.jqplot(plotid, data.data, options);
+    plot_obj.type = '1d';
     function handleLegendClick(ev) {
         var series_num = ev.target.getAttribute('series_num') || 0;
         //var mplot = ev.data.plot;
-        var mplot = plot1d;
+        var mplot = plot_obj;
         mplot.series[series_num].show = !mplot.series[series_num].show;
         mplot.replot();
         //$('.jqplot-table-legend-label').click({plot: plot1d}, handleLegendClick);
     }
     //$('.jqplot-table-legend-label').click({plot: plot1d}, handleLegendClick);
-    plot1d.legend.handleClick = handleLegendClick;
+    plot_obj.legend.handleClick = handleLegendClick;
     
     function transformData(transform) {
         this._transform = transform;
@@ -116,9 +116,9 @@ function render1dplot(data, transform, plotid, plot_options) {
             this.replot();
         }
     }
-    plot1d.setTransform = transformData
-    plot1d.setTransform(transform);
-    return plot1d
+    plot_obj.setTransform = transformData
+    plot_obj.setTransform(transform);
+    return plot_obj
 };
 
 function renderImageData2(data, transform, plotid, plot_options) {
@@ -265,7 +265,7 @@ function update1dPlot(plot, toPlots, target_id, plotnum) {
         jQuery(document.getElementById('plot_selectnum')).append(jQuery('<option />', { value: i, text: 'dataset: ' + i + " " + label }));
     }
     
-    plot = render1dplot(toPlot, transform, 'plotgrid');
+    plot = render1dplot(plot, toPlot, transform, 'plotgrid');
 
     var selectedIndex;
     if ( transform == 'log') { selectedIndex = 1 }
@@ -283,7 +283,7 @@ function update1dPlot(plot, toPlots, target_id, plotnum) {
         var plotnum = selectnum[selectnum.selectedIndex].value;
         var toPlot = toPlots[plotnum];
         toPlot.transform = transform;
-        plot = render1dplot(toPlot, transform, 'plotgrid');
+        render1dplot(plot, toPlot, transform, 'plotgrid');
         if (toPlot.metadata) {
             var metadata_table = make_metadata_table(toPlot.metadata);
             document.getElementById('metadata').innerHTML = "";
@@ -429,7 +429,6 @@ function update2dPlot(plot, toPlots, target_id, plotnum) {
     return plot; 
 }
 
-plot = null;
 var plotregion = null;
 var toPlots_input = null;
 
@@ -449,6 +448,7 @@ function plottingAPI(toPlots, plotid_prefix) {
         console.log('toPlots:', toPlots)
     // assuming all plots in the list are of the same type!
     plot_type = toPlots[0].type
+    var plot;
     
     switch (plot_type) {
         case '2d':
@@ -488,6 +488,8 @@ function plottingAPI(toPlots, plotid_prefix) {
         default:
             alert('plotting of datatype "' + plot_type + '" is unsupported');
     }
+    
+    return plot;
 }
 
 function createNdPlotRegion(plotid, renderTo) {

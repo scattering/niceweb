@@ -14,10 +14,6 @@
     <script type="text/javascript" src="/static/socket.io-0.9.6/socket.io.min.js"></script>
     <!-- <script type="text/javascript" src="/static/socket.io-0.9.6/socket.io.js"></script> -->
     <!-- <script type="text/javascript" src="/static/socket.io/socket.io.js"></script> -->
-<!--    <script type="text/javascript" charset="utf-8" src="http://cdn.sencha.io/ext-4.1.1-gpl/ext-all.js"></script>-->
-    <!-- <script type="text/javascript" src="/static/ext-4.1.1/bootstrap.js"></script> -->
-    <!-- <script type="text/javascript" src="/static/ext-4.1.1/builds/ext-core-debug.js"></script> -->
-    <!-- <script type="text/javascript" src="/static/ext-4.1.1/builds/ext-core.js"></script> -->
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/jquery.jqplot.min.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasTextRenderer.min.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisLabelRenderer.min.js"></script>
@@ -29,274 +25,13 @@
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/colorbarRenderer.js"></script>
 
     <script type="text/javascript" src="plotting_api2.js"></script>
+    <script type="text/javascript" src="webdata_client.js"></script>
     <script type="text/javascript" src="http://drneutron.org/static/lib/plotting/jqplot/jqplot.FixedAspect.js"></script>
 <!--    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactors_nonprototype.js"></script>-->
 <!--    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactor_plugin_base.js"></script>-->
 <!--    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/rectangle_interactor_plugin.js"></script>-->
-    <script type="text/javascript">
+    <script type="text/javascript">      
         window.onload = function() {
-            series = new Object();
-            series.streams = {};
-            FIT_POINTS = 101;
-            //series.columns = {};
-            //series.xydata = [];
-            seriesdata = new Array();
-            //data_ended = false; // trigger at the end of a data set.
-            plot = null;
-            preferred_xaxis = ['A04', 'A03', 'A10', 'A08', 'A02', 'A01', 'QZ', 'QH', 'QK', 'QL']; // make these the x-axis, if they are available
-            for (var i=1; i<40; i++) {
-                var xa = 'A' + (i < 10 ? '0' : '') + i.toFixed();
-                if (preferred_xaxis.indexOf(xa) < 0) {
-                    preferred_xaxis.push(xa);
-                }
-            }
-            in_datastream = false;
-            remake_plot = false;
-            xaxis = null;
-            
-            var newPlottable = function(name, xlabel, ylabel) {
-                plottable_data = {
-                    'type': '1d',
-                    'title': name,
-                    'options': {'axes': {'xaxis': {'label':'A4'}, 'yaxis': {'label':'Counts'}},'series': []},
-                    'clear_existing': true,
-                    'data': []
-                }
-                return plottable_data
-            }
-            
-            var resetData = function(state) {     
-                //console.log("reset data",state, state.records.length);
-                if (!('records' in state)) { 
-                    //console.log('no records!'); return; 
-                }
-                xaxis = null;
-                for (var i=0; i < state.records.length; i++) {
-                    in_datastream = false; // don't turn this on until live.
-                    //console.log('resetData: processing record:', state.records[i]);
-                    processRecord(state.records[i]);
-                }
-                in_datastream = true;
-                remake_plot = true;
-                updatePlot(series, xaxis);
-            }
-            
-                        
-            var updatePlot = function(series, xaxis, lineid, new_lin_xydata, new_log_xydata) {
-                var blank_plottable_data = {
-                    'type': '1d',
-                    'title': "XPeek data",
-                    'options': {'axes': {'xaxis': {'label': xaxis}, 'yaxis': {'label':'Counts'}},'series': []},
-                    'clear_existing': false,
-                    'transform': 'lin',
-                    'lin_data': [],
-                    'log_data': [],
-                    'data': []
-                }
-                var plotdata = [];
-                //if (!('plottable_data' in series)) { series.plottable_data = blank_plottable_data; }
-                
-                if (remake_plot == true) {
-                    remake_plot = false;
-                    
-                    var ser;
-                    series.plottable_data.options.axes.xaxis.label = xaxis;
-                    series.plottable_data.options.series = [];
-                    series.plottable_data.data = [];
-                    for (sername in series.streams) {
-                        //var serdata = [];
-                        ser = series.streams[sername];
-                        series.plottable_data.options.series.push({'label': sername});
-                        series.plottable_data.lin_data.push(ser.lin_xydata);
-                        series.plottable_data.log_data.push(ser.log_xydata);
-                        series.plottable_data.title = String(ser.runid) + ' :: ' + String(ser.comment);
-                    }
-                    
-                    series.plottable_data.data = series.plottable_data.lin_data;
-                    //console.log(series.plottable_data);
-                    
-                    plottingAPI([series.plottable_data], 'plot');
-                    //plot = plot1d;
-                    //$('#plot')[0].innerHTML = "";
-                    //plot = jQuery.jqplot('plot', plotdata, {cursor:{show: true, zoom:true}});
-                    
-                } else {
-                    //console.log(plotdata.length, plot.series.length);
-                    /*
-                    for (var j=0; j<plotdata.length; j++) {
-                        plot.series[j].data = plotdata[j];
-                        jQuery.extend(true, plot.data, plotdata);
-                        //plot.drawSeries(j);
-                        plot.replot();
-                        plot.resetAxesScale();
-                        plot.replot();
-                    }
-                    */
-                    var active_series;
-                    for (var j=0; j<plot.series.length; j++) {
-                        if (plot1d.series[j].label == lineid) {
-                            active_series = plot1d.series[j];
-                            break;
-                        }
-                    }
-                    if (active_series == null) { console.log('series ' + lineid + ' not found.'); return; }
-                    //console.log(series.plottable_data);
-                    if (series.plottable_data.transform == 'log') {
-                        active_series._plotData.push(new_log_xydata);
-                        //active_series.data.push([new_xydata[0], Math.log(new_xydata[1])]);
-                    } else {
-                        active_series._plotData.push(new_lin_xydata);
-                        //active_series.data.push(new_xydata); 
-                    }
-                    //plot.data[j].push(new_xydata);
-                    
-                    var pd = series.plottable_data;
-                    // plot.data = (pd.transform == 'log') ? pd.log_data : pd.lin_data;
-                    if (plot1d.plugins.cursor._zoom.isZoomed) {
-                        plot1d.drawSeries(j);
-                    } else {
-                        plot1d.resetAxesScale();
-                        plot1d.replot();
-                    }
-                    //plot1d.drawSeries(j);
-                    // handle the error for not-found series here
-                }
-            }
-            
-            var getXAxis = function(state, exclude_names) {
-                var exclude_names = (exclude_names == null) ? [] : exclude_names;
-                for (var i=0; i<preferred_xaxis.length; i++) {
-                    var xaxis = preferred_xaxis[i];
-                    if ((xaxis in state) && (exclude_names.indexOf(xaxis) < 0)) { 
-                        return xaxis 
-                    }
-                }
-                return Object.keys(state)[0]
-            }
-              
-            var addPoint = function(series, lineid, state) {
-                //var remake_plot = false; // flag to trigger calling jqplot() again.
-                //console.log('adding point: ', state, (lineid in series));
-                if (!(lineid in series.streams)) { 
-                    series.streams[lineid] = {};
-                    //remake_plot = true; 
-                }
-                var ser = series.streams[lineid];
-                //console.log('ser: ', ser);
-                for (item in state) {
-                    if (!('columns' in ser)) { ser.columns = {}; }
-                    if (!(item in ser.columns)) { ser.columns[item] = []; }
-                    ser.columns[item].push(state[item]);
-                }
-                if (xaxis == null) { xaxis = getXAxis(state); }
-                
-                var new_lin_xydata = [state[xaxis], state['DATA']];
-                var new_log_xydata = [state[xaxis], Math.log(state['DATA'])/Math.LN10];
-                
-                ser.lin_xydata.push(new_lin_xydata);
-                ser.log_xydata.push(new_log_xydata);
-                
-                if (in_datastream == true) {                  
-                    updatePlot(series, xaxis, lineid, new_lin_xydata, new_log_xydata);
-                }
-            }
-            
-            var gaussianPeak = function(x, params) {
-                var bkg = params.FIT_P1 + params.FIT_P2*x + params.FIT_P3 * x * x;
-                var peak = params.FIT_P4 * Math.exp( -((x-params.FIT_P5)*1.665109/params.FIT_P6)**2 );
-                return peak + bkg;
-            }
-            
-            var cosPeak = function(x, params) {
-                return self.FIT_P1 + self.FIT_P2 * Math.cos(x*params.FIT_P3 + params.FIT_P4);
-            }  
-            
-            var makeFitData = function(fields, xmin, xmax) {
-                var fit_ser = new Object();
-                fit_ser.columns = {};
-                fit_ser.lin_xydata = [];
-                fit_ser.log_xydata = [];
-                
-                var fit_functions = {
-                    "FP": gaussianPeak,
-                    "ISCAN": cosPeak
-                }
-                var fit_fn = fit_functions[fields.TYPE]
-                var range = xmax - xmin;
-                var stepsize = range / (FIT_POINTS - 1);
-                for (var i=0; i<FIT_POINTS; i++) {
-                    var x = xmin + stepsize * i;
-                    fit_ser.lin_xdata.push([x, fit_fn(x)]);
-                    fit_ser.log_xdata.push([x, Math.log(fit_fn(x)) / Math.LN10]); 
-                }
-                return fit_ser;
-            }
-            
-            var processRecord = function(record) {
-                var lineid = record.lineid;
-                //console.log(record);
-                if (record.command == 'Configure') {
-                    /*if (in_datastream == true) {
-                        series = new Object();
-                        series.streams = {};
-                        //xaxis = null;
-                        xaxis = record.primary;
-                        in_datastream = false;
-                    }*/
-                    
-                    series = new Object();
-                    series.streams = {};
-                    xaxis = null;
-                    exclude_names = [];
-                    series.plottable_data = {
-                        'type': '1d',
-                        'title': "XPeek data",
-                        'options': {'axes': {'xaxis': {'label': xaxis}, 'yaxis': {'label':'Counts'}},'series': []},
-                        'clear_existing': false,
-                        'transform': 'lin',
-                        'lin_data': [],
-                        'log_data': [],
-                        'data': []
-                    }
-                    jQuery.extend(true, series.plottable_data.options, record.plot_opts);
-                    //xaxis = record.primary;
-                    //in_datastream = false;
-                    
-                    
-                    //console.log("runid:", record.runid, "comment:", record.comment);
-                } else if (record.command == 'newdata') {
-                    var ser = new Object();
-                    series.streams[lineid] = ser;
-                    ser.columns = {};
-                    ser.lin_xydata = [];
-                    ser.log_xydata = [];
-                    ser['comment'] = record.comment;
-                    ser['runid'] = record.runid;
-                    remake_plot = true;
-                    // do all this in "configure"?
-                } else if (record.command == 'enddata') {
-                    data_ended = true;
-                    var peaktypes = ['FP', 'ISCAN'];
-                    if (peaktypes.indexOf(record.fields.TYPE) < 0) { 
-                        return 
-                    } else {
-                        var xdata = series.streams[lineid].columns[xaxis];
-                        var xmin = Math.min.apply(Math, xdata);
-                        var xmax = Math.max.apply(Math, xdata);
-                        var peak_ser = makeFitData(record.fields, xmin, xmax);                        
-                        series.streams[lineid + '_fit'] = peak_ser;
-                        remake_plot = true;
-                    }  
-                } else if (record.command == 'newpoint') {
-                    //in_datastream = true;
-                    addPoint(series, lineid, record.pointdata);
-                    $('#extras').html("<b>ETA: </b>" + String(record.eta));
-                    //jQuery.extend(true, series, newpoint);
-                } else { 
-                    console.log("update data, unrecognized command: ",record); 
-                }
-            }
-
             var Instrument = jQuery.getUrlVar('instrument') ? jQuery.getUrlVar('instrument') : "BT4";
             $('#plot').html('Loading...' + Instrument);
             var BaseURL = 'http://' + window.location.hostname + ':' + window.location.port;
@@ -304,12 +39,12 @@
             document.title = Instrument + ' status';
             
             var dataChannel = new io.connect(Root + '/data');
+            w = new webData();
             dataChannel.on('connect', function () {
-                //console.log("data connect");
-                dataChannel.emit('subscribe', resetData);
+                dataChannel.emit('subscribe', function(state) { webData.prototype.resetData.call(w, state); });
             });
-            dataChannel.on('reset', resetData);
-            dataChannel.on('record', processRecord);
+            dataChannel.on('reset', function(state) { webData.prototype.resetData.call(w, state); });
+            dataChannel.on('record', function(record) { webData.prototype.processRecord.call(w, record); });
         }
     </script>
     <script src="/static/geturlvars.js"></script>
