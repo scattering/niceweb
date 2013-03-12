@@ -15,8 +15,8 @@ webData_BT1.prototype.init = function(opts) {
     this.trigger_remake = false;
     this.plot_opts = {
         "legend": {"show": false},
-        "seriesDefaults": {"markerOptions": {
-            "size": 4,
+        "seriesDefaults": {
+            "markerOptions": {"size": 4 },
             "lineWidth": 1}}
     };
     jQuery.extend(true, this, opts);
