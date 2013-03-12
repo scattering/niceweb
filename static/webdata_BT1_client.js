@@ -17,7 +17,7 @@ webData_BT1.prototype.init = function(opts) {
         "legend": {"show": false},
         "seriesDefaults": {
             "markerOptions": {"size": 4 },
-            "lineWidth": 1}}
+            "lineWidth": 1}
     };
     jQuery.extend(true, this, opts);
     this.fit_functions = {
