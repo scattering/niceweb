@@ -50,7 +50,7 @@
             }
             w.init();
             dataChannel.on('connect', function () {
-                dataChannel.emit('subscribe', function(state) { webData.prototype.resetData.call(w, state); });
+                dataChannel.emit('subscribe', function(state) { w.__proto__.resetData.call(w, state); });
             });
             dataChannel.on('reset', function(state) { webData.prototype.resetData.call(w, state); });
             dataChannel.on('record', function(record) { webData.prototype.processRecord.call(w, record); });
