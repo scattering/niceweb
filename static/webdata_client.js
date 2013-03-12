@@ -199,7 +199,7 @@ webData.prototype.processRecord = function(record) {
     } else if (record.command == 'newpoint') {
         //in_datastream = true;
         this.addPoint(lineid, record.pointdata);
-        $('#extras').html("<b>ETA: </b>" + String(record.eta));
+        if ('eta' in record) { $('#extras').html("<b>ETA: </b>" + String(record.eta)); }
     } else { 
         console.log("update data, unrecognized command: ",record); 
     }
