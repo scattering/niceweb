@@ -50,6 +50,7 @@ webData_BT1.prototype.processRecord = function(record) {
             ser.log_xydata = [];
             ser['comment'] = record.comment;
             ser['runid'] = record.runid;
+            ser.plot_opts = {label: new_lineid}
         }
         this.trigger_remake = true;
         // do all this in "configure"?
