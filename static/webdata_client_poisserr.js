@@ -75,10 +75,10 @@ webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
     if (active_series == null) { console.log('series ' + lineid + ' not found.'); return; }
     if (this.series.plottable_data.transform == 'log') {
         active_series._plotData.push([new_x, Math.log(new_y) / Math.LN10]);
-        active_err._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: err.yupper, ylower: err.ylower}]);
+        active_err._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: log_err.yupper, ylower: log_err.ylower}]);
     } else {
         active_series._plotData.push([new_x, new_y]);
-        active_err._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: log_err.yupper, ylower: log_err.ylower}]);
+        active_err._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: err.yupper, ylower: err.ylower}]);
     }
                 
     if (plot.plugins.cursor._zoom.isZoomed) {
