@@ -75,7 +75,7 @@ webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
         active_err._plotData.push([new_x, new_y, {yerr: [log_err.lo, log_err.hi]}]);
     } else {
         active_series._plotData.push([new_x, new_y]);
-        active_err._plotData.push([new_x, new_y, {yerr: [err.lo, err.hi]});
+        active_err._plotData.push([new_x, new_y, {yerr: [err.lo, err.hi]}]);
     }
                 
     if (plot.plugins.cursor._zoom.isZoomed) {
