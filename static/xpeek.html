@@ -18,20 +18,18 @@
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasTextRenderer.min.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisLabelRenderer.min.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisTickRenderer.min.js"></script>
-	<script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jquery.jqplot.InteractiveLegend.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.mobile.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.cursor.min.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/heatmapRenderer.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/colorbarRenderer.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.errorbarRenderer.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.InteractiveLegend.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.FixedAspect.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.touchEvents.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.heatmapRenderer.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.colorbarRenderer.js"></script>
 
     <script type="text/javascript" src="plotting_api2.js"></script>
     <script type="text/javascript" src="webdata_client.js"></script>
     <script type="text/javascript" src="webdata_BT1_client.js"></script>
     <script type="text/javascript" src="webdata_NG7_client.js"></script>
-    <script type="text/javascript" src="http://drneutron.org/static/lib/plotting/jqplot/jqplot.FixedAspect.js"></script>
-<!--    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactors_nonprototype.js"></script>-->
-<!--    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactor_plugin_base.js"></script>-->
-<!--    <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/rectangle_interactor_plugin.js"></script>-->
     <script type="text/javascript">      
         window.onload = function() {
             var Instrument = jQuery.getUrlVar('instrument') ? jQuery.getUrlVar('instrument') : "BT4";
