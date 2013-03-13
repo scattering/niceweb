@@ -78,7 +78,7 @@ webData.prototype.remakePlot = function() {
     series.plottable_data.data = series.plottable_data.lin_data;
     
     //this.plot = plottingAPI([series.plottable_data], 'plot');
-    this.plot = this.update1dPlot([series.plottable_data], this.series.plottable_data.transform, 'plot', 0);
+    this.plot = this.update1dPlot([series.plottable_data], 'plot', 0);
 }
 
 webData.prototype.updatePlot = function(lineid, new_x, new_y) {
@@ -283,7 +283,7 @@ webData.prototype.render1dplot = function(data, transform, plotid, plot_options)
         type: '1d'
     };
     
-    jQuery.extend(true, options, this.plot_opts);
+    jQuery.extend(true, options, data.options);
     jQuery.extend(true, options, plot_options);
     $('#'+plotid).empty();
     var plot_obj = $.jqplot(plotid, data.data, options);
@@ -298,37 +298,35 @@ webData.prototype.render1dplot = function(data, transform, plotid, plot_options)
     }
     //$('.jqplot-table-legend-label').click({plot: plot1d}, handleLegendClick);
     plot_obj.legend.handleClick = handleLegendClick;
-    
-    function transformData(transform) {
-        this._transform = transform;
-        if (transform == 'log') {
-            for (var i=0; i<this.series.length; i++) {
-                var pd = this.series[i]._plotData;
-                //var sd = this.series[i].data;
-                var d = this.data[i];
-                for (var j=0; j<pd.length; j++) {
-                    pd[j][1] = d[j][1]>0 ? Math.log(d[j][1]) / Math.LN10 : null;
-                }
-            }
-            this.axes.yaxis.resetScale();
-            this.replot();
-        } else { // transform == 'lin'
-            for (var i=0; i<this.series.length; i++) {
-                var pd = this.series[i]._plotData;
-                var d = this.data[i];
-                for (var j=0; j<pd.length; j++) {
-                    pd[j][1] = d[j][1];
-                }
-            }
-            this.axes.yaxis.resetScale();
-            this.replot();
-        }
-    }
-    plot_obj.setTransform = transformData
+    plot_obj.setTransform = this.transformData
     plot_obj.setTransform(transform);
     return plot_obj
 };
 
+webData.prototype.transformData = function(transform) {
+    this._transform = transform;
+    if (transform == 'log') {
+        for (var i=0; i<this.series.length; i++) {
+            var pd = this.series[i]._plotData;
+            var d = this.data[i];
+            for (var j=0; j<pd.length; j++) {
+                pd[j][1] = d[j][1]>0 ? Math.log(d[j][1]) / Math.LN10 : null;
+            }
+        }
+        this.axes.yaxis.resetScale();
+        this.replot();
+    } else { // transform == 'lin'
+        for (var i=0; i<this.series.length; i++) {
+            var pd = this.series[i]._plotData;
+            var d = this.data[i];
+            for (var j=0; j<pd.length; j++) {
+                pd[j][1] = d[j][1];
+            }
+        }
+        this.axes.yaxis.resetScale();
+        this.replot();
+    }
+}
 
 
 webData.prototype.update1dPlot = function(toPlots, target_id, plotnum) {

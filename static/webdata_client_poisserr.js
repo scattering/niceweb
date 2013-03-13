@@ -49,13 +49,12 @@ function getLogPoissonUncertainty(y) {
     }
 }   
 
-function transformPoissErrData(transform) {
+webData_poisserr.prototype.transformData = function(transform) {
     this._transform = transform;
     var new_x, new_y, err;
     if (transform == 'log') {
         for (var i=0; i<this.series.length; i++) {
             var pd = this.series[i]._plotData;
-            //var sd = this.series[i].data;
             var d = this.data[i];
             for (var j=0; j<pd.length; j++) {
                 new_y = d[j][1];
@@ -70,7 +69,6 @@ function transformPoissErrData(transform) {
     } else { // transform == 'lin'
         for (var i=0; i<this.series.length; i++) {
             var pd = this.series[i]._plotData;
-            //var sd = this.series[i].data;
             var d = this.data[i];
             for (var j=0; j<pd.length; j++) {
                 new_y = d[j][1];
@@ -85,11 +83,12 @@ function transformPoissErrData(transform) {
     }
 }
 
-webData_poisserr.prototype.remakePlot = function() {
+/*webData_poisserr.prototype.remakePlot = function() {
     webData.prototype.remakePlot.call(this);
     this.plot.setTransform = transformPoissErrData;
     this.plot.setTransform(this.series.plottable_data.transform);
 }
+*/
 
 webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
     if (this.trigger_remake == true) {
