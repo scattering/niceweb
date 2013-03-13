@@ -161,7 +161,7 @@ webData_poisserr.prototype.processRecord = function(record) {
         err_ser['runid'] = record.runid;
         err_ser.plot_opts = {
             renderer: jQuery.jqplot.errorbarRenderer,
-            rendererOptions: { errorBar: true, /*bodyWidth: 1, wickColor: 'red', openColor: 'yellow', closeColor: 'blue'*/ } });
+            rendererOptions: { errorBar: true, /*bodyWidth: 1, wickColor: 'red', openColor: 'yellow', closeColor: 'blue'*/ },
             label: err_label}
         this.trigger_remake = true;
         // do all this in "configure"?
