@@ -49,6 +49,47 @@ function getLogPoissonUncertainty(y) {
     }
 }   
 
+function transformPoissErrData(transform) {
+    this._transform = transform;
+    var new_x, new_y, err;
+    if (transform == 'log') {
+        for (var i=0; i<this.series.length; i++) {
+            var pd = this.series[i]._plotData;
+            //var sd = this.series[i].data;
+            var d = this.data[i];
+            for (var j=0; j<pd.length; j++) {
+                new_y = d[j][1];
+                new_x = d[j][0];
+                err = getLogPoissonUncertainty(new_y);
+                pd[j][1] = new_y > 0 ? Math.log(new_y) / Math.LN10 : null;
+                pd[j][2] = {xupper: new_x, xlower: new_x, yupper: err.yupper, ylower: err.ylower};
+            }
+        }
+        this.axes.yaxis.resetScale();
+        this.replot();
+    } else { // transform == 'lin'
+        for (var i=0; i<this.series.length; i++) {
+            var pd = this.series[i]._plotData;
+            //var sd = this.series[i].data;
+            var d = this.data[i];
+            for (var j=0; j<pd.length; j++) {
+                new_y = d[j][1];
+                new_x = d[j][0];
+                err = getPoissonUncertainty(new_y);
+                pd[j][1] = new_y;
+                pd[j][2] = {xupper: new_x, xlower: new_x, yupper: err.yupper, ylower: err.ylower};
+            }
+        }
+        this.axes.yaxis.resetScale();
+        this.replot();
+    }
+}
+
+webData_poisserr.prototype.remakePlot = function() {
+    webData.prototype.remakePlot.call(this);
+    this.plot.setTransform = transformPoissErrData;
+    this.plot.setTransform(this.series.plottable_data.transform);
+}
 
 webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
     if (this.trigger_remake == true) {
