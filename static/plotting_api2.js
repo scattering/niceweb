@@ -283,7 +283,7 @@ function update1dPlot(plot, toPlots, target_id, plotnum) {
         var plotnum = selectnum[selectnum.selectedIndex].value;
         var toPlot = toPlots[plotnum];
         toPlot.transform = transform;
-        render1dplot(plot, toPlot, transform, 'plotgrid');
+        plot = render1dplot(plot, toPlot, transform, 'plotgrid');
         if (toPlot.metadata) {
             var metadata_table = make_metadata_table(toPlot.metadata);
             document.getElementById('metadata').innerHTML = "";
