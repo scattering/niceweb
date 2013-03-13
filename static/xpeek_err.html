@@ -1,0 +1,72 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>XPeekWeb</title>
+    
+<!--    <link rel="stylesheet" type="text/css" href="/static/site.css" /> -->
+    <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/themes/start/jquery-ui.css"
+    type="text/css" rel="Stylesheet" />
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js" type="text/javascript"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.2/jquery-ui.min.js" type="text/javascript"></script>
+<!--    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.js"></script>-->
+    <!--<script type="text/javascript" src="/static/socket.io-client/dist/socket.io.min.js"></script> -->
+    <script type="text/javascript" src="/static/socket.io-0.9.6/socket.io.min.js"></script>
+    <!-- <script type="text/javascript" src="/static/socket.io-0.9.6/socket.io.js"></script> -->
+    <!-- <script type="text/javascript" src="/static/socket.io/socket.io.js"></script> -->
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/jquery.jqplot.min.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasTextRenderer.min.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisLabelRenderer.min.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisTickRenderer.min.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.cursor.min.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.errorbarRenderer.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.InteractiveLegend.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.FixedAspect.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.touchEvents.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.heatmapRenderer.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.colorbarRenderer.js"></script>
+
+    <script type="text/javascript" src="plotting_api2.js"></script>
+    <script type="text/javascript" src="webdata_client.js"></script>
+    <script type="text/javascript" src="webdata_client_poisserr.js"></script>
+    <script type="text/javascript" src="webdata_BT1_client.js"></script>
+    <script type="text/javascript" src="webdata_NG7_client.js"></script>
+    <script type="text/javascript">      
+        window.onload = function() {
+            var Instrument = jQuery.getUrlVar('instrument') ? jQuery.getUrlVar('instrument') : "BT4";
+            $('#plot').html('Loading...' + Instrument);
+            var BaseURL = 'http://' + window.location.hostname + ':' + window.location.port;
+            var Root = BaseURL + '/' +Instrument;
+            document.title = Instrument + ' status';
+            
+            var dataChannel = new io.connect(Root + '/data');
+            if (Instrument == "BT1") {
+                w = new webData_BT1();
+            } else if (Instrument == "NG7") {
+                w = new webData_NG7();
+            } else {
+                w = new webData_poisserr();
+            }
+            w.init();
+            dataChannel.on('connect', function () {
+                dataChannel.emit('subscribe', function(state) { w.__proto__.resetData.call(w, state); });
+            });
+            dataChannel.on('reset', function(state) { w.__proto__.resetData.call(w, state); });
+            dataChannel.on('record', function(record) { w.__proto__.processRecord.call(w, record); });
+        }
+    </script>
+    <script src="/static/geturlvars.js"></script>
+    <style type="text/css">
+        div { 
+		        user-select: none; 
+		        -webkit-user-select: none; 
+		        -moz-user-select: none;
+		    }
+    </style>
+</head>
+<body>
+<div id="plot" style="width:700px;height:350px;"></div>
+<div id="extras" />
+<div id="metadata" />
+</body>
+</html>

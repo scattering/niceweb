@@ -51,7 +51,7 @@ webData.prototype.resetData = function(state) {
     if (!('records' in state)) { 
         //console.log('no records!'); return; 
     }
-    this.xaxis = null;
+    //this.xaxis = null;
     for (var i=0; i < state.records.length; i++) {
         this.in_datastream = false; // don't turn this on until live.
         this.processRecord(state.records[i]);
