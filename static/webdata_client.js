@@ -38,7 +38,6 @@ webData.prototype.init = function(opts) {
     this.fit_points = 101;
     this.preferred_xaxis = XAXIS_ORDER;
     this.trigger_remake = false;
-    this.plot_opts = {};
     jQuery.extend(true, this, opts);
     this.fit_functions = {
             "FP": gaussianPeak,

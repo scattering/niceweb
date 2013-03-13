@@ -9,10 +9,8 @@ webData_BT1.prototype = new webData();
 webData_BT1.prototype.constructor = webData_BT1;
 
 webData_BT1.prototype.init = function(opts) {
+    webData.prototype.init.call(this, opts);
     this.detectors = 32;
-    this.fit_points = 101;
-    this.preferred_xaxis = XAXIS_ORDER;
-    this.trigger_remake = false;
     this.plot_opts = {
         "legend": {"show": false},
         "seriesDefaults": {
@@ -20,10 +18,6 @@ webData_BT1.prototype.init = function(opts) {
             "lineWidth": 1}
     };
     jQuery.extend(true, this, opts);
-    this.fit_functions = {
-            "FP": gaussianPeak,
-            "ISCAN": cosPeak
-        }
     this.detector_spacing = 5.0;
     this.BT1_scale = [
         2.700,  2.479,  2.827,  2.483,  2.260,  2.347,  2.011,  1.749,
