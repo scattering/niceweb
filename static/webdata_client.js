@@ -314,6 +314,7 @@ webData.prototype.transformData = function(transform) {
             }
         }
         this.axes.yaxis.resetScale();
+        this.axes.yaxis.labelOptions.label = 'Log₁₀' + String(this.options.axes.yaxis.label);
         this.replot();
     } else { // transform == 'lin'
         for (var i=0; i<this.series.length; i++) {
@@ -324,6 +325,7 @@ webData.prototype.transformData = function(transform) {
             }
         }
         this.axes.yaxis.resetScale();
+        this.axis.yaxis.labelOptions.label = String(this.options.axes.yaxis.label);
         this.replot();
     }
 }
