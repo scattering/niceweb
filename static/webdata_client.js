@@ -69,7 +69,7 @@ webData.prototype.remakePlot = function() {
     for (sername in series.streams) {
         //var serdata = [];
         ser = series.streams[sername];
-        series.plottable_data.options.series.push({'label': sername});
+        series.plottable_data.options.series.push(ser.plot_opts);
         series.plottable_data.lin_data.push(ser.lin_xydata);
         series.plottable_data.log_data.push(ser.log_xydata);
         series.plottable_data.title = String(ser.runid) + ' :: ' + String(ser.comment);
@@ -180,6 +180,7 @@ webData.prototype.processRecord = function(record) {
         ser.log_xydata = [];
         ser['comment'] = record.comment;
         ser['runid'] = record.runid;
+        ser.plot_opts = {label: lineid}
         this.trigger_remake = true;
         // do all this in "configure"?
     } else if (record.command == 'enddata') {

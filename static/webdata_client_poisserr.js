@@ -47,6 +47,7 @@ function getLogPoissonUncertainty(y) {
     }
 }   
 
+
 webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
     if (this.trigger_remake == true) {
         this.trigger_remake = false;
@@ -143,6 +144,9 @@ webData_poisserr.prototype.processRecord = function(record) {
         ser.log_xydata = [];
         ser['comment'] = record.comment;
         ser['runid'] = record.runid;
+        ser.plot_opts = {
+            renderer: jQuery.jqplot.LineRenderer,
+            label: lineid}
         
         var err_ser = new Object();
         var err_label = getErrLabel(lineid);
@@ -152,6 +156,9 @@ webData_poisserr.prototype.processRecord = function(record) {
         err_ser.log_xydata = [];
         err_ser['comment'] = record.comment;
         err_ser['runid'] = record.runid;
+        err_ser.plot_opts = {
+            renderer: jQuery.jqplot.errorbarRenderer,
+            label: err_label}
         this.trigger_remake = true;
         // do all this in "configure"?
     } else if (record.command == 'enddata') {
