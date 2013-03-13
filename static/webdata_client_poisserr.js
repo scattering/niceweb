@@ -64,7 +64,7 @@ webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
         }
     }
     for (var k=0; k<plot.series.length; k++) {
-        if (plot.series[k].label == err_label)) {
+        if (plot.series[k].label == err_label) {
             active_err = plot.series[k];
             break;
         }
