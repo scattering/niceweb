@@ -242,8 +242,8 @@ function update1dPlot(plot, toPlots, target_id, plotnum) {
                     plot.replot();}
             });
         }
-        plot = null;
-        plot1d = null;
+        //plot = null;
+        //plot1d = null;
     }
     
     var plotnum = plotnum || 0;
