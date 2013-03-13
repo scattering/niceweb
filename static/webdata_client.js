@@ -199,7 +199,10 @@ webData.prototype.processRecord = function(record) {
     } else if (record.command == 'newpoint') {
         //in_datastream = true;
         this.addPoint(lineid, record.pointdata);
-        if ('eta' in record) { $('#extras').html("<b>ETA: </b>" + String(record.eta)); }
+        if ('eta' in record) { $('#metadata').html("<b>ETA: </b>" + String(record.eta)); }
+    } else if (record.command == 'reset') {
+        //in_datastream = true;
+        this.resetData(record.records);
     } else { 
         console.log("update data, unrecognized command: ",record); 
     }
