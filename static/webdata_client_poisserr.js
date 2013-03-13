@@ -75,6 +75,7 @@ webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
     if (active_series == null) { console.log('series ' + lineid + ' not found.'); return; }
     if (this.series.plottable_data.transform == 'log') {
         active_series._plotData.push([new_x, Math.log(new_y) / Math.LN10]);
+        var err_point = [new_x, new_y, {xupper: new_x, xlower: new_x, yupper: err.upper, ylower: err.lower}];
         active_err._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: err.upper, ylower: err.lower}]);
     } else {
         active_series._plotData.push([new_x, new_y]);
@@ -160,6 +161,7 @@ webData_poisserr.prototype.processRecord = function(record) {
         err_ser['runid'] = record.runid;
         err_ser.plot_opts = {
             renderer: jQuery.jqplot.errorbarRenderer,
+            rendererOptions: { errorBar: true, /*bodyWidth: 1, wickColor: 'red', openColor: 'yellow', closeColor: 'blue'*/ } });
             label: err_label}
         this.trigger_remake = true;
         // do all this in "configure"?
