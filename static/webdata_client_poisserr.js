@@ -33,17 +33,19 @@ function getPoissonUncertainty(y) {
     8 5.627719 11.372281 0.682607
     9 6.458619 12.541381 0.682624
     */
-    return {hi: 0.5+Math.sqrt(y+0.25), lo: -0.5+Math.sqrt(y+0.25)};
-    
+    var hi =  0.5+Math.sqrt(y+0.25);
+    var lo = -0.5+Math.sqrt(y+0.25);
+    return {yupper: y+hi, ylower: y-lo, hi: hi, lo: lo};
 }
 
 function getLogPoissonUncertainty(y) {
     // apply small offset to keep log(zero) from being -infinity
     // we'll make it -1 instead, just for kicks.
-    if (y <= 0) { return {hi: 0, lo: -1}}
+    if (y <= 0) { return {ylower: 0, yupper: -1}}
     else { 
-        var err = getPoissonUncertainty(y);
-        return {hi: Math.log(err.hi)/Math.LN10, lo: Math.log(err.lo)/Math.LN10}
+        var hi =  0.5+Math.sqrt(y+0.25);
+        var lo = -0.5+Math.sqrt(y+0.25);
+        return {yupper: Math.log(y+hi)/Math.LN10, ylower: Math.log(y-lo)/Math.LN10}
     }
 }   
 
@@ -73,10 +75,10 @@ webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
     if (active_series == null) { console.log('series ' + lineid + ' not found.'); return; }
     if (this.series.plottable_data.transform == 'log') {
         active_series._plotData.push([new_x, Math.log(new_y) / Math.LN10]);
-        active_err._plotData.push([new_x, new_y, {xerr:0, yerr: [log_err.lo, log_err.hi]}]);
+        active_err._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: err.upper, ylower: err.lower}]);
     } else {
         active_series._plotData.push([new_x, new_y]);
-        active_err._plotData.push([new_x, new_y, {xerr:0, yerr: [err.lo, err.hi]}]);
+        active_err._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: log_err.upper, ylower: log_err.lower}]);
     }
                 
     if (plot.plugins.cursor._zoom.isZoomed) {
@@ -122,7 +124,7 @@ webData_poisserr.prototype.addPoint = function(lineid, state) {
     
     var err_ser = series.streams[err_label];
     err_ser.lin_xydata.push([new_x, new_y, {xerr:0, yerr: [new_err.lo, new_err.hi]}]);
-    err_ser.log_xydata.push([new_x, Math.log(new_y)/Math.LN10, {xerr:0, yerr: [new_log_err.lo, new_log_err.hi]}]);
+    err_ser.log_xydata.push([new_x, Math.log(new_y)/Math.LN10, {xerr:0, yerr: 0}]);
     
     if (this.in_datastream == true) {                  
         this.updatePlot(lineid, new_x, new_y);
