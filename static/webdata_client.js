@@ -78,7 +78,7 @@ webData.prototype.remakePlot = function() {
     series.plottable_data.data = series.plottable_data.lin_data;
     
     //this.plot = plottingAPI([series.plottable_data], 'plot');
-    this.plot = this.update1dPlot([series.plottable_data], 'plot', 0);
+    this.plot = this.update1dPlot([series.plottable_data], this.series.plottable_data.transform, 'plot', 0);
 }
 
 webData.prototype.updatePlot = function(lineid, new_x, new_y) {
@@ -237,7 +237,7 @@ function make_metadata_table(metadata, numcols) {
     return new_table;
 }
 
-webData.prototype.render1dplot = function(data, plotid, plot_options) { 
+webData.prototype.render1dplot = function(data, transform, plotid, plot_options) { 
     var options = {
         title: data.title,
         seriesDefaults: {shadow: false, markerOptions: {shadow: false, size: 8}},
