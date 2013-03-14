@@ -58,9 +58,9 @@ class RestHandler(web.RequestHandler):
     device subscription for the bt4 instrument.
     """
     def get(self, instrument, channel, rest):
-        result = INSTRUMENTS[instrument].channel[channel].call(rest, self)
         # Allow mash-ups
         self.set_header("Access-Control-Allow-Origin", SERVER)
+        INSTRUMENTS[instrument].channel[channel].call(rest, self)
 
 class BaseHandler(HandshakeHandler):
     def set_default_headers(self):
@@ -255,7 +255,6 @@ def serve():
     logging.info('Entering IOLoop...')
     loop.start()
 
-
 def usage():
     print """\
 usage: server.py [options]
@@ -281,7 +280,7 @@ accesible to computers that are allowed to control the instruments.  These
 port permissions should be configured within the firewall.
 """
 
-if __name__ == "__main__":
+def main():
     import logging
     logging.getLogger().setLevel(logging.INFO)
     
@@ -313,4 +312,7 @@ if __name__ == "__main__":
             print "unknown option",name
     
     serve()
+
+if __name__ == "__main__":
+    main()
 

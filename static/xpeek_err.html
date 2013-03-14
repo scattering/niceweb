@@ -28,6 +28,7 @@
 
     <script type="text/javascript" src="plotting_api2.js"></script>
     <script type="text/javascript" src="webdata_client.js"></script>
+    <script type="text/javascript" src="webdata_client_poisserr.js"></script>
     <script type="text/javascript" src="webdata_BT1_client.js"></script>
     <script type="text/javascript" src="webdata_NG7_client.js"></script>
     <script type="text/javascript">      
@@ -44,7 +45,7 @@
             } else if (Instrument == "NG7") {
                 w = new webData_NG7();
             } else {
-                w = new webData();
+                w = new webData_poisserr();
             }
             w.init();
             dataChannel.on('connect', function () {
