@@ -7,108 +7,88 @@ Ext.onReady(function() {
 
 	Ext.namespace('QueueSpace', 'ConfigSpace');
 	QueueSpace.queue = io.connect(ConfigSpace.root + '/queue');
+	QueueSpace.queue.on('connect', function () {
+		QueueSpace.queue.on('reset', QueueSpace.reset_queue);
+		QueueSpace.queue.on('added', QueueSpace.add_node);
+		QueueSpace.queue.on('removed', QueueSpace.remove_node);
+		QueueSpace.queue.on('changed', QueueSpace.change_node);
+		QueueSpace.queue.on('moved', QueueSpace.move_node);
+	});
 
 	Ext.define('CommandModel', {
-				extend : 'Ext.data.Model',
-				fields : [{
-							name : 'id',
-							type : 'string'
-						}, {
-							name : 'text',
-							type : 'string'
-						}, {
-							name : 'state',
-							type : 'string'
-						}, {
-							name : 'metaData',
-							type : 'string'
-						}, {
-							name : 'errors',
-							type : 'auto'
-						}]
-			});
+		extend : 'Ext.data.Model',
+		fields : [{
+			name : 'id',
+			type : 'string'
+		}, {
+			name : 'text',
+			type : 'string'
+		}, {
+			name : 'state',
+			type : 'string'
+		}, {
+			name : 'metaData',
+			type : 'string'
+		}, {
+			name : 'errors',
+			type : 'auto'
+		}]
+	});
 
 	QueueSpace.treeStore = Ext.create('Ext.data.TreeStore', {
-				model : 'CommandModel',
-				proxy : {
-					type : 'memory',
-					reader : {
-						type : 'json',
-						root : '0'
-					}
-				},
-				root : {
-					id : 0,
-					text : 'Commands'
-				}
-			});
+		model : 'CommandModel',
+		proxy : {
+				type : 'memory',
+			reader : {
+				type : 'json',
+				root : '0'
+			}
+		},
+		root : {
+			id : 0,
+			text : 'Commands'
+		}
+	});
 
 	// create the panel that will display the Tree
 	QueueSpace.tree = Ext.create('Ext.tree.Panel', {
-				store : QueueSpace.treeStore,
-				hideHeaders : true,
-				rootVisible : true,
-				layout : 'fit',
-				// autoScroll : true,
-				// viewConfig :
-				// {
-				// plugins : [
-				// {
-				// ptype : 'treeviewdragdrop'
-				// } ]
-				// },
-				// height : 600,
-				// width : 800,
-				// id : 'myQ',
-				title : ConfigSpace.instrument + ' Queue',
-				// renderTo : 'nicequeue', //Ext.getBody(),
-				collapsible : true,
-				listeners : {
-					dblclick : {
-						element : 'el', // bind to the
-						// underlying el
-						// property on
-						// the panel
-						fn : function(event) {
-							//console.log(event);
-							// var nodes = QueueSpace.tree.getSelectionModel()
-							// .getSelection();
-							// Ext.MessageBox.show({
-							// title : 'Command ' + nodes[0].data.id,
-							// msg : QueueSpace
-							// .generateStatus(nodes[0].data),
-							// buttons : Ext.MessageBox.OK,
-							// // fn : example
-							// // .msg(nodes[0].text),
-							// animateTarget : QueueSpace.tree,
-							// icon : Ext.MessageBox.INFO
-							// });
-						}
+		store : QueueSpace.treeStore,
+		hideHeaders : true,
+		rootVisible : true,
+		layout : 'fit',
+		title : ConfigSpace.instrument + ' Queue',
+		collapsible : true,
+		listeners : {
+			dblclick : {
+				element : 'el', // bind to the underlying el prop on the panel
+				fn : function(event) {
+					//console.log(event);
 					}
-				},
-				bodyStyle : {
-					background : '#FBF9F5',
-					padding : '10px',
-					fontSize : '12px'
-				}
-			});
+			}
+		},
+		bodyStyle : {
+			background : '#FBF9F5',
+			padding : '10px',
+			fontSize : '12px'
+		}
+	});
 
 	// root reference
 	QueueSpace.treeRoot = QueueSpace.treeStore.getRootNode();
 
 	var array_toString = function(value) {
 		var blkstr = $.map(value, function(val, index) {
-					var str = index + ":" + val;
-					return str;
-				}).join(", ");
+			var str = index + ":" + val;
+			return str;
+		}).join(", ");
 		return blkstr;
 	}
 
 	// format command details as html
 	QueueSpace.generateStatus = function(node_status) {
 		return 'State : ' + node_status.state + '<br> ' + 'Meta Data : '
-				+ node_status.metaState + '<br>' + 'Errors : '
-				+ array_toString(node_status.errors) + '<br>';
+			+ node_status.metaState + '<br>' + 'Errors : '
+			+ array_toString(node_status.errors) + '<br>';
 	};
 
 
@@ -156,17 +136,17 @@ Ext.onReady(function() {
 	// item has children, construct the children as well.
 	QueueSpace.build_node = function(qnode) {
 		var commandNode = Ext.create('CommandModel', {
-					id : qnode.id,
-					text : qnode.status.commandStr,
-					state : qnode.status.state,
-					metaData : qnode.status.metaState,
-					errors : array_toString(qnode.status.errors),
-					qtip : QueueSpace.generateStatus(qnode.status),
-					qtitle : 'Command ' + qnode.id,
-					expanded : false,
-					leaf : qnode.children.length == 0,
-					cls : 'node-style-' + node_css_type(qnode.status.state)
-				});
+			id : qnode.id,
+			text : qnode.status.commandStr,
+			state : qnode.status.state,
+			metaData : qnode.status.metaState,
+			errors : array_toString(qnode.status.errors),
+			qtip : QueueSpace.generateStatus(qnode.status),
+			qtitle : 'Command ' + qnode.id,
+			expanded : false,
+			leaf : qnode.children.length == 0,
+			cls : 'node-style-' + node_css_type(qnode.status.state)
+		});
 		QueueSpace.build_tree(commandNode, qnode);
 		return commandNode;
 	};
@@ -180,9 +160,10 @@ Ext.onReady(function() {
 			// tree.insertChild(i,newCommand);
 			treeNode.appendChild(newCommand);
 			newCommand.set('iconCls', 'node-icon-'
-							+ node_css_type(newCommand.data.state));
+				+ node_css_type(newCommand.data.state));
 		}
-	}
+	};
+	
 	QueueSpace.remove_node = function(path) {
 		//console.log("queue removed ",path);
 		var treeNode = QueueSpace.find_node(path);
@@ -197,9 +178,10 @@ Ext.onReady(function() {
 			//treeNode.removeAll(true);
 			treeNode.remove(false);
 		}
-	}
+	};
+	
 	QueueSpace.add_node = function(path, node) {
-		//console.log("queue added ",path);
+		//console.log("queue added ",path, node);
 		var parentNode = QueueSpace.find_parent(path);
 		if (parentNode.isLeaf()) {
 			parentNode.set('leaf', false);
@@ -209,43 +191,24 @@ Ext.onReady(function() {
 		var index = path[path.length-1];
 		if (index >= parentNode.childNodes.length) {
 			parentNode.appendChild(newCommand);
-                } else {
+		} else {
 			parentNode.insertChild(index, newCommand);
-                }
+		}
 		newCommand.set('iconCls', 'node-icon-' + node_css_type(newCommand.data.state));
-	}
-
-
-	QueueSpace.queue.on('connect', function() {
-
-				// first time the web client connects to the repeater.
-				//console.log("queue connect");
-				// ask for initial state and all messages
-				QueueSpace.queue.emit('subscribe', function(queue) {
-							if (queue== undefined) {
-								console.log("no feed");
-							} else {
-								//console.log("queue subscribe", queue);
-								QueueSpace.build_tree(QueueSpace.treeRoot,
-										queue[0]);
-								QueueSpace.treeRoot.expand(false);
-								// QueueSpace.tree.doLayout();
-							}
-						});
-			});
+	};
 
 	// Nodes added to the queue. The nodes parameter is the array of nodes
 	// to add. Each node in the list may contain children. The nodes are
 	// to be added after siblingID within parentID. If siblingID is 0,
 	// then add the nodes before the first sibling.
-	QueueSpace.queue.on('added', QueueSpace.add_node);
-	QueueSpace.queue.on('removed', QueueSpace.remove_node);
-	QueueSpace.queue.on('moved', function(oldpath, newpath, node) {
+
+	QueueSpace.move_node = function(oldpath, newpath, node) {
+		//console.log("move node ",oldpath, newpath, node);
 		QueueSpace.remove_node(oldpath);
 		QueueSpace.add_node(newpath, node);
-		});
+	};
 
-	QueueSpace.queue.on('changed', function(path, node_status) {
+	QueueSpace.change_node = function(path, node_status) {
 		//console.log("node changed ",path);
 		var treeNode = QueueSpace.find_node(path);
 		if (treeNode == null) {
@@ -258,18 +221,16 @@ Ext.onReady(function() {
 			treeNode.set('qtip', QueueSpace.generateStatus(node_status));
 			treeNode.set('cls', 'node-style-' + node_css_type(node_status.state));
 			// TODO: finish icons
-			treeNode
-					.set('iconCls', 'node-icon-' + node_css_type(node_status.state));
+			treeNode.set('iconCls', 'node-icon-' + node_css_type(node_status.state));
 		}
 
-	});
+	};
 
-	QueueSpace.queue.on('reset', function(queue) {
-				// only happens when the server restarts
-				//console.log("queue reset", queue);
-				QueueSpace.treeRoot.removeAll(false);
-				QueueSpace.build_tree(QueueSpace.treeRoot, queue[0]);
-				QueueSpace.treeRoot.expand(false);
-			});
-
+	QueueSpace.reset_queue = function(state) {
+		// only happens when the server restarts
+		//console.log("queue reset", state);
+		QueueSpace.treeRoot.removeAll(false);
+		QueueSpace.build_tree(QueueSpace.treeRoot, state.queue);
+		QueueSpace.treeRoot.expand(false);
+	};
 });

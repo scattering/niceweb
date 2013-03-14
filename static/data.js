@@ -17,10 +17,7 @@ if (!state) return;
 
 
     var dataChannel = new io.connect(ConfigSpace.root + '/data');
-    dataChannel.on('connect', function () {
-//console.log("data connect");
-        dataChannel.emit('subscribe', resetData);
-    });
+    dataChannel.on('connect', resetData);
     dataChannel.on('reset', resetData);
     dataChannel.on('record', updateData);
 

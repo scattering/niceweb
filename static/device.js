@@ -11,6 +11,10 @@ Ext.onReady(function () {
     Ext.namespace('GridSpace','ConfigSpace');
 
     GridSpace.device = io.connect(ConfigSpace.root + '/device');
+    GridSpace.device.on('connect', function () {
+	    GridSpace.device.on('reset', GridSpace.setDeviceModel);
+    	GridSpace.device.on('changed', GridSpace.updateDeviceModel);
+    });
   
     GridSpace.dataArray = [];
     GridSpace.deviceNames = [];
@@ -77,16 +81,8 @@ Ext.onReady(function () {
     });
 
 
-    GridSpace.device.on('connect', function () {
-        //console.log("device connect");
-        GridSpace.device.emit('subscribe', GridSpace.setDeviceModel);
-    });
-
-    GridSpace.device.on('reset', function (state) {
-        GridSpace.setDeviceModel(state[0],state[1]);
-    });
-
-    GridSpace.device.on('changed', function (nodes) {
+    GridSpace.updateDeviceModel = function (nodes) {
+        //console.log("device update", nodes);
         for (var i=0; i < nodes.length; i++) {
             var node = nodes[i];
             var deviceRecord = GridSpace.grid.store.findRecord('id', node.deviceID);
@@ -98,10 +94,11 @@ Ext.onReady(function () {
                 }
             }
         }
-    });
+    };
 
-    GridSpace.setDeviceModel = function (data, structure) {
-        structure = jQuery.parseJSON(structure);
+    GridSpace.setDeviceModel = function (state) {
+        var data = state.devices, structure=state.view
+        //structure = jQuery.parseJSON(structure);
         //console.log("device reset", data, structure);
         GridSpace.dataArray = [];
         // TODO: change this to the device display heirarchy when it is available

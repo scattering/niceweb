@@ -7,18 +7,29 @@ streams.
 import os
 #import re
 
-import channels
-#from channels import ControlChannel, EventChannel, ConsoleChannel, DataChannel, DeviceChannel, QueueChannel
-from channels import CHANNELS
-
 from tornado import web
+from tornado.escape import json_encode
+from tornado.httpclient import HTTPError
 import tornadio2 as sio
 from tornadio2.router import HandshakeHandler, TornadioRouter, version_info, ioloop, DEFAULT_SETTINGS, PROTOCOLS
 from tornadio2 import persistent, polling, sessioncontainer, session, proto, preflight, stats
 
+import instrument
+import pubsub
+
+from pubsub import Publisher, Subscriber
+
+AVAILABLE_INSTRUMENTS = set("ng1|ngb|ngd|cgd|bt1|bt4".split('|'))
+INSTRUMENTS = {}  # Start without any instruments
+SERVER = "drneutron.org"
 ROOT = os.path.normpath(os.path.dirname(__file__))
-SIO_PORT = 8001
+SUBSCRIBER_PORT = 8001
+CONTROLLER_PORT = SUBSCRIBER_PORT+1
+PUBLISHER_PORT = SUBSCRIBER_PORT+2
 DEBUG = False
+NICE_SETTINGS = dict(
+    gzip = True,
+)
 WEB_SETTINGS = dict(
     static_path = os.path.join(ROOT, "static"),
     #cookie_secret = cookie.get_cookie(),
@@ -27,11 +38,8 @@ WEB_SETTINGS = dict(
     gzip = True,
     flash_policy_port = 10843,
     flash_policy_file = os.path.join(ROOT, 'flashpolicy.xml'),
-    socket_io_port = SIO_PORT,
-    debug = DEBUG,
 )
 
-DEFAULT_ROUTER = None
 
 class IndexHandler(web.RequestHandler):
     """Regular HTTP handler to serve the index.html page"""
@@ -44,21 +52,21 @@ class RestHandler(web.RequestHandler):
 
     The router will be set up to take a url path such as::
 
-        http://localhost:8001/state/bt4/device
+        http://localhost:8001/bt4/device/state
 
     and translate this into a request for the current state on the
     device subscription for the bt4 instrument.
     """
-    def get(self, instrument, channel):
-        channel_class = CHANNELS[channel]
-        state = channel_class.get_restful_state(self.request, "/".join(("",instrument,channel)))
-        self.write(state)
-
+    def get(self, instrument, channel, rest):
+        result = INSTRUMENTS[instrument].channel[channel].call(rest, self)
+        # Allow mash-ups
+        self.set_header("Access-Control-Allow-Origin", SERVER)
 
 class BaseHandler(HandshakeHandler):
     def set_default_headers(self):
-        print "setting default headers"
-        self.set_header("Access-Control-Allow-Origin", "drneutron.org")
+        #print "allow requests from other parts of this server"
+        self.set_header("Access-Control-Allow-Origin", SERVER)
+        print "allow cookies (why?)"
         self.set_header("Access-Control-Allow-Credentials", "true")
 
 class MyRouter(TornadioRouter):
@@ -81,7 +89,6 @@ class MyRouter(TornadioRouter):
         `io_loop`
             IOLoop instance, optional.
         """
-
         # TODO: Version check
         if version_info[0] < 2:
             raise Exception('TornadIO2 requires Tornado 2.0 or higher.')
@@ -135,67 +142,118 @@ class MyRouter(TornadioRouter):
                     dict(server=self))
                 )
         
-class RouterConnection(sio.SocketConnection):
+class WebConnection(sio.SocketConnection):
     """
     Manage the top level socket IO connection.
     """
-    def on_open(self, request):
-        pass
-        #print "opened connection",request
-    def on_close(self):
-        pass
-        #print "closed"
     def get_endpoint(self, endpoint):
         """
-        Parse /insturment/channel into specific channel handlers.
+        Parse /instrument/channel into specific channel handlers.
         """
+        if not endpoint.startswith('/'): return
         try:
-            _,instrument,channel = endpoint.split('/', 3)
-            return CHANNELS[channel]
+            _,name,channel = endpoint.split('/', 3)
         except ValueError:
-            pass # Not /instrument/channel
-        except KeyError:
-            pass # invalid channel name
+            return
+        # Clients should not be able to create arbitrary instruments
+        if name not in INSTRUMENTS:
+            raise HTTPError(404,"Instrument %s is not online"%name)
+        #print "Web connection to",name,channel,INSTRUMENTS[name],INSTRUMENTS[name].channel[channel]
+        #print INSTRUMENTS[name].channel[channel].channel_state()
+        # Don't allow control from the general web connection
+        if channel != 'control':
+            return lambda *args, **kw: Subscriber(INSTRUMENTS[name].channel[channel], *args, **kw)
 
-    @sio.event
-    def controller(self):
-        return NICE_CONTROLLER_URL
-
-DEFAULT_ROUTER = MyRouter(RouterConnection, handler=BaseHandler)
-
-class NICERepeater(object):
-    """ system for serving a repeater for NICE data """
-    def __init__(self,
-                channels=CHANNELS,
-                router=DEFAULT_ROUTER,
-                web_settings=WEB_SETTINGS,
-                index_handler=IndexHandler,
-                rest_handler=RestHandler):               
-                
-        self.channels = channels
-        self.router = router
-        self.web_settings = web_settings
-        self.index_handler = index_handler
-        self.rest_handler = rest_handler
-
-    
-    def serve(self):
+class NiceConnection(sio.SocketConnection):
+    """
+    Manage the top level socket IO connection.
+    """
+    def get_endpoint(self, endpoint):
         """
-        Run the NICE repeater, forwarding subscription streams to the web.
+        Parse /instrument/channel into specific channel handlers.
         """
-        # Create tornadio server
-        #Router = MyRouter(RouterConnection, handler=BaseHandler)
-        ext_path='static/ext-all.js'
-        routes = self.router.apply_routes([
-            (r"/", self.index_handler),
-            (r"/state/(?P<instrument>[^/]*)/(?P<channel>[^/]*)",self.rest_handler),
-        ])
+        if not endpoint.startswith('/'): return
+        try:
+            _,name,channel = endpoint.split('/', 3)
+        except ValueError:
+            return
+        if name not in INSTRUMENTS:
+            INSTRUMENTS[name] = instrument.Instrument(name=name)
+        #print "NICE connection to",name,channel,INSTRUMENTS[name],INSTRUMENTS[name].channel[channel]
+        #print INSTRUMENTS[name].channel[channel].channel_state()
+     
+        # There is role reversal with publisher and subscriber for the control
+        # channel: the instrument is acting as a single subscriber for all
+        # the web clients who are publishing commands to control it.
+        if channel == 'control':
+            return lambda *args, **kw: Subscriber(INSTRUMENTS[name].channel[channel], *args, **kw)
+        elif channel in INSTRUMENTS[name].channel:
+            return lambda *args, **kw: Publisher(INSTRUMENTS[name].channel[channel], *args, **kw)
 
-        # Create socket application
-        self.app = web.Application(routes, **self.web_settings)
+class ControlConnection(sio.SocketConnection):
+    """
+    Put the instrument control web connection on its own port.
+    """
+    # TODO: may want per instrument restrictions on web access, perhaps through authentication
+    def get_endpoint(self, endpoint):
+        """
+        Parse /instrument/channel into specific channel handlers.
+        """
+        if not endpoint.startswith('/'): return
+        try:
+            _,name,channel = endpoint.split('/', 3)
+        except ValueError:
+            return
+        if name not in INSTRUMENTS:
+            raise HTTPError(404,"Instrument %s is not online"%name)
+     
+        # There is role reversal with publisher and subscriber for the control
+        # channel: here the instrument is acting as a single subscriber to
+        # all of the web clients who are publishing commands to control it.
+        if channel == 'control':
+            return lambda *args, **kw: Publisher(INSTRUMENTS[name].channel[channel], *args, **kw)
 
-        # Server application
-        sio.SocketServer(self.app)
+def serve():
+    """
+    Run the NICE repeater, forwarding subscription streams to the web.
+    """
+
+    # Define the interface to the internal and external servers
+    nice_router = MyRouter(NiceConnection, handler=BaseHandler)
+    control_router = MyRouter(ControlConnection, handler=BaseHandler)
+    web_router = MyRouter(WebConnection, handler=BaseHandler)
+    web_routes = [
+        (r"/", IndexHandler),
+        # TODO: the following pattern is too generic it matches most /x/y/z
+        # it only works because '.' is excluded from the matched patterns.
+        (r"/(?P<instrument>[a-zA-Z0-9_]*)/(?P<channel>[a-z_]*)/(?P<rest>[a-z_]*)", RestHandler),
+    ]
+
+    # Point the servers to internal and external ports
+    subscriber_app = web.Application(
+            web_router.apply_routes(web_routes), 
+            socket_io_port=SUBSCRIBER_PORT,
+            debug=DEBUG,
+            **WEB_SETTINGS)
+    controller_app = web.Application(
+            nice_router.apply_routes([]), 
+            socket_io_port=CONTROLLER_PORT, 
+            debug=DEBUG,
+            **NICE_SETTINGS)
+    publisher_app = web.Application(
+            nice_router.apply_routes([]), 
+            socket_io_port=PUBLISHER_PORT, 
+            debug=DEBUG,
+            **NICE_SETTINGS)
+
+    # Server application
+    loop = ioloop.IOLoop.instance()
+    sio.SocketServer(subscriber_app, auto_start=False, io_loop=loop)
+    sio.SocketServer(controller_app, auto_start=False, io_loop=loop)
+    sio.SocketServer(publisher_app, auto_start=False, io_loop=loop)
+
+    logging.info('Entering IOLoop...')
+    loop.start()
 
 
 def usage():
@@ -204,22 +262,23 @@ usage: server.py [options]
 
   --port=integer
 
-       Port number for server connections.  Default is 8001
+       Port number for web connections.  Default is 8001.  Controllers
+       connect on port+1 and publishers on port+2
 
   --capture=filename
 
        Save the entire published data streams to a file so they can be replayed
        with test/playback.py
 
-  --nice=URL
-
-       URL for the NICE controller.  Defaults to the host that the server is running on.
-    
   --debug
 
        Run the tornado server in debug mode, which provides error messages on the
        client and triggers restart when the server file changes.
 
+The web port should be widely accessible, the publisher port should only be
+accessible to instrument computers and the control port should only be
+accesible to computers that are allowed to control the instruments.  These
+port permissions should be configured within the firewall.
 """
 
 if __name__ == "__main__":
@@ -230,9 +289,9 @@ if __name__ == "__main__":
     import getopt
     import socket
     
-    longopts = ["capture=","port=","controller=","debug"]
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "C:c:p:d", longopts)
+        longopts = ["capture=","port=","debug"]
+        opts, args = getopt.getopt(sys.argv[1:], "c:p:d", longopts)
         if args:
             raise getopt.GetoptError("server.py only accepts options")
     except getopt.GetoptError, exc:
@@ -240,24 +299,18 @@ if __name__ == "__main__":
         usage()
         sys.exit(1)
     
-    debug=False
-    channels.NICE_CONTROLLER_URL = "http://%s:8001"%socket.gethostbyname(socket.gethostname())
-    SIO_PORT=8001
+    DEBUG=False
     for name,value in opts:
-        if name in ("-C", "--capture"):
-            channels.CAPTURE_FILE = open(value, 'w')
+        if name in ("-c", "--capture"):
+            pubsub.start_capture(value)
         elif name in ("-p", "--port"):  
-            WEB_SETTINGS['socket_io_port'] = int(value)
+            SUBSCRIBER_PORT = int(value)
+            CONTROLLER_PORT = SUBSCRIBER_PORT+1
+            PUBLISHER_PORT = SUBSCRIBER_PORT+2
         elif name in ("-d", "--debug"):
-            WEB_SETTINGS['debug'] = True
-        elif name in ("-c", "--controller"):
-            channels.NICE_CONTROLLER_URL = value
+            DEBUG = True
         else:
             print "unknown option",name
     
-    #debug = False if len(sys.argv)>1 and sys.argv[1]=='production' else True
-    #if len(sys.argv) > 1 and sys.argv[1] == 'capture':
-    #    CAPTURE_FILE = open(sys.argv[2], "w")
-    
-    repeater = NICERepeater()
-    repeater.serve()
+    serve()
+
