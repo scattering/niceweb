@@ -85,13 +85,6 @@ webData_poisserr.prototype.transformData = function(transform) {
     }
 }
 
-/*webData_poisserr.prototype.remakePlot = function() {
-    webData.prototype.remakePlot.call(this);
-    this.plot.setTransform = transformPoissErrData;
-    this.plot.setTransform(this.series.plottable_data.transform);
-}
-*/
-
 webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
     if (this.trigger_remake == true) {
         this.trigger_remake = false;
@@ -132,10 +125,6 @@ webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
     }
 }
 
-webData_poisserr.prototype.addPoint = function(lineid, state) {
-    webData.prototype.addPoint.call(this, lineid, state);
-    this.addErrPoint(lineid, state);
-}
 
 webData_poisserr.prototype.addPoint = function(lineid, state) {
     var err_label = getErrLabel(lineid);
@@ -223,6 +212,9 @@ webData_poisserr.prototype.processRecord = function(record) {
         //in_datastream = true;
         this.addPoint(lineid, record.pointdata);
         if ('eta' in record) { $('#extras').html("<b>ETA: </b>" + String(record.eta)); }
+    } else if (record.command == 'reset') {
+        //in_datastream = true;
+        this.resetData(record);
     } else { 
         console.log("update data, unrecognized command: ",record); 
     }

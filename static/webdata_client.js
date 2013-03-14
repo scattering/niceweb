@@ -67,7 +67,6 @@ webData.prototype.remakePlot = function() {
     series.plottable_data.lin_data.length = 0;
     series.plottable_data.log_data.length = 0;
     for (sername in series.streams) {
-        //var serdata = [];
         ser = series.streams[sername];
         series.plottable_data.options.series.push(ser.plot_opts);
         series.plottable_data.lin_data.push(ser.lin_xydata);
@@ -203,9 +202,9 @@ webData.prototype.processRecord = function(record) {
         if ('eta' in record) { $('#metadata').html("<b>ETA: </b>" + String(record.eta)); }
     } else if (record.command == 'reset') {
         //in_datastream = true;
-        this.resetData(record.records);
+        this.resetData(record);
     } else { 
-        console.log("update data, unrecognized command: ",record); 
+        console.log("update data, unrecognized command: ", record); 
     }
 }
 
@@ -325,7 +324,7 @@ webData.prototype.transformData = function(transform) {
             }
         }
         this.axes.yaxis.resetScale();
-        this.axis.yaxis.labelOptions.label = String(this.options.axes.yaxis.label);
+        this.axes.yaxis.labelOptions.label = String(this.options.axes.yaxis.label);
         this.replot();
     }
 }
@@ -334,7 +333,6 @@ webData.prototype.transformData = function(transform) {
 webData.prototype.update1dPlot = function(toPlots, target_id, plotnum) {
     if (!this.plot || !this.plot.hasOwnProperty("type") || this.plot.type!='1d'){
         var plotdiv = document.getElementById(target_id);
-        var that = this;
         plotdiv.innerHTML = "";
         var plotbox = jQuery('<div />', {'class':'ui-widget-content', style:"display: block; width: 700px; height: 350px;", id:"plotbox"})[0];
         //jQuery(plotdiv).append(jQuery('<div />', {'class':'ui-widget-content', style:"display: block; width: 700px; height: 350px;", id:"plotbox"}));
@@ -391,6 +389,7 @@ webData.prototype.update1dPlot = function(toPlots, target_id, plotnum) {
     jQuery('#plot_selectnum').unbind('change');
     jQuery('#plot_selectz').unbind('change');
     
+    var that=this;
     function onchange(e) {
         var selectz = document.getElementById('plot_selectz');
         var selectnum = document.getElementById('plot_selectnum');
