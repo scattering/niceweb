@@ -24,26 +24,26 @@ class Daemon(object):
 		self.pidfile = pidfile
 		self.cmd = cmd
 
-    def invoke(self):
-        """
-        Assume the command is "daemon start|stop|restart|debug [args]" and
-        invoke the daemon.
-        """
-        command = sys.argv[1]
-        del sys.argv[1]
-        if command == 'start':
-            self.start()
-        elif command == 'stop':
-            self.stop()
-        elif command == 'restart':
-            self.restart()
-        elif command == 'debug':
-            self.run()
-        else:
-            print "command should be start, stop, restart or debug"
-            sys.exit(1)
+	def invoke(self):
+		"""
+		Assume the command is "daemon start|stop|restart|debug [args]" and
+		invoke the daemon.
+		"""
+		command = sys.argv[1]
+		del sys.argv[1]
+		if command == 'start':
+			self.start()
+		elif command == 'stop':
+			self.stop()
+		elif command == 'restart':
+			self.restart()
+		elif command == 'debug':
+			self.run()
+		else:
+			print "command should be start, stop, restart or debug"
+			sys.exit(1)
 
-        sys.exit(0)
+		sys.exit(0)
 	
 	def daemonize(self):
 		"""

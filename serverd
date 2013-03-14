@@ -5,7 +5,7 @@ import sys
 import daemon
 import server
 
-if len(args) < 2 or sys.argv[1] not in daemon.COMMANDS:
+if len(sys.argv) < 2 or sys.argv[1] not in daemon.COMMANDS:
     print """\
 serverd %s [args]
 

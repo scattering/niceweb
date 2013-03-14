@@ -5,6 +5,11 @@ streams.
 """
 
 import os
+import logging
+import sys
+import getopt
+#import socket
+    
 #import re
 
 from tornado import web
@@ -281,12 +286,7 @@ port permissions should be configured within the firewall.
 """
 
 def main():
-    import logging
     logging.getLogger().setLevel(logging.INFO)
-    
-    import sys
-    import getopt
-    import socket
     
     try:
         longopts = ["capture=","port=","debug"]
