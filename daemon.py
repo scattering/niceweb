@@ -6,17 +6,44 @@
 import sys, os, time, atexit
 from signal import SIGTERM 
 
-class Daemon:
+# Available invoke commands.
+COMMANDS = ['start','stop','restart','debug']
+
+class Daemon(object):
 	"""
 	A generic daemon class.
 	
-	Usage: subclass the Daemon class and override the run() method
+	Usage: subclass the Daemon class and override the run() method, or call
+	with Daemon(pidfile, cmd=main).  The resulting daemon can be immediately
+	invoked.
 	"""
-	def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
+	def __init__(self, pidfile, cmd=None, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
 		self.stdin = stdin
 		self.stdout = stdout
 		self.stderr = stderr
 		self.pidfile = pidfile
+		self.cmd = cmd
+
+	def invoke(self):
+		"""
+		Assume the command is "daemon start|stop|restart|debug [args]" and
+		invoke the daemon.
+		"""
+		command = sys.argv[1]
+		del sys.argv[1]
+		if command == 'start':
+			self.start()
+		elif command == 'stop':
+			self.stop()
+		elif command == 'restart':
+			self.restart()
+		elif command == 'debug':
+			self.run()
+		else:
+			print "command should be start, stop, restart or debug"
+			sys.exit(1)
+
+		sys.exit(0)
 	
 	def daemonize(self):
 		"""
@@ -130,3 +157,5 @@ class Daemon:
 		You should override this method when you subclass Daemon. It will be called after the process has been
 		daemonized by start() or restart().
 		"""
+		self.cmd()
+

@@ -2,13 +2,16 @@ Ext.require(['Ext.panel.Panel', 'Ext.window.MessageBox', 'Ext.grid.GridPanel', '
 
 Ext.onReady(function() {
 
-	//Ext.QuickTips.init();
+    //Ext.QuickTips.init();
 
-	Ext.namespace('ConsoleSpace', 'ConfigSpace');
+    Ext.namespace('ConsoleSpace', 'ConfigSpace');
 	
-	ConsoleSpace.feed = io.connect(ConfigSpace.root + '/console');
+    ConsoleSpace.feed = io.connect(ConfigSpace.root + '/console')
+    ConsoleSpace.feed.on('connect', ConsoleSpace.add_many);
+    ConsoleSpace.feed.on('report', ConsoleSpace.add_message);
+    
 	
-	ConsoleSpace.messages = []
+    ConsoleSpace.messages = []
 
     Ext.define('ConsoleModel', {
         extend: "Ext.data.Model",
@@ -38,10 +41,7 @@ Ext.onReady(function() {
         animCollapse: false
     });
 
-    ConsoleSpace.feed.on('report', function(msg) {
-		ConsoleSpace.add_message(msg);
-    });
-    
+
     ConsoleSpace.add_many = function(msgs) {
         for (var i in msgs) {
             ConsoleSpace.add_message(msgs[i], true);
@@ -63,6 +63,4 @@ Ext.onReady(function() {
     ConsoleSpace.update_view = function() {
         ConsoleSpace.grid.store.loadData(ConsoleSpace.messages);
     }
-    
-    ConsoleSpace.feed.emit('subscribe', ConsoleSpace.add_many);
 });

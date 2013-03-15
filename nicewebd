@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+
+import sys
+
+import daemon
+import server
+
+if len(sys.argv) < 2 or sys.argv[1] not in daemon.COMMANDS:
+    print """\
+serverd %s [args]
+
+where args those used in server.py.
+
+"""%"|".join(daemon.COMMANDS)
+    server.usage()
+    exit(1)
+
+daemon.Daemon('/tmp/niceweb_server_daemon.pid',cmd=server.main).invoke()
+
+
