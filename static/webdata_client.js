@@ -35,6 +35,7 @@ webData = function() {};
 webData.prototype = new Object();
 webData.prototype.constructor = webData;
 webData.prototype.init = function(opts) {
+    this.plotdiv = 'plot';
     this.fit_points = 101;
     this.preferred_xaxis = XAXIS_ORDER;
     this.trigger_remake = false;
@@ -60,13 +61,21 @@ webData.prototype.resetData = function(state) {
 }
 
 webData.prototype.remakePlot = function() {
-    var ser;
+    var ser, sername;
     var series = this.series;
     series.plottable_data.options.axes.xaxis.label = series.xaxis;
     series.plottable_data.options.series = [];
     series.plottable_data.lin_data.length = 0;
     series.plottable_data.log_data.length = 0;
-    for (sername in series.streams) {
+    var sernames = Object.keys(series.streams);
+    function sortByZ(a,b) {
+        var za = ('z_index' in series.streams[a].plot_opts) ? series.streams[a].plot_opts.z_index : -1;
+        var zb = ('z_index' in series.streams[b].plot_opts) ? series.streams[b].plot_opts.z_index : -1;
+        return za - zb;
+    }
+    sernames.sort(sortByZ);
+    for (var i=0; i<sernames.length; i++) {
+        sername = sernames[i];
         ser = series.streams[sername];
         series.plottable_data.options.series.push(ser.plot_opts);
         series.plottable_data.lin_data.push(ser.lin_xydata);
@@ -77,7 +86,7 @@ webData.prototype.remakePlot = function() {
     series.plottable_data.data = series.plottable_data.lin_data;
     
     //this.plot = plottingAPI([series.plottable_data], 'plot');
-    this.plot = this.update1dPlot([series.plottable_data], 'plot', 0);
+    this.plot = this.update1dPlot([series.plottable_data], this.plotdiv, 0);
 }
 
 webData.prototype.updatePlot = function(lineid, new_x, new_y) {
@@ -180,7 +189,11 @@ webData.prototype.processRecord = function(record) {
         ser.log_xydata = [];
         ser['comment'] = record.comment;
         ser['runid'] = record.runid;
-        ser.plot_opts = {label: lineid}
+        ser.plot_opts = {
+            renderer: jQuery.jqplot.LineRenderer,
+            label: lineid,
+            z_index: 1}
+        jQuery.extend(true, ser.plot_opts, record.series_opts);
         this.trigger_remake = true;
         // do all this in "configure"?
     } else if (record.command == 'enddata') {
@@ -331,6 +344,7 @@ webData.prototype.transformData = function(transform) {
 
 
 webData.prototype.update1dPlot = function(toPlots, target_id, plotnum) {
+    console.log(toPlots, target_id, plotnum);
     if (!this.plot || !this.plot.hasOwnProperty("type") || this.plot.type!='1d'){
         var plotdiv = document.getElementById(target_id);
         plotdiv.innerHTML = "";

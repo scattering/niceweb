@@ -153,9 +153,11 @@ webData_poisserr.prototype.addPoint = function(lineid, state) {
     ser.lin_xydata.push(new_lin_xydata);
     ser.log_xydata.push(new_log_xydata);
     
-    var err_ser = series.streams[err_label];
-    err_ser.lin_xydata.push([new_x, new_y, {xerr:0, yerr: [new_err.lo, new_err.hi]}]);
-    err_ser.log_xydata.push([new_x, Math.log(new_y)/Math.LN10, {xerr:0, yerr: 0}]);
+    if (err_label in series.streams) {
+        var err_ser = series.streams[err_label];
+        err_ser.lin_xydata.push([new_x, new_y, {xerr:0, yerr: [new_err.lo, new_err.hi]}]);
+        err_ser.log_xydata.push([new_x, Math.log(new_y)/Math.LN10, {xerr:0, yerr: 0}]);
+    }
     
     if (this.in_datastream == true) {                  
         this.updatePlot(lineid, new_x, new_y);
@@ -175,24 +177,30 @@ webData_poisserr.prototype.processRecord = function(record) {
         ser.columns = {};
         ser.lin_xydata = [];
         ser.log_xydata = [];
+        ser.poiss_err = record.poiss_err;
         ser['comment'] = record.comment;
         ser['runid'] = record.runid;
         ser.plot_opts = {
             renderer: jQuery.jqplot.LineRenderer,
-            label: lineid}
+            label: lineid,
+            z_index: 1}
+        jQuery.extend(true, ser.plot_opts, record.series_opts);
         
-        var err_ser = new Object();
-        var err_label = getErrLabel(lineid);
-        this.series.streams[err_label] = err_ser;
-        err_ser.columns = {};
-        err_ser.lin_xydata = [];
-        err_ser.log_xydata = [];
-        err_ser['comment'] = record.comment;
-        err_ser['runid'] = record.runid;
-        err_ser.plot_opts = {
-            renderer: jQuery.jqplot.errorbarRenderer,
-            rendererOptions: { errorBar: true, /*bodyWidth: 1, wickColor: 'red', openColor: 'yellow', closeColor: 'blue'*/ },
-            label: err_label}
+        if (ser.poiss_err == true) {
+            var err_ser = new Object();
+            var err_label = getErrLabel(lineid);
+            this.series.streams[err_label] = err_ser;
+            err_ser.columns = {};
+            err_ser.lin_xydata = [];
+            err_ser.log_xydata = [];
+            err_ser['comment'] = record.comment;
+            err_ser['runid'] = record.runid;
+            err_ser.plot_opts = {
+                renderer: jQuery.jqplot.errorbarRenderer,
+                rendererOptions: { errorBar: true, /*bodyWidth: 1, wickColor: 'red', openColor: 'yellow', closeColor: 'blue'*/ },
+                label: err_label,
+                z_index: (ser.plot_opts.z_index + 1)}
+        }
         this.trigger_remake = true;
         // do all this in "configure"?
     } else if (record.command == 'enddata') {
