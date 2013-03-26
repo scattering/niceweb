@@ -90,10 +90,9 @@ webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
         this.trigger_remake = false;
         this.remakePlot();
     }
-    var active_series, active_err;
+    var active_series;
     var err = getPoissonUncertainty(new_y);
     var log_err = getLogPoissonUncertainty(new_y);
-    var err_label = getErrLabel(lineid);
     var plot = this.plot;
     for (var j=0; j<plot.series.length; j++) {
         if (plot.series[j].label == lineid) {
@@ -101,24 +100,16 @@ webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
             break;
         }
     }
-    for (var k=0; k<plot.series.length; k++) {
-        if (plot.series[k].label == err_label) {
-            active_err = plot.series[k];
-            break;
-        }
-    }
+    
     if (active_series == null) { console.log('series ' + lineid + ' not found.'); return; }
-    if (this.series.plottable_data.transform == 'log') {
-        active_series._plotData.push([new_x, Math.log(new_y) / Math.LN10]);
-        active_err._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: log_err.yupper, ylower: log_err.ylower}]);
+    if (this.series.live_data.transform == 'log') {
+        active_series._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: log_err.yupper, ylower: log_err.ylower}]);
     } else {
-        active_series._plotData.push([new_x, new_y]);
-        active_err._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: err.yupper, ylower: err.ylower}]);
+        active_series._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: err.yupper, ylower: err.ylower}]);
     }
                 
     if (plot.plugins.cursor._zoom.isZoomed) {
         plot.drawSeries(j);
-        plot.drawSeries(k);
     } else {
         plot.resetAxesScale();
         plot.replot();
@@ -127,7 +118,6 @@ webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
 
 
 webData_poisserr.prototype.addPoint = function(lineid, state) {
-    var err_label = getErrLabel(lineid);
     var series = this.series;
     //console.log('adding point, ', lineid, state);
     /*if (!(lineid in series.streams)) { 
@@ -150,14 +140,8 @@ webData_poisserr.prototype.addPoint = function(lineid, state) {
     var new_lin_xydata = [new_x, new_y];
     var new_log_xydata = [new_x, Math.log(new_y)/Math.LN10];
     
-    ser.lin_xydata.push(new_lin_xydata);
-    ser.log_xydata.push(new_log_xydata);
-    
-    if (err_label in series.streams) {
-        var err_ser = series.streams[err_label];
-        err_ser.lin_xydata.push([new_x, new_y, {xerr:0, yerr: [new_err.lo, new_err.hi]}]);
-        err_ser.log_xydata.push([new_x, Math.log(new_y)/Math.LN10, {xerr:0, yerr: 0}]);
-    }
+    ser.lin_xydata.push([new_x, new_y, {xerr:0, yerr: [new_err.lo, new_err.hi]}]);
+    ser.log_xydata.push([new_x, Math.log(new_y)/Math.LN10, {xerr:0, yerr: 0}]);
     
     if (this.in_datastream == true) {                  
         this.updatePlot(lineid, new_x, new_y);
@@ -170,7 +154,7 @@ webData_poisserr.prototype.processRecord = function(record) {
         //console.log('configure', record);
         this.series = new Series();
         exclude_names = [];
-        jQuery.extend(true, this.series.plottable_data.options, this.plot_opts);
+        jQuery.extend(true, this.series.live_data.options, this.plot_opts);
     } else if (record.command == 'newdata') {
         var ser = new Object();
         this.series.streams[lineid] = ser;
@@ -181,26 +165,15 @@ webData_poisserr.prototype.processRecord = function(record) {
         ser['comment'] = record.comment;
         ser['runid'] = record.runid;
         ser.plot_opts = {
-            renderer: jQuery.jqplot.LineRenderer,
+            renderer: jQuery.jqplot.errorbarRenderer,
+            rendererOptions: {},
             label: lineid,
             z_index: 1}
         jQuery.extend(true, ser.plot_opts, record.series_opts);
-        
-        if (ser.poiss_err == true) {
-            var err_ser = new Object();
-            var err_label = getErrLabel(lineid);
-            this.series.streams[err_label] = err_ser;
-            err_ser.columns = {};
-            err_ser.lin_xydata = [];
-            err_ser.log_xydata = [];
-            err_ser['comment'] = record.comment;
-            err_ser['runid'] = record.runid;
-            err_ser.plot_opts = {
-                renderer: jQuery.jqplot.errorbarRenderer,
-                rendererOptions: { errorBar: true, /*bodyWidth: 1, wickColor: 'red', openColor: 'yellow', closeColor: 'blue'*/ },
-                label: err_label,
-                z_index: (ser.plot_opts.z_index + 1)}
+        if (ser.poiss_err == true) { 
+            ser.plot_opts.rendererOptions.errorBar = true;
         }
+        
         this.trigger_remake = true;
         // do all this in "configure"?
     } else if (record.command == 'enddata') {

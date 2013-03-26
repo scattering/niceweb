@@ -8,8 +8,8 @@ webData_BT1 = function() {};
 webData_BT1.prototype = new webData();
 webData_BT1.prototype.constructor = webData_BT1;
 
-webData_BT1.prototype.init = function(opts) {
-    webData.prototype.init.call(this, opts);
+webData_BT1.prototype.init = function(dataChannel, opts) {
+    webData.prototype.init.call(this, dataChannel, opts);
     this.detectors = 32;
     this.plot_opts = {
         "legend": {"show": false},
@@ -39,7 +39,7 @@ webData_BT1.prototype.processRecord = function(record) {
     if (record.command == 'Configure') {
         this.series = new Series();
         exclude_names = [];
-        jQuery.extend(true, this.series.plottable_data.options, this.plot_opts);
+        jQuery.extend(true, this.series.live_data.options, this.plot_opts);
     } else if (record.command == 'newdata') {
         for (var i=0; i<this.detectors; i++) {
             var new_lineid = lineid + '_' + (i+1).toFixed();
@@ -74,10 +74,11 @@ webData_BT1.prototype.addPoint = function(lineid, state) {
         var new_lineid = lineid + '_' + (i+1).toFixed();
         var ser = series.streams[new_lineid];
         var A04_offset = i*this.detector_spacing - this.BT1_zeros[i]*0.01;
+        var A04 = ('A04' in state) ? state.A04 : 0.0;
         var substate = {};
         jQuery.extend(true, substate, state);
         substate.DATA = state.DATA[i] * this.BT1_scale[i];
-        substate.A04 = state.A04 + A04_offset;
+        substate.A04 = A04 + A04_offset;
         for (item in substate) {
             if (!('columns' in ser)) { ser.columns = {}; }
             if (!(item in ser.columns)) { ser.columns[item] = []; }

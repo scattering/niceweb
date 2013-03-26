@@ -159,8 +159,8 @@ class Subscriber(sio.SocketConnection):
         return True
 
     def on_event(self, name, args=[], kwargs={}):
-        if self.tag == 'publisher':
-            store_event(self.endpoint, name, args, kwargs)
+        #if self.tag == 'publisher':
+        #    store_event(self.endpoint, name, args, kwargs)
             
         #print "%s::%s"%(self.tag,self.endpoint),name
         # Remove funky dict-only => keyword feature.

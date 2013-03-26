@@ -14,8 +14,9 @@ webData_NG7.prototype.addPoint = function(lineid, state) {
     }
     if (series.xaxis == null) { series.xaxis = this.getXAxis(state); }
     
+    var MON = ('MON' in state) ? state['MON'] : 1.0;
     var new_x = state[series.xaxis];
-    var new_y = state['DATA']/state['MON'];
+    var new_y = state['DATA']/MON;
     
     var new_lin_xydata = [new_x, new_y];
     var new_log_xydata = [new_x, Math.log(new_y)/Math.LN10];
