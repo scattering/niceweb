@@ -41,11 +41,15 @@ function getPoissonUncertainty(y) {
 function getLogPoissonUncertainty(y) {
     // apply small offset to keep log(zero) from being -infinity
     // we'll make it -1 instead, just for kicks.
-    if (y <= 0) { return {ylower: 0, yupper: -1}}
+    if (y <= 0) { return {ylower: -1, yupper: 0}}
     else { 
         var hi =  0.5+Math.sqrt(y+0.25);
         var lo = -0.5+Math.sqrt(y+0.25);
-        return {yupper: Math.log(y+hi)/Math.LN10, ylower: Math.log(y-lo)/Math.LN10}
+        var yupper = Math.log(y+hi)/Math.LN10;
+        var ylower = Math.log(y-lo)/Math.LN10;
+        var log_hi = yupper - Math.log(y)/Math.LN10;
+        var log_lo = Math.log(y)/Math.LN10 - ylower;
+        return {yupper: yupper, ylower: ylower, hi: log_hi, lo: log_lo}
     }
 }   
 
@@ -61,10 +65,14 @@ webData_poisserr.prototype.transformData = function(transform) {
                 new_x = d[j][0];
                 err = getLogPoissonUncertainty(new_y);
                 pd[j][1] = new_y > 0 ? Math.log(new_y) / Math.LN10 : null;
-                pd[j][2] = {xupper: new_x, xlower: new_x, yupper: err.yupper, ylower: err.ylower};
+                pd[j][2] = {xupper: new_x, xlower: new_x, 
+                    yupper: err.yupper, ylower: err.ylower,
+                    yerr: [err.lo, err.hi],
+                    xerr: 0};
             }
         }
         this.axes.yaxis.resetScale();
+        this.axes.xaxis.resetScale();
         this.axes.yaxis.labelOptions.label = 'Log₁₀ ' + String(this.options.axes.yaxis.label);
         this.replot();
     } else { // transform == 'lin'
@@ -76,13 +84,23 @@ webData_poisserr.prototype.transformData = function(transform) {
                 new_x = d[j][0];
                 err = getPoissonUncertainty(new_y);
                 pd[j][1] = new_y;
-                pd[j][2] = {xupper: new_x, xlower: new_x, yupper: err.yupper, ylower: err.ylower};
+                pd[j][2] = {xupper: new_x, xlower: new_x, 
+                    yupper: err.yupper, ylower: err.ylower,
+                    xerr: 0, 
+                    yerr: [err.lo, err.hi]};
             }
         }
         this.axes.yaxis.resetScale();
+        this.axes.xaxis.resetScale();
         this.axes.yaxis.labelOptions.label = String(this.options.axes.yaxis.label);
         this.replot();
     }
+}
+
+webData_poisserr.prototype.remakePlot = function() {
+    webData.prototype.remakePlot.call(this);
+    this.plot.resetAxesScale();
+    this.plot.replot();
 }
 
 webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
@@ -103,9 +121,19 @@ webData_poisserr.prototype.updatePlot = function(lineid, new_x, new_y) {
     
     if (active_series == null) { console.log('series ' + lineid + ' not found.'); return; }
     if (this.series.live_data.transform == 'log') {
-        active_series._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: log_err.yupper, ylower: log_err.ylower}]);
+        active_series._plotData.push([new_x, new_y, {
+            xupper: new_x, 
+            xlower: new_x,
+            yerr: [log_err.lo, log_err.hi], 
+            yupper: log_err.yupper, 
+            ylower: log_err.ylower}]);
     } else {
-        active_series._plotData.push([new_x, new_y, {xupper: new_x, xlower: new_x, yupper: err.yupper, ylower: err.ylower}]);
+        active_series._plotData.push([new_x, new_y, {
+            xupper: new_x, 
+            xlower: new_x, 
+            yerr: [err.lo, err.hi],
+            yupper: err.yupper, 
+            ylower: err.ylower}]);
     }
                 
     if (plot.plugins.cursor._zoom.isZoomed) {

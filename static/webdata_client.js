@@ -287,7 +287,7 @@ webData.prototype.render1dplot = function(data, transform, plotid, plot_options)
         seriesDefaults: {shadow: false, markerOptions: {shadow: false, size: 8}},
         axes:{
           xaxis:{
-            renderer: $.jqplot.LinearAxisRenderer,  // renderer to use to draw the axis,
+            renderer: $.jqplot.GracefulAxisRenderer,  // renderer to use to draw the axis,
             label: data.xlabel,
             labelRenderer: $.jqplot.CanvasAxisLabelRenderer,
             tickRenderer: $.jqplot.CanvasAxisTickRenderer,
@@ -296,7 +296,8 @@ webData.prototype.render1dplot = function(data, transform, plotid, plot_options)
             }
           },
           yaxis:{
-            renderer: (transform == 'log') ? $.jqplot.LogAxisRenderer : $.jqplot.LinearAxisRenderer,
+            //renderer: (transform == 'log') ? $.jqplot.LogAxisRenderer : $.jqplot.GracefulAxisRenderer,
+            renderer: $.jqplot.GracefulAxisRenderer,
             label: data.ylabel,
             labelRenderer: $.jqplot.CanvasAxisLabelRenderer,
             tickRenderer: $.jqplot.CanvasAxisTickRenderer,
