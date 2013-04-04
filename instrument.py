@@ -175,7 +175,7 @@ class DeviceChannel(Channel):
     
     @subscriber
     def device_hierarchy(self):
-        return self.devices # take the "structure" part
+        return self.view # take the "structure" part
     
     @subscriber
     def filled_device_hierarchy(self):
@@ -196,11 +196,11 @@ class DeviceChannel(Channel):
                     new_id = node['id']
                 elif item['nodeID'] in devices: 
                     device = devices[item['nodeID']]
-                    primaryNodeID = device.primaryNodeID
-                    if primaryNodeID == '': primaryNodeID = device.visibleNodeIDs[0]
-                    primaryNode = nodes[primaryNodeID]
-                    value = primaryNode.currentValue.val
-                    new_id = primaryNode.id
+                    primaryNodeID = device['primaryNodeID']
+                    if primaryNodeID == '': primaryNodeID = device['visibleNodeIDs'][0]
+                    primaryNode = nodes[item['nodeID'] +'.'+ primaryNodeID]
+                    value = primaryNode['currentValue']['val']
+                    new_id = primaryNode['id']
                 item['value'] = value
                 item['id'] = new_id
             else:
