@@ -165,6 +165,8 @@
                     // server.disconnect();
                 });
                 
+                Devices.on('reset', function(state) {Devices.state = state;});
+                
                 Devices.on('changed', function (nodes) {
                     for (var i=0; i < nodes.length; i++) {
                         var node = nodes[i];

@@ -161,12 +161,13 @@ class DeviceChannel(Channel):
     def __init__(self):
         Channel.__init__(self, fan_in=False, fan_out=True)
         self.devices = None
+        self.nodes = None
         self.view = {}
 
     def channel_reset(self, state):
         #print "receiving device state"
-        self.devices, self.view = state
-        _fixup_devices(self.devices,self.view)
+        self.devices, self.nodes, self.view = state
+        _fixup_devices(self.devices,self.nodes)
 
     def channel_state(self):
         #print "getting device state"
@@ -175,30 +176,36 @@ class DeviceChannel(Channel):
     @subscriber
     def device_hierarchy(self):
         return self.devices # take the "structure" part
-        
+    
     @subscriber
-    def filled_device_hierarchy(self):
+    def filled_device_hierarchy(view, devices, nodes):
         from copy import deepcopy
         devices = self.devices
+        nodes = self.nodes
         filled_structure = deepcopy(self.view)
         def get_value(dottedname):
             keys = dottedname.split('.')
         
         def fill_children(item):
-            if len(item['children']) == 0:
-                names = item['nodeID'].split('.')
-                device = devices[names[0]]
-                if len(names) == 2: # node is specified
-                    value = device['nodes'][names[1]]['currentValue']['val']
-                    new_id = device['nodes'][names[1]]['id']
-                else: 
-                    primaryNode = device['nodes'][device['primaryNodeID']]
-                    value = primaryNode['currentValue']['val']
-                    new_id = primaryNode['id']
+            print item['nodeID']
+            if len(item['children']['elements']) == 0:
+                if item['nodeID'] in nodes.keys():
+                    node = nodes[item['nodeID']]
+                    # then we're a node
+                    device = devices[node.deviceID]
+                    value = node.currentValue.val
+                    new_id = node['id']
+                elif item['nodeID'] in devices: 
+                    device = devices[item['nodeID']]
+                    primaryNodeID = device.primaryNodeID
+                    if primaryNodeID == '': primaryNodeID = device.visibleNodeIDs[0]
+                    primaryNode = nodes[primaryNodeID]
+                    value = primaryNode.currentValue.val
+                    new_id = primaryNode.id
                 item['value'] = value
                 item['id'] = new_id
             else:
-                for i in item['children']:
+                for i in item['children']['elements']:
                     fill_children(i)
         fill_children(filled_structure)
         return filled_structure
