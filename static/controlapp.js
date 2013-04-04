@@ -145,28 +145,29 @@
                     'connect timeout': 10000,
                     'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
                 });
-                var server = io.connect(BaseURL);
-                server.emit('controller', function(ControlHost) {
+                //var server = io.connect(BaseURL);
+                //server.emit('controller', function(ControlHost) {
+                var ControlHost = BaseURL;
                     if (ControlHost) {
                         Controller = io.connect(ControlHost + '/' + Instrument + '/control', {
                             'rememberTransport': false,
                             'connect timeout': 10000,
                             'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
                         });
-                        Controller.emit('isactive', function(response) {
-                            controller_connected = (response == "active");
-                            if (controller_connected) {
-                                $('.ui-icon-arrow-r').show();
-                            } else {
-                                $('.ui-icon-arrow-r').hide();
-                            }
-                        });
+                        //Controller.emit('isactive', function(response) {
+                        //    controller_connected = (response == "active");
+                        //    if (controller_connected) {
+                        //        $('.ui-icon-arrow-r').show();
+                        //    } else {
+                        //        $('.ui-icon-arrow-r').hide();
+                        //    }
+                        //});
                     }
                     // server.disconnect();
-                });
+                //});
                 
                 Devices.on('reset', function(state) {Devices.state = state;});
-                
+
                 Devices.on('changed', function (nodes) {
                     for (var i=0; i < nodes.length; i++) {
                         var node = nodes[i];
@@ -185,7 +186,8 @@
                         } 
                     }
                 });
-                Devices.emit('subscribe', false);
+                //Devices.emit('subscribe', false);
+                /*
                 Devices.emit('filled_device_hierarchy', function(structure){
                     //$.extend(device_tree, tree, false);
                     $.extend(device_hierarchy, structure, false);
@@ -196,7 +198,7 @@
                     } else {
                         $('.ui-icon-arrow-r').hide();
                     }
-                });
+                });*/
                 Devices.on('reconnect', function() {
                     Devices.emit('subscribe', false);
                     Devices.emit('filled_device_hierarchy', function(structure){
