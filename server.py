@@ -241,7 +241,7 @@ def serve():
             debug=DEBUG,
             **WEB_SETTINGS)
     controller_app = web.Application(
-            nice_router.apply_routes([]), 
+            control_router.apply_routes([]), 
             socket_io_port=CONTROLLER_PORT, 
             debug=DEBUG,
             **NICE_SETTINGS)
