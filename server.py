@@ -24,7 +24,7 @@ import pubsub
 
 from pubsub import Publisher, Subscriber
 
-AVAILABLE_INSTRUMENTS = set("ng1|ngb|ngd|cgd|bt1|bt4".split('|'))
+AVAILABLE_INSTRUMENTS = set("ng1|ngb|ngd|cgd|bt1|bt4|magik".split('|'))
 INSTRUMENTS = {}  # Start without any instruments
 SERVER = "drneutron.org"
 ROOT = os.path.normpath(os.path.dirname(__file__))
