@@ -187,7 +187,6 @@ class DeviceChannel(Channel):
             keys = dottedname.split('.')
         
         def fill_children(item):
-            print item['nodeID']
             if len(item['children']['elements']) == 0:
                 if item['nodeID'] in nodes.keys():
                     node = nodes[item['nodeID']]
