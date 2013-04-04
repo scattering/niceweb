@@ -178,7 +178,7 @@ class DeviceChannel(Channel):
         return self.devices # take the "structure" part
     
     @subscriber
-    def filled_device_hierarchy(view, devices, nodes):
+    def filled_device_hierarchy(self):
         from copy import deepcopy
         devices = self.devices
         nodes = self.nodes
