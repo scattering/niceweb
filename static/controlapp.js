@@ -186,8 +186,8 @@
                         } 
                     }
                 });
-                //Devices.emit('subscribe', false);
-                /*
+                Devices.emit('subscribe', false);
+                
                 Devices.emit('filled_device_hierarchy', function(structure){
                     //$.extend(device_tree, tree, false);
                     $.extend(device_hierarchy, structure, false);
@@ -198,7 +198,7 @@
                     } else {
                         $('.ui-icon-arrow-r').hide();
                     }
-                });*/
+                });
                 Devices.on('reconnect', function() {
                     Devices.emit('subscribe', false);
                     Devices.emit('filled_device_hierarchy', function(structure){
