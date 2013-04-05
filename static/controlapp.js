@@ -18,13 +18,13 @@
             function treeToHTML(tree, ihtml) {
                 var ihtml = ihtml ? ihtml : "";
                 
-                if (tree.children.length > 0) {
+                if (tree.children.elements.length > 0) {
                     ihtml += "<div data-role='collapsible'>";
                     ihtml += '<h3>' + tree.nodeID + "</h3>";
                     ihtml += "<div data-role='collapsible-set'>";
                     ihtml += '<ul data-role="listview" data-filter="false" data-theme="d">';
-                    for (var i in tree.children) {                        
-                        ihtml += treeToHTML(tree.children[i]);
+                    for (var i in tree.children.elements) {                        
+                        ihtml += treeToHTML(tree.children.elements[i]);
                     }
                     ihtml += "</ul>";
                     ihtml += "</div>";
@@ -147,26 +147,29 @@
                 });
                 //var server = io.connect(BaseURL);
                 //server.emit('controller', function(ControlHost) {
-                var ControlHost = BaseURL;
+                var ControlHost = 'http://' + window.location.hostname + ':' + String(parseInt(window.location.port) + 1);
+                //var ControlHost = BaseURL;
                     if (ControlHost) {
                         Controller = io.connect(ControlHost + '/' + Instrument + '/control', {
                             'rememberTransport': false,
                             'connect timeout': 10000,
                             'transports': ['websocket', 'xhr-polling', 'htmlfile', 'jsonp-polling']
                         });
+                        controller_connected = true;
+
                         //Controller.emit('isactive', function(response) {
                         //    controller_connected = (response == "active");
-                        //    if (controller_connected) {
-                        //        $('.ui-icon-arrow-r').show();
-                        //    } else {
-                        //        $('.ui-icon-arrow-r').hide();
-                        //    }
+                            if (controller_connected) {
+                                $('.ui-icon-arrow-r').show();
+                            } else {
+                                $('.ui-icon-arrow-r').hide();
+                            }
                         //});
                     }
                     // server.disconnect();
                 //});
                 
-                Devices.on('reset', function(state) {Devices.state = state;});
+                Devices.on('reset', function(state) {Devices.state=state});
 
                 Devices.on('changed', function (nodes) {
                     for (var i=0; i < nodes.length; i++) {
@@ -186,7 +189,7 @@
                         } 
                     }
                 });
-                Devices.emit('subscribe', false);
+                //Devices.emit('subscribe', false);
                 
                 Devices.emit('filled_device_hierarchy', function(structure){
                     //$.extend(device_tree, tree, false);
@@ -200,7 +203,7 @@
                     }
                 });
                 Devices.on('reconnect', function() {
-                    Devices.emit('subscribe', false);
+                    //Devices.emit('subscribe', false);
                     Devices.emit('filled_device_hierarchy', function(structure){
                         $.extend(device_hierarchy, structure, false);
                         update_devices();
