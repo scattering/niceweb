@@ -65,13 +65,13 @@
 
                     var nodename = names[1];
                     if (dev.nodes && dev.nodes[nodename] && dev.nodes[nodename].currentValue) {
-                        return dev.nodes[nodename].currentValue.val;
+                        return dev.nodes[nodename].currentValue.userVal;
                     } else { 
                         return "";
                     }
                 } else {
                     if (dev.primaryNodeID && dev.primaryNodeID != "") { 
-                        return dev.nodes[dev.primaryNodeID].currentValue.val;  
+                        return dev.nodes[dev.primaryNodeID].currentValue.userVal;  
                     } else {
                         return ""; 
                     }
@@ -178,7 +178,7 @@
                         //    device_tree[node.deviceID].nodes[node.nodeID] = node;
                         //}
                         if (shown_devices.hasOwnProperty(node.id)) {
-                            var val = node.currentValue.val;
+                            var val = node.currentValue.userVal;
                             shown_devices[node.id] = val;
                             if (typeof(val) == "number") {
                                 val = val.toFixed(4);

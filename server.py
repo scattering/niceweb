@@ -26,7 +26,7 @@ from pubsub import Publisher, Subscriber
 
 AVAILABLE_INSTRUMENTS = set("ng1|ngb|ngd|cgd|bt1|bt4|magik".split('|'))
 INSTRUMENTS = {}  # Start without any instruments
-SERVER = "drneutron.org"
+SERVER = "sparkle.ncnr.nist.gov"
 ROOT = os.path.normpath(os.path.dirname(__file__))
 SUBSCRIBER_PORT = 8001
 CONTROLLER_PORT = SUBSCRIBER_PORT+1
