@@ -192,14 +192,14 @@ class DeviceChannel(Channel):
                     node = nodes[item['nodeID']]
                     # then we're a node
                     device = devices[node.deviceID]
-                    value = node.currentValue.val
+                    value = node.currentValue.userVal.val
                     new_id = node['id']
                 elif item['nodeID'] in devices: 
                     device = devices[item['nodeID']]
                     primaryNodeID = device['primaryNodeID']
                     if primaryNodeID == '': primaryNodeID = device['visibleNodeIDs'][0]
                     primaryNode = nodes[item['nodeID'] +'.'+ primaryNodeID]
-                    value = primaryNode['currentValue']['val']
+                    value = primaryNode.currentValue.userVal.val
                     new_id = primaryNode['id']
                 item['value'] = value
                 item['id'] = new_id
