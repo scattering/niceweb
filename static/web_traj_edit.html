@@ -1,0 +1,904 @@
+<!doctype html>
+ 
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>NICE Trajectory Editor</title>
+  <!--<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />-->
+  <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/smoothness/jquery-ui.css" />
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script> 
+  <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script> 
+<!--  <script src="http://code.jquery.com/jquery-1.9.1.js"></script>-->
+<!-- <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>-->
+  <script src="sprintf.js"></script>
+  <script src="polspec_new.traj.js"></script>
+<!--  <link rel="stylesheet" href="/resources/demos/style.css" />-->
+  <style>
+    .loop-section { list-style-type: none; margin: 5; padding: 10; border-style: dashed; border-width: 1px; border-color: gray;}
+    .vary-section { list-style-type: none; margin: 0; padding: 10; }
+    ol { list-style-type: none; margin: 0; padding: 10; }
+    .main-list { margin: 0; padding: 0 }
+    /*.ui-state-default { margin: 0 15px 3px 3px; padding: 0.4em; font-size: 1.4em; height: 18px; }*/
+    .itemkey { padding: 0.4em; padding-left: 1.5em; font-size: 1em; font-weight: bold}
+    /*.ui-state-default span { position: absolute; margin-left: -1.3em; }*/
+    select { margin: 0px 10px 3px 3px; padding: 0.2em; font-size: 1.1em; height: 2em; }
+    .section-header { font:italic 12px/30px Georgia, serif; padding: 0.2em; font-size: 1.1em; height: 2em; }
+    .subsection-header { font:italic 12px/30px Georgia, serif; padding: 0em; margin: 0; font-size: 1.1em; }
+    .remove-button { float: right; margin: 0px; padding: 0px; font-size: 0.3em;}
+    #catalog { margin: 10px; padding: 10px; border-style: solid; border-width: 1px; border-color: gray; }
+    .catalog-item { margin: 8px; padding: 5px; }
+    
+    .ui-dialog .ui-state-error { padding: .3em; }
+    fieldset { padding:0; border:0; margin-top:25px; }
+    .custom-devicename { display: none; size: 10; text-align: center; font-size: 1.1em;}
+  </style>
+  <script>
+  $(function() {
+    //$( "ol" ).sortable();
+    //$( "ol" ).disableSelection();
+    
+    DEVICES = [
+    'sampleAngle', 
+    'detectorAngle', 
+    'slit1Aperture',
+    'slit2Aperture',
+    'slit3Aperture',
+    'slit4Aperture',
+    'vertSlitAperture1',
+    'vertSlitAperture2',
+    'sampleTranslationX',
+    'sampleTranslationY',
+    'sampleTiltX',
+    'sampleTiltY',
+    't0',
+    'h0', 
+    'frontPolarization',
+    'backPolarization',
+    'skip',
+    ];
+    
+    USER_DEVICES=[];
+    
+    EMPTY_TRAJ = "{'init': {}, 'loops': [{'vary': []}]}";
+    
+    var rangeListItem, expressionListItem, listListItem;
+    
+    var itemCreators = {
+        'range': rangeListItem,
+        'expression': expressionListItem,
+        'list': listListItem,
+        'cycliclist': listObjListItem,
+        'loop': loopItem,
+        'subloop': loopsList
+    }
+    
+    set_data = function(raw) {
+        parsed_data = eval('(function(){ var result =' + raw + '; return result})();')
+        $("#editor").empty();
+        //loops = loopsList(parsed_data.loops);
+        editor = mainList(parsed_data);
+        document.getElementById('editor').appendChild(editor);       
+    }
+    
+    function appendChoicesFromList(devices, selector) {
+        for (var i=0; i<devices.length; i++) {
+            var device = devices[i];
+            selector.add(new Option(device, device));
+        }
+    }
+    function deviceSelector() {
+        var selector = document.createElement('select');
+        //selector.setAttribute('type', 'text');
+        //selector.onchange = function(evt) { 
+        //    if (selector.value == 'other...') {
+        //        $( "#device-name-form" ).data('selector', selector).dialog( "open" );
+        //    }
+        //};
+
+        selector.classList.add('device-selector');
+        appendChoicesFromList(DEVICES, selector);
+        appendChoicesFromList(USER_DEVICES, selector);
+        appendChoicesFromList(['user-defined:'], selector);
+        return selector;
+    }
+    
+    
+    /*
+    var $input = $(".device-selector").autocomplete({
+        source: DEVICES,
+        minLength: 0
+    }).addClass("ui-widget ui-widget-content ui-corner-left");
+
+    $("<button type='button'>&nbsp;</button>")                     
+        .attr("tabIndex", -1)                     
+        .attr("title", "Show All Items")                     
+        .insertAfter($input)                     
+        .button({                         
+            icons: {                             
+                primary: "ui-icon-triangle-1-s"                         
+            },                         
+            text: false                     
+        })                     
+        .removeClass("ui-corner-all")                     
+        .addClass("ui-corner-right ui-button-icon")                   
+        .click(function() {                         
+            // close if already visible                         
+            if ($input.autocomplete("widget").is(":visible")) {$input.autocomplete( "close" );
+                 return;                         
+            }                                              
+            $(this).blur();                                                 
+            $input.autocomplete("search", "" );                         
+            $input.focus();                     
+    });
+    */
+    /*
+    $( "#device-name-form" ).dialog({
+      autoOpen: false,
+      height: 300,
+      width: 350,
+      modal: true,
+      selector: null,
+      buttons: {
+        "Add device name": function() {
+            var newdevice = $('#newdevice').val()
+            if (DEVICES.indexOf(newdevice) < 0 && USER_DEVICES.indexOf(newdevice) < 0) {
+                USER_DEVICES.push(newdevice);
+                console.log($(this).data('selector'));
+                alert(newdevice);
+            }
+            $( this ).dialog( "close" );
+        },
+        Cancel: function() {
+          $( this ).dialog( "close" );
+        }
+      },
+      close: function() {
+        //allFields.val( "" ).removeClass( "ui-state-error" );
+      }
+    });
+    */
+    
+    function createEntry(name, width, format_str) {
+        if (format_str == "boolean") {
+            return createBooleanEntry(name);
+        } else if (format_str == "list") {
+            return createListEntry(name, width);
+        } else {
+            return createTextEntry(name, width, format_str);
+        }
+    }
+    
+    function removeButton(item) {
+        var b = document.createElement('button');
+        b.textContent = "x";
+        b.classList.add('remove-button');
+        $(b).button({icons: {primary: "ui-icon-close"}, text: false});
+        b.onclick = function (evt) {
+            $(item).empty();
+            item.remove();
+        }
+        return b
+    }
+    
+    function createBooleanEntry(name) {
+        var label = document.createElement('label');
+        label.textContent = name;
+        var entry = document.createElement('input');
+        entry.type = "checkbox";
+        label.appendChild(entry);
+        
+        function setValue(value) {
+            this.entry.checked = new Boolean(value);
+        }
+        
+        function getValue() {
+            return this.entry.checked;
+        }
+        function setLabel(newlabel) {
+            //this.label_text.textContent = newlabel;
+            this.textContent = newlabel;
+        }
+        
+        function getLabel() {
+            //return this.label_text.textContent;
+            return this.textContent
+        }
+        Object.defineProperty(label, "entry", { value: entry });
+        //Object.defineProperty(label, "label_text", { value: label_text });
+        Object.defineProperty(label, "setValue", {value: setValue});
+        Object.defineProperty(label, "getValue", {value: getValue});
+        Object.defineProperty(label, "setLabel", {value: setLabel});
+        Object.defineProperty(label, "getLabel", {value: getLabel});
+        return label
+    }
+    
+    
+    function createTextEntry(name, width, format_str) {
+        var label = document.createElement('label');
+        
+        //var label_text = document.createTextNode(name);
+        label.textContent = name
+        var entry = document.createElement('input');
+        // format string defaults to float with 4 digits
+        var format_str = format_str == null ? '%.4f' : format_str; 
+        entry.type = "text";
+        entry.size = width? width : 80;
+        //label.appendChild(label_text);
+        label.appendChild(entry);
+        
+        function setValue(value) {
+            this.entry.value = sprintf(this.format_str, value);
+        }
+        
+        function getValue() {
+            return this.entry.value;
+        }
+        
+        function setLabel(newlabel) {
+            //this.label_text.textContent = newlabel;
+            this.textContent = newlabel;
+        }
+        
+        function getLabel() {
+            //return this.label_text.textContent;
+            return this.textContent
+        }
+        Object.defineProperty(label, "entry", { value: entry });
+        //Object.defineProperty(label, "label_text", { value: label_text });
+        Object.defineProperty(label, "format_str", { value: format_str });
+        Object.defineProperty(label, "setValue", {value: setValue, configurable: true});
+        Object.defineProperty(label, "getValue", {value: getValue, configurable: true});
+        Object.defineProperty(label, "setLabel", {value: setLabel});
+        Object.defineProperty(label, "getLabel", {value: getLabel});
+        return label
+    }
+    
+    function createListEntry(name, width) {
+        var format_str = '%s';
+        var entry = createTextEntry(name, width, format_str);
+        
+        function getValue() {
+            var contents = this.entry.value;
+            var listexpr = '[' +  contents + ']';
+            return JSON.parse(listexpr);
+        }
+        
+        function setValue(val) {
+            var listexpr = JSON.stringify(val);
+            var contents = listexpr.slice(1, listexpr.length-1);
+            this.entry.value = contents;
+        }
+        Object.defineProperty(entry, "getValue", {value: getValue});
+        Object.defineProperty(entry, "setValue", {value: setValue});
+        return entry
+    }
+
+    /* Create a "sub-class" of listitem element */
+    function listItem(name) {
+        var li = document.createElement('li');
+        li.classList.add('ui-state-default');
+        //var label_text = document.createElement('label');
+        //label_text.textContent = name;
+        //label_text.classList.add('itemkey');
+        //li.appendChild(label_text);
+        
+        var deviceselect = deviceSelector();
+        
+        li.appendChild(deviceselect);
+        
+        var _label = "";
+        var custom_device_entry = document.createElement('input');
+        custom_device_entry.type = 'text';
+        custom_device_entry.size = 10;
+        custom_device_entry.classList.add('custom-devicename');
+        li.appendChild(custom_device_entry);
+        
+        deviceselect.onchange = function(evt) {
+            if (deviceselect.value == "user-defined:") {
+                $(custom_device_entry).show();
+            }
+            else {
+                $(custom_device_entry).hide();
+            }
+        }
+        
+        function setLabel(newlabel) {
+            var index = -1;
+            this._label = newlabel;
+            for (var i=0; i<this.deviceselect.options.length; i++) {
+                if (this.deviceselect.options[i].text == newlabel) {
+                    index = i;
+                    $(this.custom_device_entry).hide();
+                    break;
+                }
+            }
+            if (index < 0) {
+                index = this.deviceselect.options.length - 1;
+                $(this.custom_device_entry).show();
+                this.custom_device_entry.value = newlabel;
+            }
+            this.deviceselect.selectedIndex = index;
+            //this.label_text.textContent = newlabel;
+        }
+        
+        function getLabel() {
+            //return this.label_text.textContent;
+            var val = this.deviceselect.value;
+            if (val == 'user-defined:') {
+                val = this.custom_device_entry.value;
+            }
+            return val;
+            // or just return this._label?
+        }
+        //Object.defineProperty(li, "label_text", { value: label_text });
+        Object.defineProperty(li, "_label", {value: _label});
+        Object.defineProperty(li, "deviceselect", { value: deviceselect });
+        Object.defineProperty(li, "custom_device_entry", { value: custom_device_entry });
+        Object.defineProperty(li, "setLabel", {value: setLabel});
+        Object.defineProperty(li, "getLabel", {value: getLabel});
+        li.setLabel(name);
+        li.appendChild(removeButton(li));
+        return li;
+    }
+    
+    
+    
+    function rangeListItem(name, range_obj) {
+        var li = listItem(name);
+        if (range_obj == null) {
+            var range_obj = {'start': 0, 'step': 0, 'stop': 0};
+        }
+        if (typeof range_obj == "number") {
+            // single argument: convert
+            var range_obj = {'start': 0, 'step': 1, 'stop': range_obj-1};
+        } 
+        
+        var keys = ['start', 'step', 'stop'];        
+        var items = {};
+        
+        for (var i=0; i<keys.length; i++) {
+            var key = keys[i];
+            items[key] = createEntry(key, 10, '%.4f')
+            li.appendChild(items[key]);
+            if (range_obj.hasOwnProperty(key)) {
+                items[key].setValue(range_obj[key]);
+            }
+        }
+        
+        function getValue() {
+            var output = {};
+            for (var i in this.items) {
+                var item = this.items[i];
+                output[i] = item.getValue();
+            }
+            return {'range': output}
+        }
+        
+        Object.defineProperty(li, "subtype", {value: "range"});
+        Object.defineProperty(li, "items", {value: items});
+        Object.defineProperty(li, "getValue", {value: getValue});
+        return li;
+    
+    }
+    
+    function listObjListItem(name, src_obj) {
+        var li = listItem(name);
+        if (src_obj == null) {
+            var src_obj = {'value': '', 'cyclic': true};
+        }
+        
+        var keys = ['value', 'cyclic'];
+        var formats = ['list', 'boolean']
+        var items = {};
+        
+        
+        for (var i=0; i<keys.length; i++) {
+            var key = keys[i];
+            var format = formats[i];
+            items[key] = createEntry(key, 10, format)
+            li.appendChild(items[key]);
+            if (src_obj.hasOwnProperty(key)) {
+                items[key].setValue(src_obj[key]);
+            }
+        }
+        
+        function getValue() {
+            var output = {};
+            for (var i in this.items) {
+                var item = this.items[i];
+                output[i] = item.getValue();
+            }
+            return {'list': output}
+        }
+        
+        Object.defineProperty(li, "subtype", {value: "list"});
+        Object.defineProperty(li, "items", {value: items});
+        Object.defineProperty(li, "getValue", {value: getValue});
+        return li;
+    
+    }
+    
+    function expressionListItem(name, initial_value) {
+        var li = listItem(name);   
+        var entry = createEntry('expression', 20, '%s');
+        li.appendChild(entry);
+        
+        function getValue() {
+            return this.entry.getValue();
+        }
+        
+        function setValue(val) {
+            this.entry.setValue(val);
+        }
+        
+        Object.defineProperty(li, "subtype", {value: "expression"});
+        Object.defineProperty(li, "entry", {value: entry});
+        Object.defineProperty(li, "getValue", {value: getValue});
+        Object.defineProperty(li, "setValue", {value: setValue});
+        li.setValue(initial_value == null? "" : initial_value);
+        return li      
+    }
+    
+    function listListItem(name, initial_value) {
+        var li = listItem(name);   
+        //var entry = createEntry('list', 20, '%s');
+        var entry = createListEntry('list', 20);
+        li.appendChild(entry);
+        
+        function getValue() {
+            var contents = this.entry.getValue();
+            //var listexpr = '[' +  contents + ']';
+            //return JSON.parse(listexpr);
+            return contents
+        }
+        
+        function setValue(val) {
+            //var listexpr = JSON.stringify(val);
+            //var contents = listexpr.slice(1, listexpr.length-1);
+            //this.entry.setValue(contents);
+            this.entry.setValue(val);
+        }
+        
+        
+        Object.defineProperty(li, "subtype", {value: "list"});
+        Object.defineProperty(li, "entry", {value: entry});
+        Object.defineProperty(li, "getValue", {value: getValue});
+        Object.defineProperty(li, "setValue", {value: setValue});
+        li.setValue(initial_value == null? [] : initial_value);
+        return li      
+    }
+    
+    function varyList(items) {
+        var ul = document.createElement('ul');
+        ul.classList.add('vary-section');
+        
+        var header = document.createElement('span');
+        header.textContent = 'vary';
+        header.classList.add('subsection-header');
+        //var rb = removeButton(ul);
+        //header.appendChild(rb);
+        ul.appendChild(header);
+
+        
+        for (var i in items) {
+            var item = items[i];
+            var key = item[0];
+            var value = item[1];
+            if (value.hasOwnProperty('range')) {
+                var newrange = rangeListItem(key, value.range);
+                ul.appendChild(newrange);
+            }
+            else if (value.hasOwnProperty('list')) {
+                var newlist = listObjListItem(key, value.list);
+                ul.appendChild(newlist);
+            }
+            else if (typeof value === 'string') {
+                var newexpr = expressionListItem(key, value);
+                ul.appendChild(newexpr);
+            }
+            else if (Array.isArray(value)) {
+                var newlist = listListItem(key, value);
+                ul.appendChild(newlist);
+            }
+        }
+        
+        function getLabel(){
+            return "vary";
+        }
+        
+        function getValue() {
+            var output = [];
+            var children = this.children;
+            for (var l=0; l<children.length; l++) {
+                var child = children[l];
+                if (child.tagName === 'LI') {
+                    // only include list members
+                    output.push([child.getLabel(), child.getValue()]);
+                }
+            }
+            return output;
+        }
+        Object.defineProperty(ul, "subtype", {value: "vary"});
+        Object.defineProperty(ul, "getValue", {value: getValue});
+        Object.defineProperty(ul, "getLabel", {value: getLabel});
+        
+        $( ul ).droppable({
+          greedy: true,
+          activeClass: "ui-state-default",
+          hoverClass: "ui-state-hover",
+          //accept: ":not(.ui-sortable-helper)",
+          accept: ".vary-catalog-item",
+          drop: function( event, ui ) {
+            //$( this ).find( ".placeholder" ).remove();
+            var subtype = ui.draggable[0].getAttribute('name');
+            var newitem = itemCreators[subtype]();
+            //$( "<li></li>" ).text( ui.draggable.text() ).appendTo( this );
+            $( newitem ).appendTo( this );
+            
+          }
+        })
+        return ul;
+        
+    }
+    
+    function initList(items) {
+        var ul = document.createElement('ul');
+        ul.classList.add('vary-section');
+        var header = document.createElement('span');
+        header.textContent = 'Initialization';
+        header.classList.add('section-header');
+        ul.appendChild(header);
+        
+        for (var i in items) {
+            var item = items[i];
+            var key = item[0];
+            var value = item[1];
+            //if (value.hasOwnProperty('range')) {
+            //    var newrange = rangeListItem(key, value.range);
+            //    ul.appendChild(newrange);
+            //}
+            //else if (value.hasOwnProperty('list')) {
+            //    var newlist = listObjListItem(key, value.list);
+            //    ul.appendChild(newlist);
+            //}
+            if (typeof value === 'string' || typeof value === 'number') {
+                var newexpr = expressionListItem(key, value);
+                ul.appendChild(newexpr);
+            }
+            else if (Array.isArray(value)) {
+                var newlist = listListItem(key, value);
+                ul.appendChild(newlist);
+            }
+        }
+        
+        function getLabel(){
+            return "init";
+        }
+        
+        function getValue() {
+            var output = [];
+            var children = this.children; // exclude header
+            for (var l=0; l<children.length; l++) {
+                var child = children[l];
+                if (child.tagName === 'LI') {
+                    output.push([child.getLabel(), child.getValue()]);
+                }
+            }
+            return output;
+        }
+        Object.defineProperty(ul, "subtype", {value: "init"});
+        Object.defineProperty(ul, "getValue", {value: getValue});
+        Object.defineProperty(ul, "getLabel", {value: getLabel});
+        
+        $( ul ).droppable({
+          greedy: true,
+          activeClass: "ui-state-default",
+          hoverClass: "ui-state-hover",
+          //accept: ":not(.ui-sortable-helper)",
+          accept: ".init-catalog-item",
+          drop: function( event, ui ) {
+            //$( this ).find( ".placeholder" ).remove();
+            var subtype = ui.draggable[0].getAttribute('name');
+            var newitem = itemCreators[subtype]();
+            //$( "<li></li>" ).text( ui.draggable.text() ).appendTo( this );
+            $( newitem ).appendTo( this );
+            
+          }
+        })
+        
+        return ul;
+        
+    }
+    
+    function oldloopsList(items, headerText) {
+        var ul = document.createElement('ul');
+        
+        var header = document.createElement('span');
+        header.textContent = headerText == null? 'Loops' : headerText;
+        header.classList.add('section-header');
+        ul.appendChild(header);
+        
+        for (var i in items) {
+            var li = document.createElement('li');
+            var item = items[i];
+            //if (item.hasOwnProperty('vary')) {
+                var newvary = varyList(item.vary);
+                li.appendChild(newvary);
+                $(newvary).sortable({items: "> li"});
+                $(newvary).disableSelection();
+            //}
+            //if (item.hasOwnProperty('loops')) {
+                var newloops = loopsList(item.loops);
+                li.appendChild(newloops);
+                //$(newloops).sortable();
+                $(newloops).disableSelection();
+                
+            //}
+            ul.appendChild(li);
+        }
+        
+        function getLabel(){
+            return "loops";
+        }
+        
+        function getValue() {
+            var output = [];
+            var children = this.children;
+            for (var l=0; l<children.length; l++) {
+                var child = children[l];
+                if (child.tagName === 'LI') {
+                    // each subloop is a list item
+                    var suboutput = {};
+                    var grandchildren = child.children;
+                    for (var m=0; m<grandchildren.length; m++) {
+                        var grandchild = grandchildren[m];
+                        if (grandchild.tagName === 'UL') {
+                            // this catches the 'vary' and 'loops' grandchildren.
+                            suboutput[grandchild.getLabel()]= grandchild.getValue();
+                        }
+                    }
+                    output.push(suboutput);
+                }
+            }
+            return output;
+        }
+        Object.defineProperty(ul, "subtype", {value: "loops"});
+        Object.defineProperty(ul, "getValue", {value: getValue});
+        Object.defineProperty(ul, "getLabel", {value: getLabel});
+        return ul;
+    }
+    
+    function loopsList(items, headerText) {
+        var ul = document.createElement('ul');
+        //ul.classList.add('section');
+        
+        var header = document.createElement('span');
+        header.textContent = headerText == null? 'subloop' : headerText;
+        header.classList.add('section-header');
+        ul.appendChild(header);
+        
+        for (var i in items) {        
+            var item = items[i];
+            var li = loopItem(item);
+            ul.appendChild(li);
+        }
+        
+        function getLabel(){
+            return "loops";
+        }
+        
+        function getValue() {
+            var output = [];
+            var children = this.children;
+            for (var l=0; l<children.length; l++) {
+                var child = children[l];
+                if (child.tagName === 'LI') {
+                    // each subloop is a list item
+                    output.push(child.getValue());
+                }
+            }
+            return output;
+        }
+        Object.defineProperty(ul, "subtype", {value: "loops"});
+        Object.defineProperty(ul, "getValue", {value: getValue});
+        Object.defineProperty(ul, "getLabel", {value: getLabel});
+        
+        $( ul ).droppable({
+          greedy: true,
+          activeClass: "ui-state-default",
+          hoverClass: "ui-state-active",
+          accept: ".loops-catalog-item",
+          drop: function( event, ui ) {
+            var subtype = ui.draggable[0].getAttribute('name');
+            var newitem = itemCreators[subtype]();
+            $( newitem ).appendTo( this );}
+        })
+        
+        return ul;
+    }
+    
+    function loopItem(src_obj) {
+        var li = document.createElement('li');
+        li.classList.add('loop-section');
+        
+        var rb = removeButton(li);
+        li.appendChild(rb);
+        
+        var src_obj = src_obj || {};
+        var newvary = varyList(src_obj.vary);
+        li.appendChild(newvary);
+        $(newvary).sortable({items: "> li"});
+        //$(newvary).disableSelection();
+ 
+        if (src_obj.hasOwnProperty('loops')) {
+            var newloops = loopsList(src_obj.loops);
+            li.appendChild(newloops);
+            $(newloops).sortable({items: "> li"});
+            $(newloops).disableSelection();
+        }
+                
+        function getLabel(){
+            return "loops";
+        }
+        
+        function getValue() {
+            var output = {};
+            var children = this.children;
+            for (var m=0; m<children.length; m++) {
+                var child = children[m];
+                if (child.tagName === 'UL') {
+                    // this catches the 'vary' and 'loops' grandchildren.
+                    output[child.getLabel()]= child.getValue();
+                }
+            }
+            return output;
+        }
+        Object.defineProperty(li, "subtype", {value: "loop"});
+        Object.defineProperty(li, "getValue", {value: getValue});
+        Object.defineProperty(li, "getLabel", {value: getLabel});
+        $( li ).droppable({
+          greedy: true,
+          activeClass: "ui-state-default",
+          hoverClass: "ui-state-active",
+          accept: ".loop-catalog-item",
+          drop: function( event, ui ) {
+            var subtype = ui.draggable[0].getAttribute('name');
+            var newitem = itemCreators[subtype]();
+            $( newitem ).appendTo( this );}
+        })
+        return li;
+    }
+    
+    function mainList(item) {
+        var ul = document.createElement('ul');
+        ul.classList.add('loop-section');
+        ul.classList.add('main-list');
+        if (item.hasOwnProperty('init')) {
+            var newinit = initList(item.init);
+            ul.appendChild(newinit);
+            $(newinit).sortable({items: "> li"});
+            //$(newinit).disableSelection();
+        }
+        
+        if (item.hasOwnProperty('loops')) {            
+            var newloops = loopsList(item.loops, "Loops");
+            ul.appendChild(newloops);
+            $(newloops).sortable({items: "> li"});
+            //$(newloops).disableSelection();
+            
+        }
+               
+        function getLabel(){
+            return "main";
+        }
+        
+        function getValue() {
+            var output = {};
+            var children = this.children;
+            for (var l=0; l<this.children.length; l++) {
+                var child = this.children[l];
+                if (child.tagName === 'UL') {
+                    output[child.getLabel()] = child.getValue();
+                }
+            }
+            return output;
+        }
+        Object.defineProperty(ul, "getValue", {value: getValue});
+        Object.defineProperty(ul, "getLabel", {value: getLabel});
+        return ul;
+    }
+    
+    function loadData() {
+        var file = document.getElementById('trajfile').files[0]; // only one file allowed
+        datafilename = file.name;
+        var result = null;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            set_data(this.result);
+        }
+        reader.readAsText(file);
+    }
+
+    var fileinput = document.getElementById('trajfile');
+    fileinput.onchange = loadData;  
+    
+    $( ".catalog-item" ).draggable({
+      appendTo: "body",
+      helper: "clone"
+    }); 
+    
+    // create an <iframe> context
+    function newContext() {
+        // using the iframe trick
+        // probably doesn't work under IE
+        var iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+        document.body.appendChild(iframe);
+        iframe.contentWindow.jQuery = jQuery;
+        
+        iframe.contentWindow.document.write(
+            "<script>" + 
+            "function sandbox() {" + 
+            "    this.locals = {};" + 
+            "    this.eval = function(s) { return eval(s) };" + 
+            "    this.assign = function(k, v) { this.locals.k = v };" + 
+            "    this.update = function(d) { jQuery.extend(this.locals, d, true); };" +
+            "    this.keys = function() { return Object.keys(this.locals); };" +
+            "};" + 
+            "<\/script>"
+        ); 
+        
+        return new iframe.contentWindow.sandbox()
+
+        //"var MSIE/*@cc_on =1@*/;"+ // sniff
+        //"parent.sandbox=MSIE?this:{eval:function(s){return eval(s)}}"+
+    }
+    //myContext = newContext();
+    
+    show_traj = function() {
+        var traj_obj = editor.getValue();
+        var traj = JSON.stringify(traj_obj, null, "  ");
+        scriptwin = window.open("", "_blank");
+        scriptwin.traj_obj = traj_obj;
+        /*scriptwin.onload = function() {
+            this.document.title = "Refl1D script: " + datafilename;
+            this.document.write(this.pyscript);
+        }*/
+        scriptwin.document.title = "Trajectory: ";
+        var code = scriptwin.document.createElement('pre');
+        scriptwin.document.body.appendChild(code);
+        code.innerHTML = traj;
+    }
+    
+    set_data(EMPTY_TRAJ);
+  });
+  </script>
+</head>
+<body>
+<!--<div id="device-name-form" title="Create new device name">-->
+<!--  <form>-->
+<!--  <fieldset>-->
+<!--    <label for="newdevice">Name</label>-->
+<!--    <input type="text" name="newdevice" id="newdevice" class="text ui-widget-content ui-corner-all" />-->
+<!--  </fieldset>-->
+<!--  </form>-->
+<!--</div>-->
+
+Load trajectory (*.traj): <input type="file" multiple="false" id="trajfile" name="trajfile" />
+<button onclick="set_data(polspec_raw);">MAGIK polarized trajectory example</button>
+<button onclick="show_traj();">Show trajectory</button>
+<div id="catalog">
+    Drag onto editor below: 
+    <span class="catalog-item vary-catalog-item ui-state-default" name="range" title="drag onto a loop below">+ range</span>
+    <span class="catalog-item init-catalog-item vary-catalog-item ui-state-default" name="expression" title="drag onto a loop below">+ expression</span>
+    <span class="catalog-item init-catalog-item vary-catalog-item ui-state-default" name="list" title="drag onto a loop below">+ list</span>
+    <span class="catalog-item vary-catalog-item ui-state-default" name="cycliclist" title="drag onto a loop below">+ cyclic list</span>
+    <span class="catalog-item loops-catalog-item ui-state-default" name="loop" title="drag onto a loop below">+ loop</span>
+    <span class="catalog-item loop-catalog-item ui-state-default" name="subloop" title="drag onto a loop below">+ subloop</span>
+</div>
+ 
+<div id="editor">
+</div>
+
+</body>
+</html>
