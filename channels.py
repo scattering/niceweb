@@ -1,3 +1,5 @@
+raise NotImplementedError("channels no longer used --- see pubsub & instrument instead")
+
 import time
 import functools
 import json

@@ -281,7 +281,7 @@ usage: server.py [options]
 
 The web port should be widely accessible, the publisher port should only be
 accessible to instrument computers and the control port should only be
-accesible to computers that are allowed to control the instruments.  These
+accessible to computers that are allowed to control the instruments.  These
 port permissions should be configured within the firewall.
 """
 

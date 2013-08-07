@@ -253,6 +253,83 @@ def _fixup_devices(devices, nodes):
         devices[v['deviceID']]['nodes'][v['nodeID']] = v
 
 
+class ExperimentChannel(Channel):
+    """
+    NICE experiment model.
+
+    Subscribers emit 'subscribe' when first connected, which returns the
+    details of the currently active experiment.
+
+    Subscribers should expect the following events::
+
+        exp.on('changed', function (data) {})
+             update the details of the current experiment, or switch to a
+             new experiment
+        exp.on('reset', function (data) {})
+             get details of the current experiment
+
+    Clients can also use direct HTTP requests to retrieve data:
+    
+        experiment/state
+            get details of the current experiment
+        experiment/list
+            get list of [id, title, date] for all experiments sorted by id
+              
+    The creationDateTimestamp in the experiment data record is stored in 
+    milliseconds since Jan 1, 1970.  The date returned in the list of
+    experiment titles and dates is a string such as 2007-01-25T07:00:00-05:00.
+    """
+    name = 'experiment'
+
+    def __init__(self):
+        Channel.__init__(self, fan_in=False, fan_out=True)
+        self.experiments = {}
+        self.current = {}
+
+    def channel_state(self):
+        return self.current
+
+    def channel_reset(self, state):
+        self.experiments, self.current = state
+
+    @restful
+    def list(self):
+        """
+        Return a list of all available experiments sorted by id.  Each item
+        includes (id, title, creation date), where creation date is an ISO8601
+        date format such as 2007-01-25T07:00:00-05:00.
+        """
+        return list(sorted((exp['id'], exp['title'], iso8601.format_date(exp['creationTimeStamp']*0.001))
+                           for exp in self.experiments.values()))
+
+    @publisher
+    def added(self, data):
+        """
+        Experiment added, so record new id and title.
+        """
+        self.experiments[data['id']] = data
+        ## Not maintaining a list of experiments on browser, so don't need to
+        ## signal that a new experiment was added.
+        #self.emit('added', data['id'], data['title'])
+
+    @publisher
+    def changed(self, data):
+        """
+        Current experiment updated.
+        """
+        self.experiments[data['id']] = data
+        self.current = data
+        self.emit('changed', data)
+
+    @publisher
+    def selected(self, data):
+        """
+        Changed active experiment.
+        """
+        self.current = data
+        self.emit('changed', data)
+
+
 class QueueChannel(Channel):
     """
     NICE queue model.
