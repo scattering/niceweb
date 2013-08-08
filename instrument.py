@@ -1,3 +1,5 @@
+import iso8601
+
 from pubsub import Channel, publisher, subscriber, restful
 
 class Facility(object):
@@ -14,11 +16,12 @@ class Instrument(object):
     def __init__(self, name):
         self.name = name
         CHANNELS = [
-            ControlChannel, 
-            EventChannel, 
             ConsoleChannel,
+            ControlChannel, 
             DataChannel, 
             DeviceChannel, 
+            EventChannel, 
+            ExperimentChannel,
             QueueChannel,
         ]
         self.channel = dict((chan.name,chan()) for chan in CHANNELS)
@@ -144,9 +147,6 @@ class DataChannel(Channel):
         #print "data command",record['command']
         if record['command'] == "Configure":
             self.records = []
-        # Ignore intermediate counts; client can pull them off the device stream
-        if record['command'] == "Counts" and record['status'] not in ('complete','abort'):
-            return
         self.records.append(record)
         #print "emitting data",record['command']
         self.emit('record', record)
@@ -293,14 +293,17 @@ class ExperimentChannel(Channel):
         self.experiments, self.current = state
 
     @restful
-    def list(self):
+    def list(self, response):
         """
-        Return a list of all available experiments sorted by id.  Each item
-        includes (id, title, creation date), where creation date is an ISO8601
-        date format such as 2007-01-25T07:00:00-05:00.
+        Returns { experiments: [[id, title, date], ...] }.
+
+        Experiment id, title and date are strings, with date formatted
+        like 2007-01-25T07:00:00-05:00.  The experiments are sorted by
+        experiment id.
         """
-        return list(sorted((exp['id'], exp['title'], iso8601.format_date(exp['creationTimeStamp']*0.001))
-                           for exp in self.experiments.values()))
+        items = ((exp['id'], exp['title'], iso8601.format_date(exp['creationTimeStamp']*0.001))
+                 for exp in self.experiments.values())
+        return { 'experiments': list(sorted(items)) }
 
     @publisher
     def added(self, data):
