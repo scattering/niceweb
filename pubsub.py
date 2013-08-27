@@ -24,29 +24,55 @@ Channels are defined by subclassing the *Channel* object.
 Individual methods in the channel object can be decorated
 with @subscriber, @publisher depending on whether they are
 available to subscribers or to publishers.  The returned
-value from the method will be sent via socketIO back to 
+value from the method will be sent via socketIO back to
 the caller if a callback is requested.
 
-Channel methods can instead be marked with @restful if they 
-should be called in reponse to an http request.  The restful
-methods are called with a tornado RequestHandler object.
+Channel methods can instead be marked with @restful if they
+should be called in reponse to an http request.  For example,
+the state method is implemented in the Channel class as:
+
+    @restful
+    def state(self, response):
+        return self.restful_state(response)
+
+This will be called in response to GET on the url.  The server
+controls the mapping from url to resource, but it will probably
+be something like:
+
+    GET http://server/channel/state
+
+The restful methods are called with a tornado RequestHandler object.
 Request parameters are accessed as::
 
     response.get_argument('name', default=value)
-    
-The request type ('GET', 'POST', etc.) is available from
-the request attribute::
 
-    response.request.method
-    
-along with all the other details of the request.  The restful
-method can return a dictionary, in which case a JSON response
-is created, or a string which is put into the response using
+The restful method can return a dictionary, in which case a JSON
+response is created, or a string which is put into the response using
 response.write(s).   You are free to compose the complete response
 within the restful method, and return None.  You may want to
-set the response headers along with the 
+set the response headers along with the response, using
+response.set_header.
 
-Subclasses must call *Channel.__init__* to set the initial 
+To publish to a channel, the restful interface should use POST
+requests.  Post requests are identified by tagging the resource
+name with _POST.   In response to a post request, the channel method
+should update the channel state, then emit the appropriate message
+to the channel subscribers.  For example, you could update a channel
+representing position using::
+
+    POST http://server/channel/state?position=5
+
+Within the Position channel, you would need the following method::
+
+    @restful
+    def state_POST(self, response):
+        self.position = response.get_argument('position', default=0)
+        self.emit('move',{'position':self.position})
+
+Other request types (PUT, HEAD, DELETE, PATCH, OPTIONS) are handled
+similarly.
+
+Subclasses must call *Channel.__init__* to set the initial
 data structures.  This happens by default if the subclass
 does not provide an *__init__* method, otherwise the subclass
 *__init__* must use either::
@@ -57,11 +83,14 @@ or if it is a direct subclass, it can use the simpler form::
 
     Channel.__init__(self, *args, *kw)
 
-The subclass must maintain the channel state.  The publisher 
-can call *reset(state)* on the connection before sending any 
+The subclass must maintain the channel state.  The publisher
+can call *reset(state)* on the connection before sending any
 state changes, which will call *channel_reset(state)* in the
-subclass.  The state is returned to the subscriber with 
-*channel_state()* or *restful_state(request)*.
+subclass.  The state is returned to the subscriber with
+*channel_state()*.   If you want to provide a limited state option
+to the restful interface, you can define *restful_state(response)*.
+If not, the default GET request for state will return the full
+channel state.
 """
 
 import time
@@ -112,7 +141,7 @@ def find_tags(channel, tag):
     Set the socket events to those with the appropriate tag.
     """
     is_tagged_event = lambda x: ismethod(x) and getattr(x, '_tagged_event', (None, None))[0] == tag
-    events = [(e._tagged_event[1], e) 
+    events = [(e._tagged_event[1], e)
               for _, e in getmembers(channel, is_tagged_event)]
     return dict(events)
 
@@ -120,11 +149,11 @@ def set_expiry(response, **kw):
     """
     Set the Cache-Control header for a tornado HTTP request handler response
     with an expiry time.
-    
+
     Any combination of timedelta keywords can be used to specify the
-    expiry time, including *weeks*, *days*, *hours*, *minutes*, *seconds*, 
+    expiry time, including *weeks*, *days*, *hours*, *minutes*, *seconds*,
     *milliseconds* and *microseconds*.
-     
+
     Raises ValueError if expiry is before now or after one year from now.
     """
     delta = datetime.timedelta(**kw)
@@ -134,7 +163,7 @@ def set_expiry(response, **kw):
     if seconds > 0:
 	    response.set_header("Cache-Control","max-age=%d,must-revalidate"%seconds)
     else:
-        response.set_header("Cache-Control","no-cache")	 
+        response.set_header("Cache-Control","no-cache")
 
 class Subscriber(sio.SocketConnection):
     """
@@ -161,7 +190,7 @@ class Subscriber(sio.SocketConnection):
     def on_event(self, name, args=[], kwargs={}):
         #if self.tag == 'publisher':
         #    store_event(self.endpoint, name, args, kwargs)
-            
+
         #print "%s::%s"%(self.tag,self.endpoint),name
         # Remove funky dict-only => keyword feature.
         if not args and kwargs: args,kwargs = [kwargs],{}
@@ -170,7 +199,7 @@ class Subscriber(sio.SocketConnection):
         handler = self._events.get(name)
         if handler:
             return handler(*args)
-        else:           
+        else:
             raise HTTPError(404,message='Invalid event name "%s" on channel %s' % (name,self.endpoint))
 
 class Publisher(sio.SocketConnection):
@@ -204,7 +233,7 @@ class Publisher(sio.SocketConnection):
         handler = self._events.get(name)
         if handler:
             return handler(*args)
-        else:           
+        else:
             raise HTTPError(404,message='Invalid event name "%s" on channel %s' % (name,self.endpoint))
 
 class Channel(object):
@@ -215,14 +244,14 @@ class Channel(object):
     Each channel may have state information stored with it, such as the
     last 1000 transactions or the current list of queued jobs.  This
     state is initialized by the publisher with a *reset* message when
-    the publisher connects.  As new publisher messages arrive, this state 
-    must be maintained and updated by the channel so that new subscribers 
+    the publisher connects.  As new publisher messages arrive, this state
+    must be maintained and updated by the channel so that new subscribers
     receive the current state.
 
     *fan_in* is True if multiple publishers can be connected.
 
     *fan_out* is True if multiple subscribers can be connected.
-    
+
     *expiry* is the default expiry time in seconds for returned restful
     objects.  restful methods can use set_expiry(response, days=365) to
     for unlimited expiry, or set_expiry(response, days=0) for immediate
@@ -276,24 +305,25 @@ class Channel(object):
     def _publisher_disconnect(self, server):
         self._publishers.remove(server)
 
-    def call(self, method, response):
+    def rest(self, response, action, resource):
         """
         Perform a RESTful request on the channel.
 
         Raises HTTPError(404) if the method does not exist.
         """
-        print "restful::%s"%method #,self._rest_methods
-        if method not in self._rest_methods: 
+        if action != "GET": resource += "_" + action
+        #print "restful::%s"%resource,self._rest_methods
+        if resource not in self._rest_methods:
             raise HTTPError(404)
         set_expiry(response, seconds=self.expiry)
-        result = self._rest_methods[method](response)
+        result = self._rest_methods[resource](response)
         if result is not None:
-            # Note: dictionary results automatically converted to JSON
+            # Note: dictionary results are automatically converted to JSON
             response.write(result)
 
     def emit(self, event, *args):
         """
-        Called by publisher methods to send a socketIO event 
+        Called by publisher methods to send a socketIO event
         to all connected clients.
         """
         for f in self._subscribers:

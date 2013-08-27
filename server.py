@@ -13,7 +13,6 @@ import getopt
 #import re
 
 from tornado import web
-from tornado.escape import json_encode
 from tornado.httpclient import HTTPError
 import tornadio2 as sio
 from tornadio2.router import HandshakeHandler, TornadioRouter, version_info, ioloop, DEFAULT_SETTINGS, PROTOCOLS
@@ -24,7 +23,6 @@ import pubsub
 
 from pubsub import Publisher, Subscriber
 
-AVAILABLE_INSTRUMENTS = set("ng1|ngb|ngd|cgd|bt1|bt4|magik".split('|'))
 INSTRUMENTS = {}  # Start without any instruments
 SERVER = "sparkle.ncnr.nist.gov"
 ROOT = os.path.normpath(os.path.dirname(__file__))
@@ -61,11 +59,29 @@ class RestHandler(web.RequestHandler):
 
     and translate this into a request for the current state on the
     device subscription for the bt4 instrument.
+
+    This is not a general REST interface.  In particular, the normal
+    REST url pattern of "http://server/<table>/<id>" which is
+    appropriate for database access is not supported for channels.
     """
-    def get(self, instrument, channel, rest):
+    def get(self, instrument, channel, resource):
+        return self._call_handler(instrument, channel, resource, "GET")
+    def put(self, instrument, channel, resource):
+        return self._call_handler(instrument, channel, resource, "PUT")
+    def post(self, instrument, channel, resource):
+        return self._call_handler(instrument, channel, resource, "POST")
+    def delete(self, instrument, channel, resource):
+        return self._call_handler(instrument, channel, resource, "DELETE")
+    def header(self, instrument, channel, resource):
+        return self._call_handler(instrument, channel, resource, "HEADER")
+    def patch(self, instrument, channel, resource):
+        return self._call_handler(instrument, channel, resource, "PATCH")
+    def options(self, instrument, channel, resource):
+        return self._call_handler(instrument, channel, resource, "OPTIONS")
+    def _call_handler(self, instrument, channel, resource, action):
         # Allow mash-ups
         self.set_header("Access-Control-Allow-Origin", SERVER)
-        INSTRUMENTS[instrument].channel[channel].call(rest, self)
+        INSTRUMENTS[instrument].channel[channel].rest(self, action, resource)
 
 class BaseHandler(HandshakeHandler):
     def set_default_headers(self):
@@ -231,7 +247,7 @@ def serve():
         (r"/", IndexHandler),
         # TODO: the following pattern is too generic it matches most /x/y/z
         # it only works because '.' is excluded from the matched patterns.
-        (r"/(?P<instrument>[a-zA-Z0-9_]*)/(?P<channel>[a-z_]*)/(?P<rest>[a-z_]*)", RestHandler),
+        (r"/(?P<instrument>[a-zA-Z0-9_]*)/(?P<channel>[a-z_]*)/(?P<resource>[a-z_]*)", RestHandler),
     ]
 
     # Point the servers to internal and external ports
@@ -280,8 +296,8 @@ usage: server.py [options]
        client and triggers restart when the server file changes.
 
 The web port should be widely accessible, the publisher port should only be
-accessible to instrument computers and the control port should only be
-accessible to computers that are allowed to control the instruments.  These
+accessible to instrument computers and the controller port should only be
+accessible to computers that are allowed to control the instruments.  The
 port permissions should be configured within the firewall.
 """
 
