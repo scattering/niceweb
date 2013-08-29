@@ -1,3 +1,4 @@
+from fnmatch import fnmatch
 import iso8601
 
 from pubsub import Channel, publisher, subscriber, restful
@@ -172,7 +173,22 @@ class DeviceChannel(Channel):
     def channel_state(self):
         #print "getting device state"
         return {'devices':self.devices, 'view':self.view}
-    
+
+    @restful
+    def device(self, response):
+        pattern = response.get_argument('id','*')
+        return dict((deviceID, device) 
+                    for deviceID,device in self.devices.items() 
+                    if fnmatch(deviceID,pattern))
+
+    @restful
+    def node(self, response):
+        pattern = response.get_argument('id','*.*')
+        return dict((".".join((deviceID,nodeID)),node) 
+                    for deviceID,device in self.devices.items() 
+                    for nodeID,node in device['nodes'].items()
+                    if fnmatch(".".join((deviceID,nodeID)),pattern))
+
     @subscriber
     def device_hierarchy(self):
         return self.view # take the "structure" part
@@ -234,7 +250,7 @@ class DeviceChannel(Channel):
         """
         Node value or properties changed.  Forward the details to the clients.
         """
-        for node in nodes:
+        for node in nodes.values():
             #print node
             self.devices[node['deviceID']]['nodes'][node['nodeID']] = node
         # May want to do bandwidth limiting, an only send updates to big nodes

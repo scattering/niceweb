@@ -302,7 +302,6 @@ port permissions should be configured within the firewall.
 """
 
 def main():
-    logging.getLogger().setLevel(logging.INFO)
     
     try:
         longopts = ["capture=","port=","debug"]
@@ -327,6 +326,8 @@ def main():
         else:
             print "unknown option",name
     
+    #logging.getLogger().setLevel(logging.INFO)
+    logging.getLogger().setLevel(logging.DEBUG if DEBUG else logging.INFO)
     serve()
 
 if __name__ == "__main__":
