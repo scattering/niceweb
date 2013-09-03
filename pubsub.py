@@ -102,6 +102,8 @@ from inspect import ismethod, getmembers
 from tornado.httpclient import HTTPError
 import tornadio2 as sio
 
+from iso8601 import now
+
 DEBUG = False
 
 _CAPTURE_START = None
@@ -179,11 +181,11 @@ class Subscriber(sio.SocketConnection):
         self.channel = channel
 
     def on_close(self):
-        print "subscriber::%s"%self.endpoint, "close"
+        print now(), "subscriber::%s"%self.endpoint, "close"
         self.channel._subscriber_disconnect(self)
 
     def on_open(self, request):
-        print "subscriber::%s"%self.endpoint, "open"
+        print now(), "subscriber::%s"%self.endpoint, "open"
         self.channel._subscriber_connect(self)
         return True
 
@@ -191,7 +193,7 @@ class Subscriber(sio.SocketConnection):
         #if self.tag == 'publisher':
         #    store_event(self.endpoint, name, args, kwargs)
 
-        #print "%s::%s"%(self.tag,self.endpoint),name
+        #print now(), "subscriber::%s"%self.endpoint,name
         # Remove funky dict-only => keyword feature.
         if not args and kwargs: args,kwargs = [kwargs],{}
         #print "calling",name,"with",len(args),kwargs
@@ -216,16 +218,16 @@ class Publisher(sio.SocketConnection):
         self.channel = channel
 
     def on_close(self):
-        print "publisher::%s"%self.endpoint, "close"
+        print now(), "publisher::%s"%self.endpoint, "close"
         self.channel._publisher_disconnect(self)
 
     def on_open(self, request):
         self.channel._publisher_connect(self)
-        print "publisher::%s"%self.endpoint, "open"
+        print now(), "publisher::%s"%self.endpoint, "open"
         return True
 
     def on_event(self, name, args=[], kwargs={}):
-        #print "publisher::%s"%self.endpoint,name
+        #print now(), "publisher::%s"%self.endpoint,name
         store_event(self.endpoint, name, args, kwargs)
         # Remove funky dict-only => keyword feature.
         if not args and kwargs: args,kwargs = [kwargs],{}
@@ -303,7 +305,8 @@ class Channel(object):
             raise IOError("Only one publisher permitted for channel "+self.name)
         self._publishers.add(server)
     def _publisher_disconnect(self, server):
-        self._publishers.remove(server)
+        try: self._publishers.remove(server)
+        except KeyError: pass
 
     def rest(self, response, action, resource):
         """
@@ -312,7 +315,7 @@ class Channel(object):
         Raises HTTPError(404) if the method does not exist.
         """
         if action != "GET": resource += "_" + action
-        #print "restful::%s"%resource,self._rest_methods
+        #print now(), "restful::%s"%resource,self._rest_methods
         if resource not in self._rest_methods:
             raise HTTPError(404)
         set_expiry(response, seconds=self.expiry)
