@@ -188,6 +188,8 @@ class DeviceChannel(Channel):
         
         def fill_children(item):
             if len(item['children']['elements']) == 0:
+                value = -999
+                new_id = "unknown"
                 if item['nodeID'] in nodes.keys():
                     node = nodes[item['nodeID']]
                     # then we're a node
