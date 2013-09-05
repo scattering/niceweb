@@ -15,6 +15,6 @@ where args those used in server.py.
     server.usage()
     exit(1)
 
-daemon.Daemon('/tmp/niceweb_server_daemon.pid',cmd=server.main).invoke()
+daemon.Daemon('/tmp/niceweb_server_daemon.pid',cmd=server.serve).invoke()
 
 
