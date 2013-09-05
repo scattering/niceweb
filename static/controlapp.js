@@ -172,11 +172,13 @@
                 Devices.on('reset', function(state) {Devices.state=state});
 
                 Devices.on('changed', function (nodes) {
-                    for (var i=0; i < nodes.length; i++) {
-                        var node = nodes[i];
+                    for (var n in nodes) {
+                        // this has changed from list to obj
+                        //var node = nodes[i];
                         //if (device_tree.hasOwnProperty(node.deviceID) && device_tree[node.deviceID].nodes.hasOwnProperty(node.nodeID)) {
                         //    device_tree[node.deviceID].nodes[node.nodeID] = node;
                         //}
+                        var node = nodes[n];
                         if (shown_devices.hasOwnProperty(node.id)) {
                             var val = node.currentValue.userVal;
                             shown_devices[node.id] = val;
