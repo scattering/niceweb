@@ -155,11 +155,12 @@ webData.prototype.updatePlot = function(lineid, new_x, new_y) {
     }
 }
 
-webData.prototype.getXAxis = function(state, exclude_names) {
+webData.prototype.getXAxis = function(devicenames, exclude_names) {
+    console.log(devicenames, this.preferred_xaxis);
     var exclude_names = (exclude_names == null) ? [] : exclude_names;
     for (var i=0; i<this.preferred_xaxis.length; i++) {
         var xaxis = this.preferred_xaxis[i];
-        if ((xaxis in state) && (exclude_names.indexOf(xaxis) < 0)) { 
+        if ((devicenames.indexOf(xaxis) > -1) && (exclude_names.indexOf(xaxis) < 0)) { 
             return xaxis 
         }
     }
@@ -248,7 +249,7 @@ webData.prototype.makeFitData = function(fields, xmin, xmax) {
 webData.prototype.onOpen = function(record) {
     var lineid = record.scan;
     var ser = new Object();
-    this.series.xaxis = this.getXAxis(record.data['trajectory.controlVariables']); // get the first
+    //this.series.xaxis = this.getXAxis(record.data['trajectory.controlVariables']); // get the first
     this.series.streams[lineid] = ser;
     ser.columns = {};
     ser.lin_xydata = [];
