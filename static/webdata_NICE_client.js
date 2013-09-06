@@ -213,7 +213,7 @@ webData.prototype.addCounts = function(lineid, state) {
         if (!(item in ser.columns)) { ser.columns[item] = []; }
         ser.columns[item].push(series.counts[item]);
     }
-    if (series.xaxis == null) { series.xaxis = this.getXAxis(series.state); }
+    if (series.xaxis == null) { series.xaxis = this.getXAxis(Object.keys(series.state)); }
     
     var new_x = series.state[series.xaxis];
     var new_y = series.counts['counter.liveROI'];
