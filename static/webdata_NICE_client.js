@@ -164,7 +164,7 @@ webData.prototype.getXAxis = function(devicenames, exclude_names) {
             return xaxis 
         }
     }
-    return Object.keys(state)[0]
+    return devicenames[0]
 }
 
 webData.prototype.addState = function(lineid, state) {
@@ -176,7 +176,7 @@ webData.prototype.addState = function(lineid, state) {
     }*/    
     var ser = series.streams[lineid];
     jQuery.extend(true, series.state, state);
-    for (item in ser.state) {
+    for (item in series.state) {
         if (!('columns' in ser)) { ser.columns = {}; }
         if (!(item in ser.columns)) { ser.columns[item] = []; }
         ser.columns[item].push(series.state[item]);
@@ -208,7 +208,7 @@ webData.prototype.addCounts = function(lineid, state) {
     //console.log('ser.counts', ser.counts);
     //console.log('state', state);
     jQuery.extend(true, series.counts, state);
-    for (item in ser.counts) {
+    for (item in series.counts) {
         if (!('columns' in ser)) { ser.columns = {}; }
         if (!(item in ser.columns)) { ser.columns[item] = []; }
         ser.columns[item].push(series.counts[item]);
