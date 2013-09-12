@@ -1,6 +1,7 @@
 XAXIS_ORDER = [
     'A04', 'A03', 'A10', 'A08', 'A02', 'A01', 'QZ', 'QH', 'QK', 'QL', 'CUR',
-    'sampleAngleMotor.softPosition', 'sampleAngle.softPosition'
+    'sampleAngleMotor.softPosition', 'sampleAngle.softPosition',
+    'detectorAngleMotor.softPosition', 'detectorAngle.softPosition'
     ]; // make these the x-axis, if they are available
 for (var i=1; i<40; i++) {
     var xa = 'A' + (i < 10 ? '0' : '') + i.toFixed();
@@ -10,6 +11,8 @@ for (var i=1; i<40; i++) {
 }
 
 function Series() {
+    this.state = {};
+    this.counts = {};
     this.streams = {};
     this.xaxis = null;
     this.live_data = {
@@ -152,15 +155,16 @@ webData.prototype.updatePlot = function(lineid, new_x, new_y) {
     }
 }
 
-webData.prototype.getXAxis = function(state, exclude_names) {
+webData.prototype.getXAxis = function(devicenames, exclude_names) {
+    console.log(devicenames, this.preferred_xaxis);
     var exclude_names = (exclude_names == null) ? [] : exclude_names;
     for (var i=0; i<this.preferred_xaxis.length; i++) {
         var xaxis = this.preferred_xaxis[i];
-        if ((xaxis in state) && (exclude_names.indexOf(xaxis) < 0)) { 
+        if ((devicenames.indexOf(xaxis) > -1) && (exclude_names.indexOf(xaxis) < 0)) { 
             return xaxis 
         }
     }
-    return Object.keys(state)[0]
+    return devicenames[0]
 }
 
 webData.prototype.addState = function(lineid, state) {
@@ -171,28 +175,26 @@ webData.prototype.addState = function(lineid, state) {
         //remake_plot = true; 
     }*/    
     var ser = series.streams[lineid];
-    console.log('ser.counts', ser.state);
-    console.log('state', state);
-    jQuery.extend(true, ser.state, state);
-    for (item in ser.state) {
+    jQuery.extend(true, series.state, state);
+    for (item in series.state) {
         if (!('columns' in ser)) { ser.columns = {}; }
         if (!(item in ser.columns)) { ser.columns[item] = []; }
-        ser.columns[item].push(ser.state[item]);
+        ser.columns[item].push(series.state[item]);
     }
-    if (series.xaxis == null) { series.xaxis = this.getXAxis(state); }
+    //if (series.xaxis == null) { series.xaxis = this.getXAxis(state); }
     
-    var new_x = state[series.xaxis];
-    var new_y = state['DATA'];
+    //var new_x = state[series.xaxis];
+    //var new_y = state['DATA'];
     
-    var new_lin_xydata = [new_x, new_y];
-    var new_log_xydata = [new_x, Math.log(new_y)/Math.LN10];
+    //var new_lin_xydata = [new_x, new_y];
+    //var new_log_xydata = [new_x, Math.log(new_y)/Math.LN10];
     
-    ser.lin_xydata.push(new_lin_xydata);
-    ser.log_xydata.push(new_log_xydata);
+    //ser.lin_xydata.push(new_lin_xydata);
+    //ser.log_xydata.push(new_log_xydata);
     
-    if (this.in_datastream == true) {                  
-        this.updatePlot(lineid, new_x, new_y);
-    }
+    //if (this.in_datastream == true) {                  
+    //    this.updatePlot(lineid, new_x, new_y);
+    //}
 }
 
 webData.prototype.addCounts = function(lineid, state) {
@@ -203,18 +205,18 @@ webData.prototype.addCounts = function(lineid, state) {
         //remake_plot = true; 
     }*/    
     var ser = series.streams[lineid];
-    console.log('ser.counts', ser.counts);
-    console.log('state', state);
-    jQuery.extend(true, ser.counts, state);
-    for (item in ser.counts) {
+    //console.log('ser.counts', ser.counts);
+    //console.log('state', state);
+    jQuery.extend(true, series.counts, state);
+    for (item in series.counts) {
         if (!('columns' in ser)) { ser.columns = {}; }
         if (!(item in ser.columns)) { ser.columns[item] = []; }
-        ser.columns[item].push(ser.counts[item]);
+        ser.columns[item].push(series.counts[item]);
     }
-    if (series.xaxis == null) { series.xaxis = this.getXAxis(state); }
+    if (series.xaxis == null) { series.xaxis = this.getXAxis(Object.keys(series.state)); }
     
-    var new_x = ser.state[series.xaxis];
-    var new_y = ser.counts['counter.liveROI'];
+    var new_x = series.state[series.xaxis];
+    var new_y = series.counts['counter.liveROI'];
     
     var new_lin_xydata = [new_x, new_y];
     var new_log_xydata = [new_x, Math.log(new_y)/Math.LN10];
@@ -247,10 +249,8 @@ webData.prototype.makeFitData = function(fields, xmin, xmax) {
 webData.prototype.onOpen = function(record) {
     var lineid = record.scan;
     var ser = new Object();
-    this.series.xaxis = record.data['trajectory.controlVariables'][0]; // get the first
+    //this.series.xaxis = this.getXAxis(record.data['trajectory.controlVariables']); // get the first
     this.series.streams[lineid] = ser;
-    ser.counts = {};
-    ser.state = {};
     ser.columns = {};
     ser.lin_xydata = [];
     ser.log_xydata = [];
