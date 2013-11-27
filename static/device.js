@@ -127,7 +127,7 @@ Ext.onReady(function () {
     GridSpace.setDeviceValue = function (record) {
         if (record.device.primaryNodeID === "") return;
         var node = record.device.nodes[record.device.primaryNodeID];
-        record.position = GridSpace.trimmedValue(node.currentValue.userVal);  
+        record.position = GridSpace.trimmedValue(node.currentValue);  
         if (record.device.type === "MOTOR") {
             record.target = GridSpace.trimmedValue(node.desiredValue);
         }
@@ -136,10 +136,10 @@ Ext.onReady(function () {
     GridSpace.trimmedValue = function (value) {
         if (value === undefined || value == null) {
             return "undefined";
-        } else if ($.isArray(value.val) && value.val.length > 5) {
+        } else if ($.isArray(value.userVal) && value.userVal.length > 5) {
             return "[...]";
         } else {
-            return ""+value.val;
+            return ""+value.userVal;
         }
     };
 
