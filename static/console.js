@@ -7,9 +7,10 @@ Ext.onReady(function() {
     Ext.namespace('ConsoleSpace', 'ConfigSpace');
 	
     ConsoleSpace.feed = io.connect(ConfigSpace.root + '/console')
-    ConsoleSpace.feed.on('connect', ConsoleSpace.add_many);
-    ConsoleSpace.feed.on('report', ConsoleSpace.add_message);
-    ConsoleSpace.feed.on('reset', ConsoleSpace.reset);
+    ConsoleSpace.feed.on('connect', function() {
+        ConsoleSpace.feed.on('report', ConsoleSpace.add_message);
+        ConsoleSpace.feed.on('reset', ConsoleSpace.reset);
+    });
     
 	
     ConsoleSpace.messages = []
@@ -56,7 +57,8 @@ Ext.onReady(function() {
     }
     
     ConsoleSpace.reset = function(state){
-        console.log('console state: ', state)
+        //console.log('console state: ', state);
+        ConsoleSpace.add_many(state.events);
     }
     
     ConsoleSpace.grid.on('afterlayout', function(a,b,c) { 
