@@ -9,6 +9,7 @@ Ext.onReady(function() {
     ConsoleSpace.feed = io.connect(ConfigSpace.root + '/console')
     ConsoleSpace.feed.on('connect', ConsoleSpace.add_many);
     ConsoleSpace.feed.on('report', ConsoleSpace.add_message);
+    ConsoleSpace.feed.on('reset', ConsoleSpace.reset);
     
 	
     ConsoleSpace.messages = []
@@ -52,6 +53,10 @@ Ext.onReady(function() {
     ConsoleSpace.add_message = function(msg, noupdate) {
         ConsoleSpace.messages.push(msg);
         if (!noupdate) ConsoleSpace.update_view();
+    }
+    
+    ConsoleSpace.reset = function(state){
+        console.log('console state: ', state)
     }
     
     ConsoleSpace.grid.on('afterlayout', function(a,b,c) { 
