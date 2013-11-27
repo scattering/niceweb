@@ -47,7 +47,7 @@ Ext.onReady(function () {
          '</tpl>'];
 
     function getVal(values, parent) {
-        return parent.device.nodes[values].currentValue.val;
+        return parent.device.nodes[values].currentValue.userVal;
     }
 
     /*GridPanel that displays the data*/
