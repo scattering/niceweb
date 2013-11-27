@@ -57,12 +57,13 @@ function renderImageColorbar2(parent_plot, plotid, cbar_options) {
     var cbar_options = cbar_options || {};
     jQuery.extend(true, options, cbar_options);
         
-    if (!plot2d_colorbar) {
-        plot2d_colorbar = $.jqplot('colorbar', [[1,1]], options); 
-    }
-    else { // the colorbar already exists - just link it to the new plot
-        plot2d_colorbar.series[0].parent_plot = parent_plot;
-    }
+    
+    //if (!plot2d_colorbar) {
+         var plot2d_colorbar = $.jqplot('colorbar', [[1,1]], options); 
+    //}
+    //else { // the colorbar already exists - just link it to the new plot
+    //    plot2d_colorbar.series[0].parent_plot = parent_plot;
+    //}
     return plot2d_colorbar
 }
 
@@ -226,8 +227,12 @@ function renderImageData2(data, transform, plotid, plot_options) {
     
     jQuery.extend(true, options, data.options);
     jQuery.extend(true, options, plot_options);
-    plot2d = $.jqplot(plotid, data.z, options);
+    var plot2d = $.jqplot(plotid, data.z, options);
     plot2d.type = '2d';
+    plot2d.setTransform = function(transform) {
+        plot2d.series[0].set_transform(transform);
+        plot2d.redraw();
+    }
     return plot2d
 };
 
@@ -354,14 +359,14 @@ function update2dPlot(plot, toPlots, target_id, plotnum) {
         jQuery(document.getElementById('plotbox')).append(jQuery('<div />', {style:"display: inline-block; left: 0; top: 0; width:550px; height: 350px; ", id:"plotgrid"}));
         jQuery(document.getElementById('plotbox')).append(jQuery('<div />', {style:"display: inline-block; width: 100px; height: 100%; ", id:"colorbar"}));
         jQuery(plotdiv).append(jQuery('<div />', {style:"display: block; width: 410px; height: 100px;", id:"plotbuttons"}));
-        jQuery(plotdiv).append(jQuery('<div />', {id:"metadata", class:"slidingDiv"}));
+        //jQuery(plotdiv).append(jQuery('<div />', {id:"metadata", class:"slidingDiv"}));
         jQuery(document.getElementById('plotbuttons')).append(jQuery('<select />', {id:"plot_selectz"}));
         jQuery(document.getElementById('plotbuttons')).append(jQuery('<select />', {id:"plot_selectnum"}));
         jQuery(document.getElementById('plotbuttons')).append(document.createTextNode('Fix aspect ratio:'));
         jQuery(document.getElementById('plotbuttons')).append(jQuery('<input />', {id:"fix_aspect_ratio", type:"checkbox", checked: false}));
         jQuery(document.getElementById('plotbuttons')).append(document.createTextNode('value:'));
         jQuery(document.getElementById('plotbuttons')).append(jQuery('<input />', {id:"aspect_ratio", type:"text", value:"1.0", width: "45px"}));
-        jQuery(document.getElementById('plotbuttons')).append(jQuery('<span />', {class:"show_hide ui-state-default"}).text("Show/hide metadata"));
+        //jQuery(document.getElementById('plotbuttons')).append(jQuery('<span />', {class:"show_hide ui-state-default"}).text("Show/hide metadata"));
         //jQuery(document.getElementById('plotbuttons')).append(jQuery('<input />', {id:"plot_update", type:"submit", value:"Update plot"}));
         jQuery(document.getElementById('plot_selectz')).append(jQuery('<option />', { value: 'lin', text: 'lin' }));
         jQuery(document.getElementById('plot_selectz')).append(jQuery('<option />', { value: 'log', text: 'log' }));
@@ -391,6 +396,7 @@ function update2dPlot(plot, toPlots, target_id, plotnum) {
     if (toPlot.options && toPlot.options.fixedAspect && toPlot.options.fixedAspect.aspectRatio) {
         aspectRatio = toPlot.options.fixedAspect.aspectRatio;
     }
+    /*    
     if (toPlot.metadata) {
         var metadata_table = make_metadata_table(toPlot.metadata);
         document.getElementById('metadata').innerHTML = "";
@@ -399,6 +405,7 @@ function update2dPlot(plot, toPlots, target_id, plotnum) {
     } else {
         jQuery(".show_hide").hide();
     }
+    */
     document.getElementById('aspect_ratio').value = aspectRatio;
     var fixAspect = false;
     if (toPlot.options && toPlot.options.fixedAspect && toPlot.options.fixedAspect.fixAspect) {
@@ -414,8 +421,8 @@ function update2dPlot(plot, toPlots, target_id, plotnum) {
     
     plot = renderImageData2(toPlot, transform, 'plotgrid', {'fixedAspect': {'fixAspect': fixAspect, 'aspectRatio': aspectRatio}});
     colorbar = renderImageColorbar2(plot.series[0], 'colorbar');
-    plot2d.series[0].zoom_to();
-    plot2d.replot();
+    plot.series[0].zoom_to();
+    plot.replot();
     var selectedIndex;
     if ( transform == 'log') { selectedIndex = 1 }
     else { selectedIndex = 0 }
@@ -435,25 +442,27 @@ function update2dPlot(plot, toPlots, target_id, plotnum) {
         var toPlot = toPlots[plotnum];
         //plot = renderImageData2(toPlot, transform, 'plot2d');
         var new_dims = $.extend(true, {}, toPlot.dims);
-        plot2d.series[0].set_data(toPlot.z[0], new_dims);
+        plot.series[0].set_data(toPlot.z[0], new_dims);
         colorbar.series[0].set_dims(new_dims);
-        plot2d.series[0].set_transform(transform);
-        plot2d.title.text = toPlot.title;
-        plot2d.series[0].zoom_to();
-        plot2d.plugins.fixedAspect.fixAspect = fixAspect;
-        plot2d.plugins.fixedAspect.aspectRatio = aspectRatio;
-        plot2d.replot();
+        plot.series[0].set_transform(transform);
+        plot.title.text = toPlot.title;
+        plot.series[0].zoom_to();
+        plot.plugins.fixedAspect.fixAspect = fixAspect;
+        plot.plugins.fixedAspect.aspectRatio = aspectRatio;
+        plot.replot();
         colorbar = renderImageColorbar2(plot.series[0], 'colorbar');
         if (colorbar.plugins._interactor) {
             colorbar.plugins._interactor.zoomMax();
         } else {
             colorbar.replot();
         }
+        /*
         if (toPlot.metadata) {
             var metadata_table = make_metadata_table(toPlot.metadata);
             document.getElementById('metadata').innerHTML = "";
             document.getElementById('metadata').appendChild(metadata_table);
         }
+        */
     }
 
     // new bindings

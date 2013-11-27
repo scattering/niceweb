@@ -23,21 +23,21 @@
 <!--		<script type="text/javascript" src="jquery-1.5.1.min.js"></script>-->
 <!--        <script type="text/javascript" src="jquery.jqplot.min.js"></script>-->
 
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/jquery.jqplot.min.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasTextRenderer.min.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisLabelRenderer.min.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisTickRenderer.min.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.cursor.min.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.errorbarRenderer.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.InteractiveLegend.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.FixedAspect.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.GracefulAxisRenderer.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.touchEvents.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.heatmapRenderer.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.colorbarRenderer.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/jquery.jqplot.min.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasTextRenderer.min.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisLabelRenderer.min.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisTickRenderer.min.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.cursor.min.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.errorbarRenderer.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.InteractiveLegend.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.FixedAspect.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.GracefulAxisRenderer.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.touchEvents.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.heatmapRenderer.js"></script>
+        <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.colorbarRenderer.js"></script>
 
-    <script type="text/javascript" src="plotting_api2.js"></script>
-    <script src="geturlvars.js"></script>
+        <script type="text/javascript" src="plotting_api2.js"></script>
+        <script src="geturlvars.js"></script>
         <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactors_nonprototype.js"></script>
         <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/interactor_plugin_base.js"></script>
         <script type="text/javascript" src="http://drneutron.org/static/lib/interactors/rectangle_interactor_plugin.js"></script>
@@ -47,7 +47,7 @@
 		    var refreshtime = 60; // 1 minute refresh rate
             var refreshtimer = null;
 		    COLS = 4;
-    		INSTRUMENTS = ['BT1', 'BT4', 'BT5', 'BT7', 'CGD', 'NGD', 'NG2', 'NG3SANS', 'NG5', 'NG7', 'NG7SANS'];
+    		INSTRUMENTS = ['BT1', 'BT4', 'BT5', 'BT7', 'BT8', 'CGD', 'NGD', 'NG2', 'NG3SANS', 'NG5', 'NG7', 'NG7SANS'];
     		INSTRUMENT_NAMES = {'CGD': 'MAGIK', 'NGD': 'PBR', 'NG2':'HFBS', 'BT4':'FANS', 'NG7':'Reflectometer'};
     		plots = {};
     		datas = {};
@@ -118,8 +118,11 @@
 		        var plottarget = $(this).parent().parent().find('.jqplot-target')[0].id;
 		        for (var p in plots) {
 		            if (plots[p].targetId == ('#' + plottarget)) {
-		                var noCache = new Date().getTime();
-		                $.getJSON("test_jqpeek/" + p + "/live_data.json", { "noCache": noCache }, showData(p));
+		                // var noCache = new Date().getTime();
+		                // $.getJSON("test_jqpeek/" + p + "/live_data.json", { "noCache": noCache }, showData(p));
+		                var logselected = ev.target.checked;
+                        var transform = logselected? 'log' : 'lin';
+		                plots[p].setTransform(transform);
 		                break;
 		            }
 		        }

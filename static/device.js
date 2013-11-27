@@ -127,7 +127,7 @@ Ext.onReady(function () {
     GridSpace.setDeviceValue = function (record) {
         if (record.device.primaryNodeID === "") return;
         var node = record.device.nodes[record.device.primaryNodeID];
-        record.position = GridSpace.trimmedValue(node.currentValue);  
+        record.position = GridSpace.trimmedValue(node.currentValue.userVal);  
         if (record.device.type === "MOTOR") {
             record.target = GridSpace.trimmedValue(node.desiredValue);
         }
