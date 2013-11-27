@@ -83,7 +83,9 @@ Ext.onReady(function () {
 
     GridSpace.updateDeviceModel = function (nodes) {
         //console.log("device update", nodes);
-        for (var i=0; i < nodes.length; i++) {
+        // this has changed from a list to an obj
+        //for (var i=0; i < nodes.length; i++) {
+        for (var i in nodes) {
             var node = nodes[i];
             var deviceRecord = GridSpace.grid.store.findRecord('id', node.deviceID);
             if (deviceRecord !== null) {
