@@ -1,6 +1,10 @@
 (function (){
             // socket.io connections are globals
-
+            PHP_BRIDGE_HOST = "http://nicedata.ncnr.nist.gov/nicephp/rpcp.php";
+            CONTROL_INSTRUMENTS = {
+                "cgdvm": "h123062.ncnr.nist.gov",
+                "cgd": "magik.ncnr.nist.gov"
+            }
             Devices = null;
             Controller = null;
             active_device = null; // for moving motors in jog panel
@@ -110,9 +114,29 @@
                 }
             }
             
+            move = function(device, destination, host) {
+                $.ajax({
+                    url: PHP_BRIDGE_HOST,
+                    type: "POST",
+                    data: {
+                        "hostname": host,
+                        "function_name": "move",
+                        "function_args": JSON.stringify([[device, destination.toString()], false])
+                    },
+                    dataType: "json",
+                    //success: callback,
+                    error: function (data) {
+                        alert("ERROR: " + JSON.stringify(data));
+                    }
+                });
+            }
+                
+            }
+            
             moveToTarget = function() {
                 var destination = $('#motor_target')[0].value;
-                Controller.emit('move', [active_device.toString(), destination.toString()], false);
+                //Controller.emit('move', [active_device.toString(), destination.toString()], false);
+                move(active_device.toString(), destination.toString(), NICE_HOST);
             }
             jogUp = function() {
                 var step = parseFloat($('#jog_step_value')[0].value);
@@ -121,21 +145,39 @@
                 $('#motor_target').attr('value', new_destination.toPrecision(4));
                 // not doing relative move from NICE perspective - precalculating destination, so
                 // 'relative' argument is false
-                Controller.emit('move', [active_device.toString(), new_destination.toString()], false);
+                //Controller.emit('move', [active_device.toString(), new_destination.toString()], false);
+                move(active_device.toString(), new_destination.toString(), NICE_HOST);
             }
             jogDown = function() {
                 var step = -1.0 * parseFloat($('#jog_step_value')[0].value);
                 var current_destination = parseFloat($('#motor_target')[0].value);
                 var new_destination = current_destination + step;
                 $('#motor_target').attr('value', new_destination.toPrecision(4));
-                Controller.emit('move', [active_device.toString(), new_destination.toString()], false);
+                //Controller.emit('move', [active_device.toString(), new_destination.toString()], false);
+                move(active_device.toString(), new_destination.toString(), NICE_HOST);
             }
             stopAll = function() {
-                Controller.emit('console', 'stop');
+                var host = NICE_HOST;
+                $.ajax({
+                    url: PHP_BRIDGE_HOST,
+                    type: "POST",
+                    data: {
+                        "hostname": host,
+                        "function_name": "stop",
+                        "function_args": JSON.stringify([])
+                    },
+                    dataType: "json",
+                    //success: callback,
+                    error: function (data) {
+                        alert("ERROR: " + JSON.stringify(data));
+                    }
+                });
+                //Controller.emit('console', 'stop');
             }
             
             function connect() {
                 var Instrument = jQuery.getUrlVar('instrument') ? jQuery.getUrlVar('instrument') : "BT4";
+                NICE_HOST = CONTROL_INSTRUMENTS[Instrument];
                 $('#content').html('Loading...' + Instrument);
                 var BaseURL = 'http://' + window.location.hostname + ':' + window.location.port;
                 var Root = BaseURL + '/' +Instrument;
@@ -147,6 +189,7 @@
                 });
                 //var server = io.connect(BaseURL);
                 //server.emit('controller', function(ControlHost) {
+                /*
                 var ControlHost = 'http://' + window.location.hostname + ':' + String(parseInt(window.location.port) + 1);
                 //var ControlHost = BaseURL;
                     if (ControlHost) {
@@ -168,6 +211,25 @@
                     }
                     // server.disconnect();
                 //});
+                */
+                $.ajax({
+                    url: PHP_BRIDGE_HOST,
+                    type: "POST",
+                    data: {
+                        "hostname": host,
+                        "function_name": "ls",
+                        "function_args": JSON.stringify([".", "*", false])
+                    },
+                    dataType: "json",
+                    success: function(data) { 
+                        controller_connected = true;
+                        $('.ui-icon-arrow-r').show();
+                    },
+                    error: function (data) {
+                        alert("ERROR: " + JSON.stringify(data));
+                        $('.ui-icon-arrow-r').hide();
+                    }
+                });
                 
                 Devices.on('reset', function(state) {Devices.state=state});
 
