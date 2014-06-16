@@ -214,7 +214,7 @@
                     url: PHP_BRIDGE_HOST,
                     type: "POST",
                     data: {
-                        "hostname": host,
+                        "hostname": NICE_HOST,
                         "function_name": "ls",
                         "function_args": JSON.stringify([".", "*", false])
                     },
