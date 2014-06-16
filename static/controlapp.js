@@ -21,6 +21,7 @@
 
             // shared state
             device_hierarchy = {};
+            sample_environment_devices = null;
             shown_devices = {};
             controller_connected = false;
             no_control_warning_shown = false;
@@ -163,12 +164,11 @@
                 move(active_device.toString(), new_destination.toString(), NICE_HOST);
             }
             stopAll = function() {
-                var host = NICE_HOST;
                 $.ajax({
                     url: PHP_BRIDGE_HOST,
                     type: "POST",
                     data: {
-                        "hostname": host,
+                        "hostname": NICE_HOST,
                         "function_name": "stop",
                         "function_args": JSON.stringify([])
                     },
@@ -181,8 +181,45 @@
                 //Controller.emit('console', 'stop');
             }
             
-            getSampleEnvironment = function() {
-                
+            function get_ids(obj, ids) {
+                var ids = (ids == null) ? [] : ids;
+                for (var i in obj.children.elements) {
+                    if (obj.children.elements[i].children.elements.length == 0) {
+                        ids.push(obj.children.elements[i].id);
+                    } else {
+                        get_ids(obj.children.elements[i], ids);
+                    }
+                }
+                return ids;
+            }
+
+            getSampleEnvironment = function(state, existing_ids) {
+                var se_device_hierarchy = {
+                    nodeID: "SampleEnvironment",
+                    children: {
+                        elementClass: "nice.general.json.JsonTreeNode",
+                        elements: []
+                    }
+                }
+
+                var device_names = Object.keys(state.devices);
+                for (var devicename in state.devices) {
+                    var device = state.devices[devicename];
+                    var nodeID = devicename + '.' + device.primaryNodeID;
+                    if (SAMPLE_ENVIRONMENT_TYPES.indexOf(device.type._name) > -1 && (existing_ids.indexOf(nodeID) == -1)) {
+                        se_device_hierarchy.children.elements.push({
+                            nodeID: devicename,
+                            id:  devicename + '.' + device.primaryNodeID,
+                            value: device.nodes[device.primaryNodeID].currentValue.userVal,
+                            children: {
+                                elementClass: "java.lang.Object",
+                                elements: []
+                            }
+                        });
+                    }
+                }
+                return se_device_hierarchy;
+
             }
             
             function connect() {
@@ -245,38 +282,7 @@
                 
                 Devices.on('reset', function(state) {
                     Devices.state=state;
-                    var se_device_hierarchy = {
-                        nodeID: "Devices",
-                        children: {
-                            elementClass: "nice.general.json.JsonTreeNode",
-                            elements: [
-                                { 
-                                    nodeID: "SampleEnvironment",
-                                    children: {
-                                        elementClass: "nice.general.json.JsonTreeNode",
-                                        elements: []
-                                    }
-                                }
-                            ],
-                            
-                        }
-                    }
-                    var device_names = state.devices.keys();
-                    for (var devicename in state.devices) {
-                        var device = state.devices[devicename]
-                        if (SAMPLE_ENVIRONMENT_TYPES.indexOf(device.type._name) > -1) {
-                            se_device_hierarchy.Devices.children.SampleEnvironment.children.elements.push({
-                                nodeID: devicename,
-                                id:  devicename + '.' + device.primaryNodeID,
-                                value: device.nodes[device.primaryNodeID].currentValue.userVal,
-                                children: {
-                                    elementClass: "java.lang.Object",
-                                    elements: []
-                                }
-                            });
-                        }
-                    }
-                    $.extend(true, device_hierarchy, se_device_hierarchy);
+                    //sample_environment_devices = getSampleEnvironment(state);
                 });
 
                 Devices.on('changed', function (nodes) {
@@ -304,6 +310,11 @@
                 Devices.emit('filled_device_hierarchy', function(structure){
                     //$.extend(device_tree, tree, false);
                     $.extend(true, device_hierarchy, structure);
+                    var ids = get_ids(device_hierarchy);
+                    sample_environment_devices = getSampleEnvironment(Devices.state, ids);
+                    if (sample_environment_devices != null) {
+                        device_hierarchy.children.elements.push(sample_environment_devices);
+                    } 
                     //$.extend(device_hierarchy, getSampleEnvironment(Devices), false);
                     $('#content').html(treeToHTML(device_hierarchy)).trigger('create');
                     update_devices();
