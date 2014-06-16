@@ -130,8 +130,6 @@
                     }
                 });
             }
-                
-            }
             
             moveToTarget = function() {
                 var destination = $('#motor_target')[0].value;
