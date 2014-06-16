@@ -5,6 +5,14 @@
                 "cgdvm": "h123062.ncnr.nist.gov",
                 "cgd": "magik.ncnr.nist.gov"
             }
+            // keep this synchronized with src/nice/general/util/DeviceUtils.java
+            SAMPLE_ENVIRONMENT_TYPES = [
+                "ELECTROMAGNET",
+                "SUPERCONDUCTING_MAGNET",
+                "TEMPERATURE_CONTROLLER",
+                "POLARIZATION",
+                "POWER_SUPPLY"
+            ]
             Devices = null;
             Controller = null;
             active_device = null; // for moving motors in jog panel
@@ -173,6 +181,10 @@
                 //Controller.emit('console', 'stop');
             }
             
+            getSampleEnvironment = function() {
+                
+            }
+            
             function connect() {
                 var Instrument = jQuery.getUrlVar('instrument') ? jQuery.getUrlVar('instrument') : "BT4";
                 NICE_HOST = CONTROL_INSTRUMENTS[Instrument];
@@ -219,17 +231,53 @@
                         "function_args": JSON.stringify([".", "*", false])
                     },
                     dataType: "json",
+                    async: false,
                     success: function(data) { 
                         controller_connected = true;
                         $('.ui-icon-arrow-r').show();
                     },
                     error: function (data) {
+                        controller_connected = false;
                         alert("ERROR: " + JSON.stringify(data));
                         $('.ui-icon-arrow-r').hide();
                     }
                 });
                 
-                Devices.on('reset', function(state) {Devices.state=state});
+                Devices.on('reset', function(state) {
+                    Devices.state=state;
+                    var se_device_hierarchy = {
+                        nodeID: "Devices",
+                        children: {
+                            elementClass: "nice.general.json.JsonTreeNode",
+                            elements: [
+                                { 
+                                    nodeID: "SampleEnvironment",
+                                    children: {
+                                        elementClass: "nice.general.json.JsonTreeNode",
+                                        elements: []
+                                    }
+                                }
+                            ],
+                            
+                        }
+                    }
+                    var device_names = state.devices.keys();
+                    for (var devicename in state.devices) {
+                        var device = state.devices[devicename]
+                        if (SAMPLE_ENVIRONMENT_TYPES.indexOf(device.type._name) > -1) {
+                            se_device_hierarchy.Devices.children.SampleEnvironment.children.elements.push({
+                                nodeID: devicename,
+                                id:  devicename + '.' + device.primaryNodeID,
+                                value: device.nodes[device.primaryNodeID].currentValue.userVal,
+                                children: {
+                                    elementClass: "java.lang.Object",
+                                    elements: []
+                                }
+                            });
+                        }
+                    }
+                    $.extend(true, device_hierarchy, se_device_hierarchy);
+                });
 
                 Devices.on('changed', function (nodes) {
                     for (var n in nodes) {
@@ -255,7 +303,8 @@
                 
                 Devices.emit('filled_device_hierarchy', function(structure){
                     //$.extend(device_tree, tree, false);
-                    $.extend(device_hierarchy, structure, false);
+                    $.extend(true, device_hierarchy, structure);
+                    //$.extend(device_hierarchy, getSampleEnvironment(Devices), false);
                     $('#content').html(treeToHTML(device_hierarchy)).trigger('create');
                     update_devices();
                     if (controller_connected) { 
@@ -264,6 +313,7 @@
                         $('.ui-icon-arrow-r').hide();
                     }
                 });
+              
                 Devices.on('reconnect', function() {
                     //Devices.emit('subscribe', false);
                     Devices.emit('filled_device_hierarchy', function(structure){
