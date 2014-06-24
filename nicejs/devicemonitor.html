@@ -1,0 +1,250 @@
+<html>
+<head>
+  <!-- Reference the theme's stylesheet on the Google CDN -->
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/start/jquery-ui.css" />
+  <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
+  <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+
+  <script src="icejs/Ice.js"></script>
+  <script src="icejs/Glacier2.js"></script>
+  <script src="icejs/IceStorm.js"></script>
+  <script src="icejs/IceGrid.js"></script>
+
+  <script src="nicejs/slice/data.js"></script>
+  <script src="nicejs/slice/devices.js"></script>
+  <script src="nicejs/slice/console.js"></script>
+  <script src="nicejs/slice/dryrun.js"></script>
+  <script src="nicejs/slice/exceptions.js"></script>
+  <script src="nicejs/slice/nice.js"></script>
+  <script src="nicejs/slice/events.js"></script>
+  <script src="nicejs/slice/experiment.js"></script>
+  <script src="nicejs/slice/queue.js"></script>
+  <script src="nicejs/slice/clientapi.js"></script>
+  <script src="JSON.parseMore.js"></script>
+  <script type="text/javascript">
+    var Promise = Ice.Promise;
+    var RouterPrx = Glacier2.RouterPrx;
+    
+    var router = "Glacier2/router:ws -p 4064 -h h123062.ncnr.nist.gov";
+    
+    var State = {
+        Disconnected: 0,
+        Connecting: 1,
+        Connected:2
+    };
+
+var state = State.Disconnected;
+var hasError = false;
+active = false;
+
+var signin = function()
+{
+    var communicator;
+    var router;
+    Promise.try (
+        function()
+        {
+            //
+            // Start animating the loading progress bar.
+            //
+            //startProgress();
+
+            var hostname = document.location.hostname || "127.0.0.1";
+            //
+            // If the demo is accessed vi https, use a secure (WSS) endpoint, otherwise
+            // use a non-secure (WS) endpoint.
+            //
+            // The web server will act as a reverse proxy for WebSocket connections. This
+            // facilitates the setup of WSS with self-signed certificates because Firefox
+            // and Internet Explorer certificate exceptions are only valid for the same
+            // port and host.
+            //
+            var secure = document.location.protocol.indexOf("https") != -1;
+            var router = secure ? "Glacier2/router:wss -p 4065 -h " + hostname :
+                                  "Glacier2/router:ws -p 4064 -h " + hostname ;
+
+            //
+            // Initialize the communicator with the Ice.Default.Router property
+            // set to the chat demo Glacier2 router.
+            //
+            var id = new Ice.InitializationData();
+            id.properties = Ice.createProperties();
+            id.properties.setProperty("Ice.Default.Router", router);
+            id.properties.setProperty("Ice.Default.EncodingVersion", "1.0");
+            id.properties.setProperty("Ice.ACM.Client", "0");
+            id.properties.setProperty("Ice.MessageSizeMax", "100000");
+
+            communicator = Ice.initialize(id);
+            
+            cm = communicator;
+            //
+            // Get a proxy to the Glacier2 router using checkedCast to ensure
+            // the Glacier2 server is available.
+            //
+            rt_prx = RouterPrx.checkedCast(communicator.getDefaultRouter());
+            //console.log(rt_prx);
+            return rt_prx;
+        }
+    ).then(
+        function(r, s)
+        {
+            myrouter = r;
+            
+            //console.log(r, s);
+            //
+            // Create a session with the Glacier2 router.
+            //
+            var s = myrouter.createSession("", "");
+            //console.log(s);
+            return s
+        }
+    ).then(
+        function(session)
+        {   
+            //console.log(session)
+            mysession = session;
+            mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
+            //mgr = Glacier2ClientManagerApiPrx.uncheckedCast(session);
+            return mgr;
+            //run(communicator, router, ChatSessionPrx.uncheckedCast(session));
+        }
+    ).then(
+        function(mgr){
+            ca = mgr.getAPI('client');
+            return ca;
+        }
+    ).then(
+        function(ca) {
+            cam = nice.api.ClientApiPrx.checkedCast(ca);
+            return cam;
+        }
+    ).then(
+        function(api) {
+            my_api = api;
+            var adapter = communicator.createObjectAdapterWithRouter("", myrouter);
+            return adapter
+        }
+    ).then(
+        function(adapter) {
+            myadapter = adapter;
+            active = true;
+            setupDevicesMonitor(my_api, myrouter, myadapter);
+            //setupConsoleMonitor(myrouter, communicator,  mysession);
+            //run(communicator, myrouter, mysession);
+        }
+    ).exception(
+        function(ex)
+        {
+            //
+            // Handle any exceptions that occurred during session creation.
+            //
+            alert(ex.toString());
+            
+            if(communicator)
+            {
+                communicator.destroy();
+            }
+        });
+};
+
+var DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
+    onSubscribe: function(devices, nodes, groups, __current) {
+        this.devices = this.HashMapToObject(devices);
+        this.nodes = this.HashMapToObject(nodes);
+        this.groups = this.HashMapToObject(groups);
+        this.postChangedHooks = [];
+    },
+    changed: function(nodes, __current) {
+        var changed = this.HashMapToObject(nodes);
+        jQuery.extend(this.nodes, changed);
+        this._lastChanged = changed;
+        this.postChangedHooks.forEach( function(callback) { callback(changed); });
+    },
+    removed: function(devices, nodes, __current) {
+        this._lastDevicesRemoved = this.HashMapToObject(devices);
+        this._lastNodesRemoved = this.HashMapToObject(nodes);
+    },
+    added: function(devices, nodes, __current) {
+        this._lastDevicesAdded = this.HashMapToObject(devices);
+        this._lastNodesAdded = this.HashMapToObject(nodes);
+    },
+    getAllDeviceNames: function() {
+        var devices = [];
+        this.devices.forEach(function(d) { devices.push(d); });
+        return devices;
+    },
+    HashMapToObject: function(m) {
+        var obj={}; 
+        m.forEach( function(dn) { 
+            obj[dn]=m.get(dn);
+        }); 
+        return obj
+    } 
+});
+
+
+var setupDevicesMonitor = function(api, router, adapter) {
+    var setup = new Promise();
+
+    //
+    // Get the session timeout and the router client category, and
+    // create the client object adapter.
+    //
+    // Use Ice.Promise.all to wait for the completion of all the
+    // calls.
+    //
+    Promise.all(
+        router.getSessionTimeout(),
+        router.getCategoryForClient()
+    ).then(
+        function(timeoutArgs, categoryArgs, adapterArgs)
+        {
+            var timeout = timeoutArgs[0];
+            var category = categoryArgs[0];
+            //var adapter = adapterArgs[0];
+
+            //
+            // Create the ChatCallback servant and add it to the
+            // ObjectAdapter.
+            //
+            var dvmI = new DevicesMonitorI();
+            var dvmPrx = nice.api.devices.DevicesMonitorPrx.uncheckedCast(adapter.add(dvmI, new Ice.Identity("devicesMonitor", category)));
+            api.subscribeToDevices(dvmPrx);
+            //
+            devicesMonitor = dvmI;
+            return dvmI;
+        }
+    );
+}
+
+
+
+
+
+  window.onload = function() {
+    signin();
+  }
+  </script>
+  <style type="text/css">
+    #command {
+        width: 100%;
+        height: 50px;
+        background:#F0F0F0;
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+    #command input {
+        width: 1005;
+        height: 30px;    
+    }
+  </style>
+</head>
+<body>
+<div id="command">
+    Command: <input type="text" id="command_line" name="command_line" />
+</div>
+
+<div id="console"></div>
+</body>
+</html>

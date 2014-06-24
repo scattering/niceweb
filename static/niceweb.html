@@ -24,8 +24,10 @@
        var params = Ext.urlDecode(location.search.substring(1));
        ConfigSpace.instrument = params.instrument ? params.instrument : 'ngb';
        ConfigSpace.root = 'http://' + window.location.hostname + ':' + window.location.port + '/' + ConfigSpace.instrument;
-       ConfigSpace.height = 500;
-       ConfigSpace.width = 495;
+       ConfigSpace.height = 800;
+       ConfigSpace.width = 600;
+       //ConfigSpace.height = "90%";
+       //ConfigSpace.width = "90%";
        Ext.Loader.setConfig({enabled: true});
        Ext.Loader.setPath('Ext.ux', 'http://cdn.sencha.io/ext-4.1.1-gpl/examples/ux');
        // Ext.Loader.setPath('Ext', '/static/ext-4.1.1/src');

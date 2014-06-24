@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export LD_LIBRARY_PATH=/opt/IceJS-0.1.0/lib
+/opt/IceJS-0.1.0/bin/glacier2router --Ice.Config=glacier2.config
