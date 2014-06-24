@@ -66,7 +66,6 @@
                 }
                 return ihtml
             }
-                  
             
             function getInitialDeviceValue(dottedname) {
                 var names = dottedname.split('.', 2);
@@ -181,6 +180,18 @@
                 //Controller.emit('console', 'stop');
             }
             
+            function get_ids(obj, ids) {
+                var ids = (ids == null) ? [] : ids;
+                for (var i in obj.children.elements) {
+                    if (obj.children.elements[i].children.elements.length == 0) {
+                        ids.push(obj.children.elements[i].id);
+                    } else {
+                        get_ids(obj.children.elements[i], ids);
+                    }
+                }
+                return ids;
+            }
+            
             getSampleEnvironment = function() {
                 
             }
@@ -246,19 +257,10 @@
                 Devices.on('reset', function(state) {
                     Devices.state=state;
                     var se_device_hierarchy = {
-                        nodeID: "Devices",
+                        nodeID: "SampleEnvironment",
                         children: {
                             elementClass: "nice.general.json.JsonTreeNode",
-                            elements: [
-                                { 
-                                    nodeID: "SampleEnvironment",
-                                    children: {
-                                        elementClass: "nice.general.json.JsonTreeNode",
-                                        elements: []
-                                    }
-                                }
-                            ],
-                            
+                            elements: []
                         }
                     }
                     var device_names = state.devices.keys();
