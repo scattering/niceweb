@@ -1,0 +1,384 @@
+<html>
+<head>
+  <!-- Reference the theme's stylesheet on the Google CDN -->
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/start/jquery-ui.css" />
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="jstree/dist/themes/default/style.min.css"/>
+  <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
+  <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+  
+  <script src="jstree/dist/jstree.min.js"></script>
+
+  <script src="icejs/Ice.js"></script>
+  <script src="icejs/Glacier2.js"></script>
+  <script src="icejs/IceStorm.js"></script>
+  <script src="icejs/IceGrid.js"></script>
+
+  <script src="nicejs/slice/data.js"></script>
+  <script src="nicejs/slice/devices.js"></script>
+  <script src="nicejs/slice/console.js"></script>
+  <script src="nicejs/slice/dryrun.js"></script>
+  <script src="nicejs/slice/exceptions.js"></script>
+  <script src="nicejs/slice/nice.js"></script>
+  <script src="nicejs/slice/events.js"></script>
+  <script src="nicejs/slice/experiment.js"></script>
+  <script src="nicejs/slice/queue.js"></script>
+  <script src="nicejs/slice/clientapi.js"></script>
+  <script src="JSON.parseMore.js"></script>
+  <script type="text/javascript">
+    var Promise = Ice.Promise;
+    var RouterPrx = Glacier2.RouterPrx;
+    
+    var router = "Glacier2/router:ws -p 4064 -h h123062.ncnr.nist.gov";
+    
+    var State = {
+        Disconnected: 0,
+        Connecting: 1,
+        Connected:2
+    };
+
+var state = State.Disconnected;
+var hasError = false;
+active = false;
+SORT_KEYS = true;
+
+function type (object) {
+    if (object === null) {
+        return 'null';
+    }
+    if (object === undefined) {
+        return 'undefined';
+    }
+    if ((object instanceof Number) || (typeof object === 'number')) {
+        return 'number';
+    }
+    if ((object instanceof String) || (typeof object === 'string')) {
+        return 'string';
+    }
+    if ((object instanceof Boolean) || (typeof object === 'boolean')) {
+        return 'boolean';
+    }
+    if ((object instanceof RegExp) || (typeof object === 'regexp')) {
+        return 'regexp';
+    }
+    if (Array.isArray(object)) {
+        return 'array';
+    }
+
+    return 'object';
+};
+    
+
+var signin = function()
+{
+    var communicator;
+    var router;
+    Promise.try (
+        function()
+        {
+            //
+            // Start animating the loading progress bar.
+            //
+            //startProgress();
+
+            var hostname = document.location.hostname || "127.0.0.1";
+            //
+            // If the demo is accessed vi https, use a secure (WSS) endpoint, otherwise
+            // use a non-secure (WS) endpoint.
+            //
+            // The web server will act as a reverse proxy for WebSocket connections. This
+            // facilitates the setup of WSS with self-signed certificates because Firefox
+            // and Internet Explorer certificate exceptions are only valid for the same
+            // port and host.
+            //
+            var secure = document.location.protocol.indexOf("https") != -1;
+            var router = secure ? "Glacier2/router:wss -p 4065 -h " + hostname :
+                                  "Glacier2/router:ws -p 4064 -h " + hostname ;
+
+            //
+            // Initialize the communicator with the Ice.Default.Router property
+            // set to the chat demo Glacier2 router.
+            //
+            var id = new Ice.InitializationData();
+            id.properties = Ice.createProperties();
+            id.properties.setProperty("Ice.Default.Router", router);
+            id.properties.setProperty("Ice.Default.EncodingVersion", "1.0");
+            id.properties.setProperty("Ice.ACM.Client", "0");
+            id.properties.setProperty("Ice.MessageSizeMax", "100000");
+
+            communicator = Ice.initialize(id);
+            
+            cm = communicator;
+            //
+            // Get a proxy to the Glacier2 router using checkedCast to ensure
+            // the Glacier2 server is available.
+            //
+            rt_prx = RouterPrx.checkedCast(communicator.getDefaultRouter());
+            //console.log(rt_prx);
+            return rt_prx;
+        }
+    ).then(
+        function(r, s)
+        {
+            myrouter = r;
+            
+            //console.log(r, s);
+            //
+            // Create a session with the Glacier2 router.
+            //
+            var s = myrouter.createSession("", "");
+            //console.log(s);
+            return s
+        }
+    ).then(
+        function(session)
+        {   
+            //console.log(session)
+            mysession = session;
+            mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
+            //mgr = Glacier2ClientManagerApiPrx.uncheckedCast(session);
+            return mgr;
+            //run(communicator, router, ChatSessionPrx.uncheckedCast(session));
+        }
+    ).then(
+        function(mgr){
+            ca = mgr.getAPI('client');
+            return ca;
+        }
+    ).then(
+        function(ca) {
+            cam = nice.api.ClientApiPrx.checkedCast(ca);
+            return cam;
+        }
+    ).then(
+        function(api) {
+            my_api = api;
+            var adapter = communicator.createObjectAdapterWithRouter("", myrouter);
+            return adapter
+        }
+    ).then(
+        function(adapter) {
+            myadapter = adapter;
+            active = true;
+            var p = setupDevicesMonitor(my_api, myrouter, myadapter);
+            //setupConsoleMonitor(myrouter, communicator,  mysession);
+            //run(communicator, myrouter, mysession);
+            return p;
+        }
+    ).exception(
+        function(ex)
+        {
+            //
+            // Handle any exceptions that occurred during session creation.
+            //
+            alert(ex.toString());
+            
+            if(communicator)
+            {
+                communicator.destroy();
+            }
+        });
+};
+
+var DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
+    onSubscribe: function(devices, nodes, groups, __current) {
+        var devices = this.HashMapToObject(devices);
+        var nodes = this.HashMapToObject(nodes);
+        var groups = this.HashMapToObject(groups);
+        this.devices = devices;
+        this.nodes = nodes;
+        this.groups = groups;
+        this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
+        if (this.postSubscribeHooks) {
+            this.postSubscribeHooks.forEach( function(callback) { callback(devices, nodes, groups); });
+        }
+    },
+    changed: function(nodes, __current) {
+        var changed = this.HashMapToObject(nodes);
+        jQuery.extend(this.nodes, changed);
+        this._lastChanged = changed;
+        if (this.postChangedHooks) {
+            this.postChangedHooks.forEach( function(callback) { callback(changed); });
+        }
+    },
+    removed: function(devices, nodes, __current) {
+        this._lastDevicesRemoved = this.HashMapToObject(devices);
+        this._lastNodesRemoved = this.HashMapToObject(nodes);
+    },
+    added: function(devices, nodes, __current) {
+        this._lastDevicesAdded = this.HashMapToObject(devices);
+        this._lastNodesAdded = this.HashMapToObject(nodes);
+    },
+    getAllDeviceNames: function() {
+        var devices = [];
+        this.devices.forEach(function(d) { devices.push(d); });
+        return devices;
+    },
+    HashMapToObject: function(m) {
+        var obj={}; 
+        m.forEach( function(dn) { 
+            obj[dn]=m.get(dn);
+        }); 
+        return obj
+    } 
+});
+
+
+var setupDevicesMonitor = function(api, router, adapter) {
+    var setup = new Promise();
+
+    //
+    // Get the session timeout and the router client category, and
+    // create the client object adapter.
+    //
+    // Use Ice.Promise.all to wait for the completion of all the
+    // calls.
+    //
+    return Promise.all(
+        router.getSessionTimeout(),
+        router.getCategoryForClient()
+    ).then(
+        function(timeoutArgs, categoryArgs, adapterArgs)
+        {
+            var timeout = timeoutArgs[0];
+            var category = categoryArgs[0];
+            //var adapter = adapterArgs[0];
+
+            //
+            // Create the ChatCallback servant and add it to the
+            // ObjectAdapter.
+            //
+            var dvmI = new DevicesMonitorI();
+            dvmI.postSubscribeHooks = [
+                function(devices, nodes, groups) { 
+                    $('#device_tree').jstree(devices_to_jstree(devices, true));
+                    $('#device_tree').on("ready.jstree", function (e, data) { update_jstree(nodes) });
+                 }
+            ]
+            dvmI.postChangedHooks = [update_jstree];
+            var dvmPrx = nice.api.devices.DevicesMonitorPrx.uncheckedCast(adapter.add(dvmI, new Ice.Identity("devicesMonitor", category)));
+            var p = api.subscribeToDevices(dvmPrx);
+            //
+            devicesMonitor = dvmI;
+            return p;
+        }
+    );
+}
+
+function update_jstree(nodes) {
+    var jstree_obj = $('#device_tree').jstree(true);
+    for (var n in nodes) {
+        var node_id = n.replace('.', '_');
+        var subd = n.split('.').slice(-1)[0];
+        var jstree_node = jstree_obj.get_node(node_id);
+        var val = '';
+        var node, cv, uv, v;
+        if ((cv = nodes[n].currentValue) && (uv = cv.userVal) && (uv.val != null)) {
+            v = uv.val;
+            if (type(v) === 'string') {
+                // pass as is
+                val = v;  
+            }
+            else if (type(v) === 'boolean') {
+                val = String(v);
+            }
+            else if (type(v) === 'number') {
+                val = v.toPrecision(6);
+            }
+            else if (type(v) === 'object' && '_name' in v) {
+                val = String(v._name);
+            }
+        }
+        jstree_node.text = subd + ": " + val;
+    }
+    jstree_obj.redraw(true);
+}
+
+
+function devices_to_jstree(devices) {
+    var out = {'core': {'data': [] }};
+    var devicenames = Object.keys(devices);
+    devicenames = devicenames.sort();
+    var devicename, device, d_out;
+    for (var d=0; d<devicenames.length; d++) {
+        devicename = devicenames[d];
+        device = devices[devicename];
+        d_out = {'text': devicename, 'children': []}
+        var visible_nodes = device.visibleNodeIDs;
+        visible_nodes = visible_nodes.sort();
+        for (var i=0; i<visible_nodes.length; i++) {
+            var subd = visible_nodes[i];
+            d_out.children[i] = {'text': subd.split('.').slice(-1)[0], 'id': subd.replace('.', '_'), 'icon': "glyphicon glyphicon-chevron-right"};
+        }
+        out.core.data[d] = d_out;
+    }
+    return out;
+}
+
+function json_to_jstree(obj, root) {
+        var simplenodes = {'string': true, 'boolean': true, 'number': true, 'null': true}
+        if (root == true) {
+            return {'core': {'data': json_to_jstree(obj, false)}}
+        }
+        
+        var out;
+        if (type(obj) === 'object') { 
+            var keys = Object.keys(obj);
+            var val, text;
+            if (SORT_KEYS) { keys.sort() }
+            out = [];
+            for (var i=0; i<keys.length; i++) {
+                val = obj[keys[i]];
+                if (type(val) in simplenodes) {
+                    out.push({'text': '<b>'+ keys[i] + ':</b> ' + String(val), 'icon': "glyphicon glyphicon-chevron-right"});
+                } else {
+                    out.push({'text': keys[i], 'children': json_to_jstree(obj[keys[i]]) });
+                }
+            }        
+        }
+        else if( type(obj) === 'array' ) {
+            out = [];
+            for (var i=0; i<obj.length; i++) {
+                out.push(json_to_jstree(obj[i]));
+            }
+        }
+        else if( type(obj) === 'string') {
+            out = {'text': obj, 'icon': "glyphicon glyphicon-chevron-right"};
+        }
+        else if( type(obj) === 'number') {
+            out = {'text': obj.toString(), 'icon': "glyphicon glyphicon-chevron-right" };
+        }
+        else { 
+            out = {'text': 'unknown'};
+            //alert( 'not a known type: ', String(obj) );
+        }
+        return out;
+    }
+
+
+
+  window.onload = function() {
+        signin();
+  }
+  </script>
+  <style type="text/css">
+    #command {
+        width: 100%;
+        height: 50px;
+        background:#F0F0F0;
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+    #command input {
+        width: 1005;
+        height: 30px;    
+    }
+  </style>
+</head>
+<body>
+<div id="device_tree"></div>
+<div id="console"></div>
+</body>
+</html>
