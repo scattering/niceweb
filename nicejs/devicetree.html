@@ -217,13 +217,20 @@ var DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
     },
     HashMapToObject: function(m) {
         var obj={}; 
-        m.forEach( function(dn) { 
-            obj[dn]=m.get(dn);
+        m.forEach( function(dn) {
+            obj[dn]=m.get(dn);           
         }); 
         return obj
     } 
 });
 
+HashMapToObject = function(m) {
+        var obj={}; 
+        m.forEach( function(dn) {
+            obj[dn]=m.get(dn);           
+        }); 
+        return obj
+    } 
 
 var setupDevicesMonitor = function(api, router, adapter) {
     var setup = new Promise();
@@ -276,35 +283,72 @@ function update_jstree(nodes) {
         var node, cv, uv, v;
         if ((cv = nodes[n].currentValue) && (uv = cv.userVal) && (uv.val != null)) {
             v = uv.val;
-            if (type(v) === 'string') {
-                // pass as is
-                val = v;  
+            if (type(v) === 'object')  { // && '_name' in v) {
+                //val = String(v._name);
+                var inst = $.jstree.reference(node_id);
+                //var mapkeys = [];
+                //inst._model.data[node_id].children.forEach( function(e,i) { mapkeys[i] = e.text });
+                var old_children = jstree_node.children ? jstree_node.children : []; // ? inst._model.data[node_id].children : [];
+                var new_children = json_to_jstree(v);
+                //inst._model.data[node_id].children = new_children;
+                //inst.create_node(inst, {"text": subd, 'id': node_id, children: new_children});
+                //old_children.forEach(function(e,i) { inst.delete_node(inst.get_node(e)); });
+                //console.log(new_children);
+                if (inst && inst.delete_node && inst.create_node) {
+                    inst.delete_node(jstree_node.children);
+                    new_children.forEach( function(e,i) { 
+                        inst.create_node(jstree_node, e, "last", function(new_node) {});
+                    });
+                }
+                //for (var i=0; i<old_children.length; i++) {
+                //    if (inst && inst.delete_node) {
+                //        inst.delete_node(old_children[i]);
+                //    }
+                //}
+                
+              
+                //
+                //    //new_children.forEach(function(e,i) {
+                //    var j = mapkeys.indexOf(e.text);
+                //    if (j < 0) {
+                //        inst.create_node(jstree_node, e, "last", function(new_node) {});
+                //    }
+                //    else {
+                //        inst._model.data[node_id].children[j] = e;
+                //    }
+                //}); 
+                //jstree_node.text = subd + ': ' + JSON.stringify(v);
             }
-            else if (type(v) === 'boolean') {
-                val = String(v);
-            }
-            else if (type(v) === 'number') {
-                val = v.toPrecision(6);
-            }
-            else if (type(v) === 'object' && '_name' in v) {
-                val = String(v._name);
+            else {
+                var val;
+                if (type(v) === 'string') {
+                    // pass as is
+                    val = v;  
+                }
+                else if (type(v) === 'boolean') {
+                    val = String(v);
+                }
+                else if (type(v) === 'number') {
+                    val = v.toPrecision(6);
+                }
+                jstree_node.text = subd + ": " + val;           
             }
         }
-        jstree_node.text = subd + ": " + val;
+        
     }
     jstree_obj.redraw(true);
 }
 
 
 function devices_to_jstree(devices) {
-    var out = {'core': {'data': [] }};
+    var out = {'core': {'data': [], 'check_callback': true}};
     var devicenames = Object.keys(devices);
     devicenames = devicenames.sort();
     var devicename, device, d_out;
     for (var d=0; d<devicenames.length; d++) {
         devicename = devicenames[d];
         device = devices[devicename];
-        d_out = {'text': devicename, 'children': []}
+        d_out = {'text': devicename, 'id': devicename, 'children': []}
         var visible_nodes = device.visibleNodeIDs;
         visible_nodes = visible_nodes.sort();
         for (var i=0; i<visible_nodes.length; i++) {
@@ -323,7 +367,10 @@ function json_to_jstree(obj, root) {
         }
         
         var out;
-        if (type(obj) === 'object') { 
+        if (type(obj) === 'object') {
+            if (obj instanceof Ice.HashMap) {
+                var obj = HashMapToObject(obj);
+            }
             var keys = Object.keys(obj);
             var val, text;
             if (SORT_KEYS) { keys.sort() }
