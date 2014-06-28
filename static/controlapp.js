@@ -67,7 +67,6 @@
                 }
                 return ihtml
             }
-                  
             
             function getInitialDeviceValue(dottedname) {
                 var names = dottedname.split('.', 2);
@@ -219,7 +218,6 @@
                     }
                 }
                 return se_device_hierarchy;
-
             }
             
             function connect() {
