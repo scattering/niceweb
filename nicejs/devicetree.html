@@ -28,10 +28,7 @@
   <script src="JSON.parseMore.js"></script>
   <script type="text/javascript">
     var Promise = Ice.Promise;
-    var RouterPrx = Glacier2.RouterPrx;
-    
-    var router = "Glacier2/router:ws -p 4064 -h h123062.ncnr.nist.gov";
-    
+    var RouterPrx = Glacier2.RouterPrx;   
     var State = {
         Disconnected: 0,
         Connecting: 1,
@@ -283,7 +280,10 @@ function update_jstree(nodes) {
         var node, cv, uv, v;
         if ((cv = nodes[n].currentValue) && (uv = cv.userVal) && (uv.val != null)) {
             v = uv.val;
-            if (type(v) === 'object')  { // && '_name' in v) {
+            if (v instanceof Ice.EnumBase) {
+                jstree_node.text = subd + ": " + v.name;
+            }
+            else if (type(v) === 'object')  { // && '_name' in v) {
                 //val = String(v._name);
                 var inst = $.jstree.reference(node_id);
                 //var mapkeys = [];
@@ -300,38 +300,27 @@ function update_jstree(nodes) {
                         inst.create_node(jstree_node, e, "last", function(new_node) {});
                     });
                 }
-                //for (var i=0; i<old_children.length; i++) {
-                //    if (inst && inst.delete_node) {
-                //        inst.delete_node(old_children[i]);
-                //    }
-                //}
                 
-              
-                //
-                //    //new_children.forEach(function(e,i) {
-                //    var j = mapkeys.indexOf(e.text);
-                //    if (j < 0) {
-                //        inst.create_node(jstree_node, e, "last", function(new_node) {});
-                //    }
-                //    else {
-                //        inst._model.data[node_id].children[j] = e;
-                //    }
-                //}); 
-                //jstree_node.text = subd + ': ' + JSON.stringify(v);
             }
             else {
-                var val;
+                var text_out;
                 if (type(v) === 'string') {
                     // pass as is
-                    val = v;  
+                    text_out = v;  
                 }
                 else if (type(v) === 'boolean') {
-                    val = String(v);
+                    text_out = String(v);
                 }
                 else if (type(v) === 'number') {
-                    val = v.toPrecision(6);
+                    text_out = v.toPrecision(6);
                 }
-                jstree_node.text = subd + ": " + val;           
+                else if (type(v) === 'array') {
+                    text_out = "array(" + v.length + ") [";
+                    text_out += v.slice(0, 10).join(",");
+                    if (v.length > 10) { text_out += ",..." }
+                    text_out += "]";
+                }
+                jstree_node.text = subd + ": " + text_out;           
             }
         }
         
