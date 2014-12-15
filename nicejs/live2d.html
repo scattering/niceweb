@@ -38,6 +38,7 @@
     <script src="nicejs/slice/events.js"></script>
     <script src="nicejs/slice/experiment.js"></script>
     <script src="nicejs/slice/queue.js"></script>
+    <script src="nicejs/slice/sampleAlignment.js"></script>
     <script src="nicejs/slice/clientapi.js"></script>
     <script src="JSON.parseMore.js"></script>
     <script src="testdata.js"></script>
@@ -341,7 +342,8 @@ var plottable2d = {
             colorbar.plugins._interactor.zoomMax(); // for scale!
         } else {
             var plot = plots[next_target]
-            plot.set
+            plot.series[0].set_data(data.z[0], data.dims);
+        }
         
     }
 
