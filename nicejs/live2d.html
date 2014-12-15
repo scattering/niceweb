@@ -311,29 +311,38 @@ var plottable2d = {
     }
 
     var show2dData = function(data, next_target) {
-        $('#' + next_target).empty();
-        //if (!(counterNodeName in devicesMonitor.nodes)) {
-        //    return
-        //}
+        if (!(plots[next_target])) {
+            // if there is no plot, then create one:
+            $('#' + next_target).empty();
+            //if (!(counterNodeName in devicesMonitor.nodes)) {
+            //    return
+            //}
+            
+            var transform = 'lin';
+            var plotbox = $('<div />', {class:'ui-widget-content', style:"display: block; width: 100%; height: 100%;", id:"plotbox"});
+            $('#' + next_target).append(plotbox)
+            plotbox.append($('<div />', {
+                style:"display: inline-block; left: 0; top: 0; width:"+(plotbox.width()-150).toFixed()+"px; height: 100%;", 
+                id:next_target + "_plot"}));
+            plotbox.append($('<div />', {style:"display: inline-block; width: 100px; height: 100%;", id:next_target + "_colorbar"}));
+            var plot = renderImageData2(data, transform, next_target + "_plot");
+            var cbar_options = {
+                axes: {y2axis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}},
+                interactors: [{"type": "master", "scrollZoom": true, "dragPan": true, "forceload": true}]
+            }
+            var colorbar = renderImageColorbar2(plot.series[0], next_target + '_colorbar');
+            if (next_target in plots && plots[next_target].destroy) {
+                plots[next_target].destroy();
+            }
+            plots[next_target] = null;
+            plots[next_target] = plot;
+            colorbars[next_target] = colorbar;
+            plot.replot(); // for aspect ratio plugin!
+            colorbar.plugins._interactor.zoomMax(); // for scale!
+        } else {
+            var plot = plots[next_target]
+            plot.set
         
-        var transform = 'lin';
-        var plotbox = $('<div />', {class:'ui-widget-content', style:"display: block; width: 100%; height: 100%;", id:"plotbox"});
-        $('#' + next_target).append(plotbox)
-        plotbox.append($('<div />', {
-            style:"display: inline-block; left: 0; top: 0; width:"+(plotbox.width()-150).toFixed()+"px; height: 100%;", 
-            id:next_target + "_plot"}));
-        plotbox.append($('<div />', {style:"display: inline-block; width: 100px; height: 100%;", id:next_target + "_colorbar"}));
-        var plot = renderImageData2(data, transform, next_target + "_plot");
-        var cbar_options = {
-            axes: {y2axis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}},
-            interactors: [{"type": "master", "scrollZoom": true, "dragPan": true, "forceload": true}]
-        }
-        var colorbar = renderImageColorbar2(plot.series[0], next_target + '_colorbar');
-        plots[next_target] = plot;
-        colorbars[next_target] = colorbar;
-        plot.replot(); // for aspect ratio plugin!
-        colorbar.plugins._interactor.zoomMax(); // for scale!
-        return plot;
     }
 
     window.onload = function() {
