@@ -341,8 +341,13 @@ var plottable2d = {
             plot.replot(); // for aspect ratio plugin!
             colorbar.plugins._interactor.zoomMax(); // for scale!
         } else {
-            var plot = plots[next_target]
+            var plot = plots[next_target];
+            var colorbar = colorbars[next_target];
             plot.series[0].set_data(data.z[0], data.dims);
+            colorbar.series[0].set_dims(data.dims);
+            plot.replot();
+            colorbar.plugins._interactor.zoomMax(); // for scale!
+            colorbar.replot();
         }
         
     }
