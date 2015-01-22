@@ -1,0 +1,431 @@
+<html>
+<head>
+  <script src="icejs/Ice.js"></script>
+  <script src="icejs/Glacier2.js"></script>
+  <script src="icejs/IceStorm.js"></script>
+  <script src="icejs/IceGrid.js"></script>
+
+  <script src="nicejs/slice/data.js"></script>
+  <script src="nicejs/slice/devices.js"></script>
+  <script src="nicejs/slice/console.js"></script>
+  <script src="nicejs/slice/dryrun.js"></script>
+  <script src="nicejs/slice/exceptions.js"></script>
+  <script src="nicejs/slice/nice.js"></script>
+  <script src="nicejs/slice/events.js"></script>
+  <script src="nicejs/slice/experiment.js"></script>
+  <script src="nicejs/slice/queue.js"></script>
+  <script src="nicejs/slice/sampleAlignment.js"></script>
+  <script src="nicejs/slice/clientapi.js"></script>
+  <script type="text/javascript">
+    var Promise = Ice.Promise;
+    var RouterPrx = Glacier2.RouterPrx;
+    
+    var router = "Glacier2/router:ws -p 4064 -h h123062.ncnr.nist.gov";
+    
+    var State = {
+        Disconnected: 0,
+        Connecting: 1,
+        Connected:2
+    };
+
+var state = State.Disconnected;
+var hasError = false;
+active = false;
+
+var signin = function()
+{
+    var communicator;
+    var router;
+    Promise.try (
+        function()
+        {
+            //
+            // Start animating the loading progress bar.
+            //
+            //startProgress();
+
+            var hostname = document.location.hostname || "127.0.0.1";
+            //
+            // If the demo is accessed vi https, use a secure (WSS) endpoint, otherwise
+            // use a non-secure (WS) endpoint.
+            //
+            // The web server will act as a reverse proxy for WebSocket connections. This
+            // facilitates the setup of WSS with self-signed certificates because Firefox
+            // and Internet Explorer certificate exceptions are only valid for the same
+            // port and host.
+            //
+            var secure = document.location.protocol.indexOf("https") != -1;
+            var router = secure ? "Glacier2/router:wss -p 4065 -h " + hostname :
+                                  "Glacier2/router:ws -p 4064 -h " + hostname ;
+
+            //
+            // Initialize the communicator with the Ice.Default.Router property
+            // set to the chat demo Glacier2 router.
+            //
+            var id = new Ice.InitializationData();
+            id.properties = Ice.createProperties();
+            id.properties.setProperty("Ice.Default.Router", router);
+            id.properties.setProperty("Ice.Default.EncodingVersion", "1.0");
+            id.properties.setProperty("Ice.ACM.Client", "0");
+
+            communicator = Ice.initialize(id);
+            
+            cm = communicator;
+            //
+            // Get a proxy to the Glacier2 router using checkedCast to ensure
+            // the Glacier2 server is available.
+            //
+            rt_prx = RouterPrx.checkedCast(communicator.getDefaultRouter());
+            console.log(rt_prx);
+            return rt_prx;
+        }
+    ).then(
+        function(r, s)
+        {
+            myrouter = r;
+            
+            //console.log(r, s);
+            //
+            // Create a session with the Glacier2 router.
+            //
+            var s = myrouter.createSession("", "");
+            //console.log(s);
+            return s
+        }
+    ).then(
+        function(session)
+        {   
+            console.log(session)
+            mysession = session;
+            mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
+            //mgr = Glacier2ClientManagerApiPrx.uncheckedCast(session);
+            return mgr;
+            //run(communicator, router, ChatSessionPrx.uncheckedCast(session));
+        }
+    ).then(
+        function(mgr){
+            ca = mgr.getAPI('client');
+            return ca;
+        }
+    ).then(
+        function(ca) {
+            cam = nice.api.ClientApiPrx.checkedCast(ca);
+            return cam;
+        }
+    ).then(
+        function(api) {
+            my_api = api;
+            var adapter = communicator.createObjectAdapterWithRouter("", myrouter);
+            return adapter
+        }
+    ).then(
+        function(adapter) {
+            myadapter = adapter;
+            active = true;
+            setupQueueMonitor(my_api, myrouter, myadapter);
+            //setupConsoleMonitor(myrouter, communicator,  mysession);
+            //run(communicator, myrouter, mysession);
+        }
+    ).then( function() {
+            setupConsoleMonitor(my_api, myrouter, myadapter);
+        }
+    ).exception(
+        function(ex)
+        {
+            //
+            // Handle any exceptions that occurred during session creation.
+            //
+            alert(ex.toString());
+            
+            if(communicator)
+            {
+                communicator.destroy();
+            }
+        });
+};
+
+var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, { 
+    onSubscribe_old: function(state, root, __current) {
+        this.state = state;
+        this.root = root;
+    },
+    onSubscribe: function(queueState, root, __current) {
+        // Called when we initially subscribe to the queue topic 
+        this._root = root;
+        this._commands = {};
+        this.addToNodeTable(this, root);
+    },
+    nodesAdded: function(path, node, __current) {
+        // Called when a command node is added to the queue
+        this.addToNodeTable(this, node);
+        
+        // Add the nodes to the queue structure
+        this._addToQ(this, path, node);
+    },
+    nodesRemoved: function(path, node, __current) {
+        /*
+        Called when a command node is removed from the queue.
+        Handles removal of nodes. We remove the corresponding nodes
+        from the command map and from the queue structure.
+        */
+        this._removeFromQ(this, node.UUID);
+
+        this._removeFromNodeTable(this, node);
+    },
+    nodeStatusChanged: function(path, nodeID, status, __current) {
+        // Called when an individual command's state changes
+        this._commands[nodeID].status = status;
+    },
+    stateChanged: function(queueState, __current) {},
+    _removeFromNodeTable: function(ctx, node) {
+        /*
+        Removes a node from the id->node map. This is done recursively for all the node's children.
+        Each node that is removed has its id added to the set of removed command IDs.
+        */
+        for (var i=0; i<node.children.length; i++) {
+            var child = node.children[i];
+            ctx._removeFromNodeTable(ctx, child);
+            delete ctx._commands[node.UUID];
+        }
+    },
+    _addToQ: function(ctx, path, node) {
+        // Adds the node to the queue structure.
+        parentNode = ctx._commands[node.parentUUID];
+        childIndex = path[path.length - 1];
+        parentNode.children.splice(childIndex, 0, node);
+    },
+    _removeFromQ: function(ctx, commandID) {
+        // Removes node with specified id and all its children from the queue structure.
+        node = ctx._commands[commandID];
+        parent = ctx._commands[node.parentID];
+        for (var i=0; i<parent.children.length; i++) {
+            var child = parent.children[i];
+            if (child.UUID == commandID) {
+                break
+            }
+            parent.children.splice(i, 1);
+        }
+    },
+    addToNodeTable: function(ctx, node) {
+        /*
+        Adds a node to the id->node map. This is done recursively for all the node's
+        children.
+        */
+        this._commands[node.UUID] = node;
+        for (var i=0; i<node.children.length; i++) {
+            var child = node.children[i];
+            ctx.addToNodeTable(ctx, child);
+        }
+    }
+});
+
+var setupQueueMonitor = function(api, router, adapter) {
+    var setup = new Promise();
+
+    //
+    // Get the session timeout and the router client category, and
+    // create the client object adapter.
+    //
+    // Use Ice.Promise.all to wait for the completion of all the
+    // calls.
+    //
+    Promise.all(
+        router.getSessionTimeout(),
+        router.getCategoryForClient()
+    ).then(
+        function(timeoutArgs, categoryArgs, adapterArgs)
+        {
+            var timeout = timeoutArgs[0];
+            var category = categoryArgs[0];
+            //var adapter = adapterArgs[0];
+
+            //
+            // Create the ChatCallback servant and add it to the
+            // ObjectAdapter.
+            //
+            var qmI = new QueueMonitorI();
+            var qmPrx = nice.api.queue.QueueMonitorPrx.uncheckedCast(adapter.add(qmI, new Ice.Identity("queueMonitor", category)));
+            api.subscribeToQueue(qmPrx);
+            //
+            queueMonitor = qmI;
+            return adapter;
+        }
+    );
+}
+
+var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
+    onSubscribe: function(history, __current) {
+        this._history = history;
+        var html = "", h, p, msg;
+        var console_div = document.getElementById('console');
+        for (var i=0; i<history.length; i++) {
+            h = history[i];
+            if (h.level._name == 'INFO') {
+                p = document.createElement('p');
+                p.innerHTML = history[i].message;
+                console_div.appendChild(p);
+            }
+            //html += '<p>' + history[i].message + '</p>';
+        }
+        if (p != null && p.scrollIntoView) {
+            p.scrollIntoView(true);
+        }
+        //document.body.innerHTML=html;
+    },
+    report: function(event, __current) {
+        this._lastEvent = event;
+        if (event.level._name == 'INFO') {
+            var p = document.createElement('p');
+            p.innerHTML = event.message;
+            document.getElementById('console').appendChild(p);
+            p.scrollIntoView(true);
+        }
+    }
+});
+
+var setupConsoleMonitor = function(api, router, adapter) {
+    var setup = new Promise();
+
+    //
+    // Get the session timeout and the router client category, and
+    // create the client object adapter.
+    //
+    // Use Ice.Promise.all to wait for the completion of all the
+    // calls.
+    //
+    Promise.all(
+        router.getSessionTimeout(),
+        router.getCategoryForClient()
+    ).then(
+        function(timeoutArgs, categoryArgs, adapterArgs)
+        {
+            var timeout = timeoutArgs[0];
+            var category = categoryArgs[0];
+            //var adapter = adapterArgs[0];
+
+            //
+            // Create the ChatCallback servant and add it to the
+            // ObjectAdapter.
+            //
+            var cmI = new ConsoleMonitorI();
+            var cmPrx = nice.api.console.ConsoleMonitorPrx.uncheckedCast(adapter.add(cmI, new Ice.Identity("consoleMonitor", category)));
+            api.subscribeToConsole(cmPrx);
+            //
+            return cmI;
+        }
+    ).then(
+        function(cmI) {
+            consoleMonitor = cmI; // global
+        }
+    );
+}
+
+function submitCommand() {
+    var command_line = document.getElementById('command_line');
+    var command = command_line.value.trim('\n');
+    command_line.value = "";
+    command_offset = 0;
+    my_api.console(command);
+}
+
+function getCommandCompletion(command_stub) {
+    var tokens = command_stub.split(/\s+/);
+    var last_length = tokens[tokens.length - 1].length;
+    var root = command_stub.slice(0, (command_stub.length - last_length));
+    my_api.complete(command_stub).then(function(result) {
+        var completions = result.fullCompletions.sort(
+            function(a,b) { 
+                return (a.replacementText > b.replacementText)? 1 : -1});
+        var completionlist = document.getElementById('tabcomplete');
+        while (completionlist.firstChild) {
+            completionlist.removeChild(completionlist.firstChild);
+        }
+        for (var i=0; i<completions.length; i++) {
+            var cmp = document.createElement("option");
+            cmp.setAttribute("value", root + completions[i].replacementText);
+            completionlist.appendChild(cmp);
+        }
+    });
+}
+
+getCursorPosition = function(input) {
+        if (!input) return; // No (input) element found
+        if ('selectionStart' in input) {
+            // Standard-compliant browsers
+            return input.selectionStart;
+        } else if (document.selection) {
+            // IE
+            input.focus();
+            var sel = document.selection.createRange();
+            var selLen = document.selection.createRange().text.length;
+            sel.moveStart('character', -input.value.length);
+            return sel.text.length - selLen;
+        }
+    }
+
+  window.onload = function() {
+    signin();
+    //document.getElementById('command_line').onchange = submitCommand;
+    var cl = document.getElementById('command_line');
+    command_offset = 0;
+    //var bump = {"Up": -1, "Down": 1}
+    var bump = {38: -1, 40: 1};
+    cl.onkeydown = function(ev) {
+        var keyCode = ev.keyCode || ev.which;
+        if (keyCode == 38 || keyCode == 40) {
+            ev.preventDefault();
+            var cursor_pos = cl.selectionStart;
+            command_match = new RegExp("^"+cl.value.slice(0, cursor_pos), "i"); // ignore case            
+            var matching_commands = queueMonitor._root.children.filter(function(item) { return command_match.test(item.status.commandStr) });
+            if (matching_commands.length == 0) { 
+                return 
+            }
+            //command_offset += bump[ev.keyIdentifier];
+            command_offset += bump[keyCode];
+            var index = command_offset % matching_commands.length;
+            if (index < 0) {
+                index += matching_commands.length;
+            }
+            cl.value = matching_commands[index].status.commandStr;
+            cl.setSelectionRange(cursor_pos, cursor_pos);
+        }
+        else if (keyCode == 13) {
+            submitCommand();
+        }
+        else if (keyCode == 9) {
+            ev.preventDefault();
+            var cursor_pos = cl.selectionStart;
+            var command_stub = cl.value.slice(0, cursor_pos);
+            getCommandCompletion(command_stub);
+        }
+
+    }
+    
+  }
+  </script>
+  <style type="text/css">
+    #command {
+        width: 100%;
+        height: 50px;
+        background:#F0F0F0;
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+    #command input {
+        width: 1005;
+        height: 30px;    
+    }
+  </style>
+</head>
+<body>
+<div id="command">
+    Command: <input type="text" id="command_line" name="command_line" list="tabcomplete" autocomplete="off"/>
+    <datalist id="tabcomplete">
+        <option value="move sampleAngle">
+    </datalist>
+</div>
+
+<div id="console"></div>
+</body>
+</html>
