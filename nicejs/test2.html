@@ -55,8 +55,8 @@ var signin = function()
             // port and host.
             //
             var secure = document.location.protocol.indexOf("https") != -1;
-            var router = secure ? "Glacier2/router:wss -p 4065 -h " + hostname :
-                                  "Glacier2/router:ws -p 4064 -h " + hostname ;
+            var router = secure ? "NiceGlacier2/router:wss -p 4065 -h " + hostname :
+                                  "NiceGlacier2/router:ws -p 4064 -h " + hostname ;
 
             //
             // Initialize the communicator with the Ice.Default.Router property
@@ -88,7 +88,7 @@ var signin = function()
             //
             // Create a session with the Glacier2 router.
             //
-            var s = myrouter.createSession("", "");
+            var s = myrouter.createSession("user", "");
             //console.log(s);
             return s
         }
@@ -417,6 +417,7 @@ getCursorPosition = function(input) {
         height: 30px;    
     }
   </style>
+  <link rel="stylesheet" type="text/css" href="css/main.css">
 </head>
 <body>
 <div id="command">
