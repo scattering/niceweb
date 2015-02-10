@@ -54,6 +54,7 @@ function showQueue(queue) {
     myqueue = queue;
     //treequeue = json_to_jstree(queue, true);
     newqueue = queue_to_jstree(queue, true);
+    
     $('#queue').on('ready.jstree', function(e, data) { window.scrollTo(0,document.body.scrollHeight) });
     $("#queue").bind("select_node.jstree", function (e, data) { return data.instance.toggle_node(data.node); });
     return $('#queue').jstree(newqueue);
@@ -228,6 +229,9 @@ function queue_to_jstree(queue, root) {
 var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
     __init__: function(jstree_target) {
         this.jstree_target = jstree_target;
+        var target = $(jstree_target);
+        target.on('ready.jstree', function(e, data) { e.currentTarget.scrollTop = e.currentTarget.scrollHeight });
+        target.bind("select_node.jstree", function (e, data) { return data.instance.toggle_node(data.node); });
     },
     onSubscribe_old: function(state, root, __current) {
         this.state = state;
@@ -248,6 +252,7 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
         this.addToNodeTable(this, node);
         var childIndex = path[path.length - 1];
         this.jstree.create_node(node.parentUUID, command_to_node(node), childIndex, function() {});
+        document.getElementById(node.UUID).scrollIntoView(true);
         // Add the nodes to the queue structure
         //this._addToQ(this, path, node);
     },
@@ -293,6 +298,7 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
         parentNode.children.splice(childIndex, 0, node);
         console.log(JSON.stringify(path));
         ctx.jstree.create_node(node.parentUUID, command_to_node(node), childIndex, function() {});
+        
     },
     _removeFromQ: function(ctx, commandID) {
         // Removes node with specified id and all its children from the queue structure.
@@ -377,6 +383,9 @@ var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
             p.scrollIntoView(true);
         }
         //document.body.innerHTML=html;
+    },
+    switchedCurrentExperiment: function(history, __current) {
+        this.onSubscribe(history, __current);
     },
     report: function(event, __current) {
         this._lastEvent = event;
