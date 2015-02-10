@@ -241,20 +241,15 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
         // Called when we initially subscribe to the queue topic 
         this._root = root;
         this._commands = {};
-        this.addToNodeTable(this, root);
-        //var j = queue_to_jstree(root, true);
-        //var jj = {core: {data: j.core.data.children}};
-        //this.jstree = $(this.jstree_target).jstree(jj);
+        this._addToNodeTable(this, root);
         this.jstree = $(this.jstree_target).jstree(q2jstree(this)).jstree(true);
     },
     nodesAdded: function(path, node, __current) {
         // Called when a command node is added to the queue
-        this.addToNodeTable(this, node);
+        this._addToNodeTable(this, node);
         var childIndex = path[path.length - 1];
         this.jstree.create_node(node.parentUUID, command_to_node(node), childIndex, function() {});
         document.getElementById(node.UUID).scrollIntoView(true);
-        // Add the nodes to the queue structure
-        //this._addToQ(this, path, node);
     },
     nodesRemoved: function(path, node, __current) {
         /*
@@ -262,8 +257,6 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
         Handles removal of nodes. We remove the corresponding nodes
         from the command map and from the queue structure.
         */
-        //this._removeFromQ(this, node.UUID);
-
         this._removeFromNodeTable(this, node);
         this.jstree.delete_node(node.UUID);
     },
@@ -280,6 +273,9 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
     stateChanged: function(queueState, __current) {
         //console.log('stateChanged:', queueState);
     },
+    ////////////////////////////////////////////////////////////////////
+    // END OF API IMPLEMENTATION OVERRIDES
+    ////////////////////////////////////////////////////////////////////
     _removeFromNodeTable: function(ctx, node) {
         /*
         Removes a node from the id->node map. This is done recursively for all the node's children.
@@ -291,28 +287,7 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
         }
         delete ctx._commands[node.UUID];
     },
-    _addToQ: function(ctx, path, node) {
-        // Adds the node to the queue structure.
-        var parentNode = ctx._commands[node.parentUUID];
-        var childIndex = path[path.length - 1];
-        parentNode.children.splice(childIndex, 0, node);
-        console.log(JSON.stringify(path));
-        ctx.jstree.create_node(node.parentUUID, command_to_node(node), childIndex, function() {});
-        
-    },
-    _removeFromQ: function(ctx, commandID) {
-        // Removes node with specified id and all its children from the queue structure.
-        node = ctx._commands[commandID];
-        parent = ctx._commands[node.parentUUID];
-        for (var i=0; i<parent.children.length; i++) {
-            var child = parent.children[i];
-            if (child.UUID == commandID) {
-                break
-            }
-            parent.children.splice(i, 1);
-        }
-    },
-    addToNodeTable: function(ctx, node) {
+    _addToNodeTable: function(ctx, node) {
         /*
         Adds a node to the id->node map. This is done recursively for all the node's
         children.
@@ -320,7 +295,7 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
         this._commands[node.UUID] = node;
         for (var i=0; i<node.children.length; i++) {
             var child = node.children[i];
-            ctx.addToNodeTable(ctx, child);
+            ctx._addToNodeTable(ctx, child);
         }
         
     }
