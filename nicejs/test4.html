@@ -498,7 +498,16 @@ getCursorPosition = function(input) {
             });
     });
     
-    
+    document.body.onkeydown = function(ev) {
+        var keyCode = ev.keyCode || ev.which;
+        var command_line = document.getElementById('command_line');
+        // block backspace when not in command line
+        if ((document.activeElement != command_line) && (keyCode == 8)) { ev.preventDefault(); }
+        // put focus in command line if not there.
+        if (keyCode > 63 && keyCode < 91) {
+            command_line.focus();
+        } 
+    }
     var layout = $('body').layout({
 		east__size:			300
 	,	west__size:			0
