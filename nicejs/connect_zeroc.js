@@ -51,7 +51,7 @@
         ).then(
             function(s)
             {   
-                sesssion = s;
+                session = s;
                 return communicator.createObjectAdapterWithRouter("", router);
             }
         ).then(

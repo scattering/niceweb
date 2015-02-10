@@ -33,119 +33,9 @@ var state = State.Disconnected;
 var hasError = false;
 active = false;
 
-var old_signin = function()
-{
-    var communicator;
-    var router;
-    Promise.try (
-        function()
-        {
-            //
-            // Start animating the loading progress bar.
-            //
-            //startProgress();
 
-            var hostname = document.location.hostname || "127.0.0.1";
-            //
-            // If the demo is accessed vi https, use a secure (WSS) endpoint, otherwise
-            // use a non-secure (WS) endpoint.
-            //
-            // The web server will act as a reverse proxy for WebSocket connections. This
-            // facilitates the setup of WSS with self-signed certificates because Firefox
-            // and Internet Explorer certificate exceptions are only valid for the same
-            // port and host.
-            //
-            var secure = document.location.protocol.indexOf("https") != -1;
-            var router = secure ? "NiceGlacier2/router:wss -p 4065 -h " + hostname :
-                                  "NiceGlacier2/router:ws -p 4064 -h " + hostname ;
 
-            //
-            // Initialize the communicator with the Ice.Default.Router property
-            // set to the chat demo Glacier2 router.
-            //
-            var id = new Ice.InitializationData();
-            id.properties = Ice.createProperties();
-            id.properties.setProperty("Ice.Default.Router", router);
-            id.properties.setProperty("Ice.Default.EncodingVersion", "1.0");
-            id.properties.setProperty("Ice.ACM.Client", "0");
-
-            communicator = Ice.initialize(id);
-            
-            cm = communicator;
-            //
-            // Get a proxy to the Glacier2 router using checkedCast to ensure
-            // the Glacier2 server is available.
-            //
-            rt_prx = RouterPrx.checkedCast(communicator.getDefaultRouter());
-            console.log(rt_prx);
-            return rt_prx;
-        }
-    ).then(
-        function(r, s)
-        {
-            myrouter = r;
-            
-            //console.log(r, s);
-            //
-            // Create a session with the Glacier2 router.
-            //
-            var s = myrouter.createSession("user", "");
-            //console.log(s);
-            return s
-        }
-    ).then(
-        function(session)
-        {   
-            console.log(session)
-            mysession = session;
-            mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
-            //mgr = Glacier2ClientManagerApiPrx.uncheckedCast(session);
-            return mgr;
-            //run(communicator, router, ChatSessionPrx.uncheckedCast(session));
-        }
-    ).then(
-        function(mgr){
-            ca = mgr.getAPI('client');
-            return ca;
-        }
-    ).then(
-        function(ca) {
-            cam = nice.api.ClientApiPrx.checkedCast(ca);
-            return cam;
-        }
-    ).then(
-        function(api) {
-            my_api = api;
-            var adapter = communicator.createObjectAdapterWithRouter("", myrouter);
-            return adapter
-        }
-    ).then(
-        function(adapter) {
-            myadapter = adapter;
-            active = true;
-            setupQueueMonitor(my_api, myrouter, myadapter);
-            //setupConsoleMonitor(myrouter, communicator,  mysession);
-            //run(communicator, myrouter, mysession);
-        }
-    ).then( function() {
-            setupConsoleMonitor(my_api, myrouter, myadapter);
-        }
-    ).exception(
-        function(ex)
-        {
-            //
-            // Handle any exceptions that occurred during session creation.
-            //
-            alert(ex.toString());
-            
-            if(communicator)
-            {
-                communicator.destroy();
-            }
-        });
-};
-
-var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, { 
+var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
     onSubscribe_old: function(state, root, __current) {
         this.state = state;
         this.root = root;
@@ -249,16 +139,21 @@ var setupQueueMonitor = function(api, router, adapter) {
             api.subscribeToQueue(qmPrx);
             //
             queueMonitor = qmI;
+            setup.succeed();
             return adapter;
         }
     );
+    return setup
 }
 
 var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
+    __init__: function(console_id) {
+        this.console_id = console_id;
+    },
     onSubscribe: function(history, __current) {
         this._history = history;
         var html = "", h, p, msg;
-        var console_div = document.getElementById('console');
+        var console_div = document.getElementById(this.console_id);
         for (var i=0; i<history.length; i++) {
             h = history[i];
             if (h.level._name == 'INFO') {
@@ -278,7 +173,7 @@ var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
         if (event.level._name == 'INFO') {
             var p = document.createElement('p');
             p.innerHTML = event.message;
-            document.getElementById('console').appendChild(p);
+            document.getElementById(this.console_id).appendChild(p);
             p.scrollIntoView(true);
         }
     }
@@ -308,7 +203,7 @@ var setupConsoleMonitor = function(api, router, adapter) {
             // Create the ChatCallback servant and add it to the
             // ObjectAdapter.
             //
-            var cmI = new ConsoleMonitorI();
+            var cmI = new ConsoleMonitorI("console");
             var cmPrx = nice.api.console.ConsoleMonitorPrx.uncheckedCast(adapter.add(cmI, new Ice.Identity("consoleMonitor", category)));
             api.subscribeToConsole(cmPrx);
             //
@@ -317,8 +212,10 @@ var setupConsoleMonitor = function(api, router, adapter) {
     ).then(
         function(cmI) {
             consoleMonitor = cmI; // global
+            setup.succeed();
         }
     );
+    return setup
 }
 
 function submitCommand() {
@@ -373,10 +270,16 @@ getCursorPosition = function(input) {
                 function(ca) {
                     return nice.api.ClientApiPrx.checkedCast(ca).then(
                         function(cam) {
-                            my_api = cam;
-                        })
-                    })
-                });
+                            api = cam;
+                            setupQueueMonitor(cam, router, adapter).then(
+                                function() {
+                                    setupConsoleMonitor(cam, router, adapter);
+                            });
+                    });
+            });
+    });
+    
+        
     //document.getElementById('command_line').onchange = submitCommand;
     var cl = document.getElementById('command_line');
     command_offset = 0;
