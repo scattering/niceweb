@@ -1,14 +1,14 @@
 <html>
 <head>
-  <link rel="stylesheet" href="../../niceclient/static/css/layout-default-latest.css" />
+  <link rel="stylesheet" href="http://nicedata.ncnr.nist.gov/niceclient/static/css/layout-default-latest.css" />
   <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
             type="text/css" rel="Stylesheet" />
   <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
   <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
-  <script src="../../niceclient/static/jquery.layout-latest.js"></script>
+  <script src="http://nicedata.ncnr.nist.gov/niceclient/static/jquery.layout-latest.js"></script>
   <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
   <link rel="stylesheet" href="http://ncnr.nist.gov/instruments/magik/jstree/dist/themes/default/style.min.css"/>
-  <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jstree/dist/jstree.min.js"></script>
+  <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jstree/dist/jstree.js"></script>
 
   <script src="icejs/Ice.js"></script>
   <script src="icejs/Glacier2.js"></script>
@@ -40,6 +40,7 @@
     };
     SORT_KEYS = true;
     CommandStatusEnum =  [ 'QUEUED', 'RUNNING', 'CHILDREN', 'FINISHED', 'SKIPPED' ];
+    
 
 var state = State.Disconnected;
 var hasError = false;
@@ -53,6 +54,7 @@ function showQueue(queue) {
     myqueue = queue;
     //treequeue = json_to_jstree(queue, true);
     newqueue = queue_to_jstree(queue, true);
+    
     $('#queue').on('ready.jstree', function(e, data) { window.scrollTo(0,document.body.scrollHeight) });
     $("#queue").bind("select_node.jstree", function (e, data) { return data.instance.toggle_node(data.node); });
     return $('#queue').jstree(newqueue);
@@ -85,61 +87,74 @@ function type (object) {
     return 'object';
 };
 
+function command_to_node(command) {
+    var out = {};
+    out.parent = command.parentUUID || "#";
+    out.id = command.UUID;
+    if ('status' in command) {
+        var status = command.status;
+        
+        if ('commandStr' in status) {
+            out.text = status.commandStr;
+        }
+        if ('state' in status) {
+            var v;
+            if ('value' in status.state) {                            
+                v = parseInt(status.state.value);
+            } 
+            else if ('_value' in status.state) {
+                v = parseInt(status.state._value);
+            }
+            if (v != null) {
+                out.text += ": " + CommandStatusEnum[v];
+                //out.data = {"attributes": {"class": "queue-" + CommandStatusEnum[v]}};
+                out.attributes =  {"class": "queue-" + CommandStatusEnum[v]};
+            }
+            if (v == 1 || v == 2) {
+                out.icon = "css/running.gif"; // running!
+            }
+            if (v == 3) {
+                var t = new Date(status.endCommandTimestamp.toNumber());
+                var hours_str = t.getHours().toFixed();
+                if (hours_str.length < 2) {
+                    hours_str = "0" + hours_str; 
+                }
+                var minutes_str = t.getMinutes().toFixed();
+                if (minutes_str.length < 2) {
+                    minutes_str = "0" + minutes_str; 
+                }
+                out.text += " " + hours_str + ":" + minutes_str;
+                out.text += " " + t.toLocaleDateString();
+                out.icon = "css/checkmark.gif";
+            }
+            if (v==0) {
+                out.icon = "css/queue.gif"; // queued
+            }
+            if (v==4) {
+                out.icon = "css/ex.gif";
+            }
+                
+        }
+    }
+    return out
+}
+
 function q2jstree(root){
-    var output = {'core': {'data': []}};
+    var output = {
+        'core': {
+            'data': [],
+            'animation': 0,
+            'check_callback': true
+        },
+        'plugins': ['contextmenu'] //, 'dnd', 'search', 'state', 'types', 'wholerow']
+    }
     var command, i=0;
     for (var c in root._commands) {
         command = root._commands[c];
-        var out = {};
-        out.parent = command.parentUUID || "#";
-        out.id = command.UUID;
-        if ('status' in command) {
-            var status = command.status;
-            
-            if ('commandStr' in status) {
-                out.text = status.commandStr;
-            }
-            if ('state' in status) {
-                var v;
-                if ('value' in status.state) {                            
-                    v = parseInt(status.state.value);
-                } 
-                else if ('_value' in status.state) {
-                    v = parseInt(status.state._value);
-                }
-                if (v != null) {
-                    out.text += ": " + CommandStatusEnum[v];
-                    //out.data = {"attributes": {"class": "queue-" + CommandStatusEnum[v]}};
-                    out.attributes =  {"class": "queue-" + CommandStatusEnum[v]};
-                }
-                if (v == 1 || v == 2) {
-                    out.icon = "css/running.gif"; // running!
-                }
-                if (v == 3) {
-                    var t = new Date(status.endCommandTimestamp.toNumber());
-                    var hours_str = t.getHours().toFixed();
-                    if (hours_str.length < 2) {
-                        hours_str = "0" + hours_str; 
-                    }
-                    var minutes_str = t.getMinutes().toFixed();
-                    if (minutes_str.length < 2) {
-                        minutes_str = "0" + minutes_str; 
-                    }
-                    out.text += " " + hours_str + ":" + minutes_str;
-                    out.text += " " + t.toLocaleDateString();
-                    out.icon = "css/checkmark.gif";
-                }
-                if (v==0) {
-                    out.icon = "css/queue.gif"; // queued
-                }
-                if (v==4) {
-                    out.icon = "css/ex.gif";
-                }
-                    
-            }
-        }
-        output.core.data[i++] = out;
+        var new_node_def = command_to_node(command);
+        output.core.data[i++] = new_node_def;
     }
+    output.core.data[0].state = {opened: true};
     return output;
 }
 
@@ -214,28 +229,27 @@ function queue_to_jstree(queue, root) {
 var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
     __init__: function(jstree_target) {
         this.jstree_target = jstree_target;
+        var target = $(jstree_target);
+        target.on('ready.jstree', function(e, data) { e.currentTarget.scrollTop = e.currentTarget.scrollHeight });
+        target.bind("select_node.jstree", function (e, data) { return data.instance.toggle_node(data.node); });
     },
     onSubscribe_old: function(state, root, __current) {
         this.state = state;
         this.root = root;
-        this.jstree = $(jstree_target).jstree(queue_to_jstree(root.core.data, true));
     },
     onSubscribe: function(queueState, root, __current) {
         // Called when we initially subscribe to the queue topic 
         this._root = root;
         this._commands = {};
-        this.addToNodeTable(this, root);
-        //var j = queue_to_jstree(root, true);
-        //var jj = {core: {data: j.core.data.children}};
-        //this.jstree = $(this.jstree_target).jstree(jj);
-        this.jstree = $(this.jstree_target).jstree(q2jstree(this));
+        this._addToNodeTable(this, root);
+        this.jstree = $(this.jstree_target).jstree(q2jstree(this)).jstree(true);
     },
     nodesAdded: function(path, node, __current) {
         // Called when a command node is added to the queue
-        this.addToNodeTable(this, node);
-        
-        // Add the nodes to the queue structure
-        this._addToQ(this, path, node);
+        this._addToNodeTable(this, node);
+        var childIndex = path[path.length - 1];
+        this.jstree.create_node(node.parentUUID, command_to_node(node), childIndex, function() {});
+        document.getElementById(node.UUID).scrollIntoView(true);
     },
     nodesRemoved: function(path, node, __current) {
         /*
@@ -243,15 +257,25 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
         Handles removal of nodes. We remove the corresponding nodes
         from the command map and from the queue structure.
         */
-        this._removeFromQ(this, node.UUID);
-
         this._removeFromNodeTable(this, node);
+        this.jstree.delete_node(node.UUID);
     },
     nodeStatusChanged: function(path, nodeID, status, __current) {
         // Called when an individual command's state changes
-        this._commands[nodeID].status = status;
+        // FIXME: this shouldn't be breaking.
+        if (nodeID in this._commands) {
+            this._commands[nodeID].status = status;        
+            var node = this.jstree.get_node(nodeID);
+            $.extend(node, command_to_node(this._commands[nodeID]), true);
+            this.jstree.redraw_node(nodeID);
+        }
     },
-    stateChanged: function(queueState, __current) {},
+    stateChanged: function(queueState, __current) {
+        //console.log('stateChanged:', queueState);
+    },
+    ////////////////////////////////////////////////////////////////////
+    // END OF API IMPLEMENTATION OVERRIDES
+    ////////////////////////////////////////////////////////////////////
     _removeFromNodeTable: function(ctx, node) {
         /*
         Removes a node from the id->node map. This is done recursively for all the node's children.
@@ -260,28 +284,10 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
         for (var i=0; i<node.children.length; i++) {
             var child = node.children[i];
             ctx._removeFromNodeTable(ctx, child);
-            delete ctx._commands[node.UUID];
         }
+        delete ctx._commands[node.UUID];
     },
-    _addToQ: function(ctx, path, node) {
-        // Adds the node to the queue structure.
-        parentNode = ctx._commands[node.parentUUID];
-        childIndex = path[path.length - 1];
-        parentNode.children.splice(childIndex, 0, node);
-    },
-    _removeFromQ: function(ctx, commandID) {
-        // Removes node with specified id and all its children from the queue structure.
-        node = ctx._commands[commandID];
-        parent = ctx._commands[node.parentID];
-        for (var i=0; i<parent.children.length; i++) {
-            var child = parent.children[i];
-            if (child.UUID == commandID) {
-                break
-            }
-            parent.children.splice(i, 1);
-        }
-    },
-    addToNodeTable: function(ctx, node) {
+    _addToNodeTable: function(ctx, node) {
         /*
         Adds a node to the id->node map. This is done recursively for all the node's
         children.
@@ -289,8 +295,9 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
         this._commands[node.UUID] = node;
         for (var i=0; i<node.children.length; i++) {
             var child = node.children[i];
-            ctx.addToNodeTable(ctx, child);
+            ctx._addToNodeTable(ctx, child);
         }
+        
     }
 });
 
@@ -340,7 +347,7 @@ var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
         var console_div = document.getElementById(this.console_id);
         for (var i=0; i<history.length; i++) {
             h = history[i];
-            if (h.level._name == 'INFO') {
+            if (h.level._name == 'INFO' && h.eventID != -3) {
                 p = document.createElement('p');
                 p.innerHTML = history[i].message;
                 console_div.appendChild(p);
@@ -352,9 +359,12 @@ var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
         }
         //document.body.innerHTML=html;
     },
+    switchedCurrentExperiment: function(history, __current) {
+        this.onSubscribe(history, __current);
+    },
     report: function(event, __current) {
         this._lastEvent = event;
-        if (event.level._name == 'INFO') {
+        if (event.level._name == 'INFO' && event.eventID != -3) {
             var p = document.createElement('p');
             p.innerHTML = event.message;
             document.getElementById(this.console_id).appendChild(p);
@@ -414,7 +424,7 @@ function getCommandCompletion(command_stub) {
     var tokens = command_stub.split(/\s+/);
     var last_length = tokens[tokens.length - 1].length;
     var root = command_stub.slice(0, (command_stub.length - last_length));
-    my_api.complete(command_stub).then(function(result) {
+    api.complete(command_stub).then(function(result) {
         var completions = result.fullCompletions.sort(
             function(a,b) { 
                 return (a.replacementText > b.replacementText)? 1 : -1});
@@ -463,7 +473,16 @@ getCursorPosition = function(input) {
             });
     });
     
-    
+    document.body.onkeydown = function(ev) {
+        var keyCode = ev.keyCode || ev.which;
+        var command_line = document.getElementById('command_line');
+        // block backspace when not in command line
+        if ((document.activeElement != command_line) && (keyCode == 8)) { ev.preventDefault(); }
+        // put focus in command line if not there.
+        if (keyCode > 63 && keyCode < 91) {
+            command_line.focus();
+        } 
+    }
     var layout = $('body').layout({
 		east__size:			300
 	,	west__size:			0
