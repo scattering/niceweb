@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
   <link rel="stylesheet" href="http://ncnr.nist.gov/instruments/magik/jstree/dist/themes/default/style.min.css"/>
   <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jstree/dist/jstree.js"></script>
+  <script type="text/javascript" src="jstree_dnd_nice.js"></script>
 
   <script src="icejs/Ice.js"></script>
   <script src="icejs/Glacier2.js"></script>
@@ -16,6 +17,7 @@
   <script src="icejs/IceGrid.js"></script>
 
   <script src="generated/data.js"></script>
+  <script src="generated/file.js"></script>
   <script src="generated/devices.js"></script>
   <script src="generated/console.js"></script>
   <script src="generated/dryrun.js"></script>
@@ -39,7 +41,17 @@
         Connected:2
     };
     SORT_KEYS = true;
-    CommandStatusEnum =  [ 'QUEUED', 'RUNNING', 'CHILDREN', 'FINISHED', 'SKIPPED' ];
+    
+    function getEnumValues(ice_enum) {
+        var enumVals = [];
+        for (var i=0; i<=ice_enum.maxValue; i++) {
+            enumVals[i] = ice_enum.valueOf(i)._name;
+        }
+        return enumVals;
+    }
+    // preread the CommandState enum:
+    CommandStatusEnum = getEnumValues(nice.api.queue.CommandState);
+    //CommandStatusEnum =  [ 'QUEUED', 'RUNNING', 'CHILDREN', 'FINISHED', 'SKIPPED' ];
     
 
 var state = State.Disconnected;
@@ -146,7 +158,7 @@ function q2jstree(root){
             'animation': 0,
             'check_callback': true
         },
-        'plugins': ['contextmenu'] //, 'dnd', 'search', 'state', 'types', 'wholerow']
+        'plugins': ['contextmenu', 'dnd_nice'] //, 'dnd' , 'search'] // 'state', 'types', 'wholerow']
     }
     var command, i=0;
     for (var c in root._commands) {
@@ -158,69 +170,6 @@ function q2jstree(root){
     return output;
 }
 
-function queue_to_jstree(queue, root) {
-    if (root == true) {
-        var data = queue_to_jstree(queue, false);
-        data.id = "root";
-        data.state = {opened: true};
-        return {'core': {'id': 'root', 'data': data}}
-    }
-    var out = {};
-    if ('status' in queue) {
-        var status = queue.status;
-        if ('commandStr' in status) {
-            out.text = status.commandStr;
-        }
-        if ('state' in status) {
-            var v;
-            if ('value' in status.state) {                            
-                v = parseInt(status.state.value);
-            } 
-            else if ('_value' in status.state) {
-                v = parseInt(status.state._value);
-            }
-            if (v != null) {
-                out.text += ": " + CommandStatusEnum[v];
-                //out.data = {"attributes": {"class": "queue-" + CommandStatusEnum[v]}};
-                out.attributes =  {"class": "queue-" + CommandStatusEnum[v]};
-            }
-            if (v == 1 || v == 2) {
-                out.icon = "css/running.gif"; // running!
-            }
-            if (v == 3) {
-                var t = new Date(status.endCommandTimestamp.toNumber());
-                var hours_str = t.getHours().toFixed();
-                if (hours_str.length < 2) {
-                    hours_str = "0" + hours_str; 
-                }
-                var minutes_str = t.getMinutes().toFixed();
-                if (minutes_str.length < 2) {
-                    minutes_str = "0" + minutes_str; 
-                }
-                out.text += " " + hours_str + ":" + minutes_str;
-                out.text += " " + t.toLocaleDateString();
-                out.icon = "css/checkmark.gif";
-            }
-            if (v==0) {
-                out.icon = "css/queue.gif"; // queued
-            }
-            if (v==4) {
-                out.icon = "css/ex.gif";
-            }
-                
-        }
-        if ('endCommandTimestamp' in status) {
-            
-        }
-    }
-    out.children = [];
-    var child;
-    for (var i=0; i<queue.children.length; i++) {
-        child = queue.children[i];
-        out.children.push(queue_to_jstree(child, false));
-    }
-    return out;
-}
 
 ////////////////////////////////////////////////////////////////////////////
 // END JSTREE
@@ -347,7 +296,7 @@ var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
         var console_div = document.getElementById(this.console_id);
         for (var i=0; i<history.length; i++) {
             h = history[i];
-            if (h.level._name == 'INFO' && h.eventID != -3) {
+            if ((h.level._name == 'ERROR') || (h.level._name == 'INFO' && h.eventID != -3)) {
                 p = document.createElement('p');
                 p.innerHTML = history[i].message;
                 console_div.appendChild(p);
@@ -364,7 +313,7 @@ var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
     },
     report: function(event, __current) {
         this._lastEvent = event;
-        if (event.level._name == 'INFO' && event.eventID != -3) {
+        if ((event.level._name == 'ERROR') || (event.level._name == 'INFO' && event.eventID != -3)) {
             var p = document.createElement('p');
             p.innerHTML = event.message;
             document.getElementById(this.console_id).appendChild(p);
@@ -372,6 +321,39 @@ var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
         }
     }
 });
+
+function capitalize(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+function subscribe(api, router, adapter, servant, stream) {
+    var setup = new Promise();
+
+    //
+    // Get the session timeout and the router client category, and
+    // create the client object adapter.
+    //
+    // Use Ice.Promise.all to wait for the completion of all the
+    // calls.
+    //
+    return Promise.all(
+        router.getSessionTimeout(),
+        router.getCategoryForClient()
+    ).then(
+        function(timeoutArgs, categoryArgs, adapterArgs)
+        {
+            var timeout = timeoutArgs[0];
+            var category = categoryArgs[0];
+            //
+            // Create the  servant and add it to the
+            // ObjectAdapter.
+            //
+            var proxyClass = nice.api[stream][capitalize(stream) + 'MonitorPrx'];
+            var monitorProxy = proxyClass.uncheckedCast(adapter.add(servant, new Ice.Identity(stream + "Monitor", category)));
+            return api.subscribeToConsole(monitorProxy);
+        }
+    );
+}
 
 var setupConsoleMonitor = function(api, router, adapter) {
     var setup = new Promise();
@@ -420,11 +402,13 @@ function submitCommand() {
     command_line.value = "";
 }
 
-function getCommandCompletion(command_stub) {
+function getCommandCompletion(command_stub, callback) {
+    var command_stub = (command_stub.term) ? command_stub.term : command_stub;
     var tokens = command_stub.split(/\s+/);
     var last_length = tokens[tokens.length - 1].length;
     var root = command_stub.slice(0, (command_stub.length - last_length));
-    api.complete(command_stub).then(function(result) {
+    api.complete(command_stub).then(callback); //function(result) {
+    /*
         var completions = result.fullCompletions.sort(
             function(a,b) { 
                 return (a.replacementText > b.replacementText)? 1 : -1});
@@ -438,7 +422,31 @@ function getCommandCompletion(command_stub) {
             completionlist.appendChild(cmp);
         }
     });
+    */
 }
+
+function setCommandCompletions(command_stub) {
+    getCommandCompletion(command_stub, completionsHandler);
+}
+
+var completionsHandler = (function(target) {
+    var handler = function(result) {
+        var completions = result.fullCompletions.sort(
+            function(a,b) { 
+                return (a.replacementText > b.replacementText)? 1 : -1});
+        var completionlist = document.getElementById(target);
+        console.log(completionlist, completions);
+        while (completionlist.firstChild) {
+            completionlist.removeChild(completionlist.firstChild);
+        }
+        for (var i=0; i<completions.length; i++) {
+            var cmp = document.createElement("option");
+            cmp.setAttribute("value", root + completions[i].replacementText);
+            completionlist.appendChild(cmp);
+        }
+    }
+    return handler
+})('tabcomplete');
 
 getCursorPosition = function(input) {
         if (!input) return; // No (input) element found
@@ -465,9 +473,9 @@ getCursorPosition = function(input) {
                     return nice.api.ClientApiPrx.checkedCast(ca).then(
                         function(cam) {
                             api = cam;
-                            setupQueueMonitor(cam, router, adapter).then(
+                            return setupQueueMonitor(cam, router, adapter).then(
                                 function() {
-                                    setupConsoleMonitor(cam, router, adapter);
+                                    return setupConsoleMonitor(cam, router, adapter);
                             });
                     });
             });
@@ -478,7 +486,7 @@ getCursorPosition = function(input) {
         var command_line = document.getElementById('command_line');
         // block backspace when not in command line
         if ((document.activeElement != command_line) && (keyCode == 8)) { ev.preventDefault(); }
-        // put focus in command line if not there.
+        // put focus in command line if not there for a-z keys.
         if (keyCode > 63 && keyCode < 91) {
             command_line.focus();
         } 
@@ -497,7 +505,13 @@ getCursorPosition = function(input) {
     //document.getElementById('command_line').onchange = submitCommand;
     var cl = document.getElementById('command_line');
     command_offset = 0;
-    //var bump = {"Up": -1, "Down": 1}
+
+    // To use the jQueryUI autocomplete function, uncomment:
+    // (still needs some tweaking to match what comes out of the api.complete command)
+    // also need to remove the <datalist> from the document below
+    // 
+    //$('#command_line').autocomplete({'source': getCommandCompletion});
+    
     var bump = {38: -1, 40: 1};
     cl.onkeydown = function(ev) {
         var keyCode = ev.keyCode || ev.which;
@@ -527,7 +541,7 @@ getCursorPosition = function(input) {
             ev.preventDefault();
             var cursor_pos = cl.selectionStart;
             var command_stub = cl.value.slice(0, cursor_pos);
-            getCommandCompletion(command_stub);
+            getCommandCompletion(command_stub, completionsHandler);
         }
 
     }
