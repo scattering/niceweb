@@ -1,11 +1,11 @@
 <html>
 <head>
-  <link rel="stylesheet" href="http://nicedata.ncnr.nist.gov/niceclient/static/css/layout-default-latest.css" />
+  <link rel="stylesheet" href="../../niceclient/static/css/layout-default-latest.css" />
   <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
             type="text/css" rel="Stylesheet" />
   <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
   <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
-  <script src="http://nicedata.ncnr.nist.gov/niceclient/static/jquery.layout-latest.js"></script>
+  <script src="../../niceclient/static/jquery.layout-latest.js"></script>
   <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
   <link rel="stylesheet" href="http://ncnr.nist.gov/instruments/magik/jstree/dist/themes/default/style.min.css"/>
   <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jstree/dist/jstree.js"></script>
@@ -18,6 +18,7 @@
 
   <script src="generated/data.js"></script>
   <script src="generated/file.js"></script>
+  <script src="generated/system.js"></script>
   <script src="generated/devices.js"></script>
   <script src="generated/console.js"></script>
   <script src="generated/dryrun.js"></script>
@@ -198,7 +199,10 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
         this._addToNodeTable(this, node);
         var childIndex = path[path.length - 1];
         this.jstree.create_node(node.parentUUID, command_to_node(node), childIndex, function() {});
-        document.getElementById(node.UUID).scrollIntoView(true);
+        var newNode = document.getElementById(node.UUID);
+        if (newNode && newNode.scrollIntoView) {
+            newNode.scrollIntoView(true);
+        }
     },
     nodesRemoved: function(path, node, __current) {
         /*
@@ -327,8 +331,6 @@ function capitalize(string) {
 }
 
 function subscribe(api, router, adapter, servant, stream) {
-    var setup = new Promise();
-
     //
     // Get the session timeout and the router client category, and
     // create the client object adapter.
@@ -340,7 +342,7 @@ function subscribe(api, router, adapter, servant, stream) {
         router.getSessionTimeout(),
         router.getCategoryForClient()
     ).then(
-        function(timeoutArgs, categoryArgs, adapterArgs)
+        function(timeoutArgs, categoryArgs)
         {
             var timeout = timeoutArgs[0];
             var category = categoryArgs[0];
@@ -349,8 +351,9 @@ function subscribe(api, router, adapter, servant, stream) {
             // ObjectAdapter.
             //
             var proxyClass = nice.api[stream][capitalize(stream) + 'MonitorPrx'];
-            var monitorProxy = proxyClass.uncheckedCast(adapter.add(servant, new Ice.Identity(stream + "Monitor", category)));
-            return api.subscribeToConsole(monitorProxy);
+            var preProxy = adapter.add(servant, new Ice.Identity(stream + "Monitor", category));
+            var monitorProxy = proxyClass.uncheckedCast(preProxy);
+            return api['subscribeTo' + capitalize(stream)](monitorProxy);
         }
     );
 }
@@ -473,7 +476,9 @@ getCursorPosition = function(input) {
                     return nice.api.ClientApiPrx.checkedCast(ca).then(
                         function(cam) {
                             api = cam;
-                            return setupQueueMonitor(cam, router, adapter).then(
+                            queueMonitor = new QueueMonitorI("#queue_panel");
+                            return subscribe(api, router, adapter, queueMonitor, 'queue').then(
+                            //return setupQueueMonitor(cam, router, adapter).then(
                                 function() {
                                     return setupConsoleMonitor(cam, router, adapter);
                             });
