@@ -34,8 +34,8 @@
     require("data");
     
     var nice = global.nice || {};
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
-    nice.api.sampleAlignment = global.nice.api ? (global.nice.api.sampleAlignment ||  {}) : {};
+    nice.api = nice.api || {};
+    nice.api.sampleAlignment = nice.api.sampleAlignment || {};
 
     nice.api.sampleAlignment.CrystalSystem = Slice.defineEnum({
         'TRICLINIC':0, 'MONOCLINIC':1, 'ORTHORHOMBIC':2, 'TETRAGONAL':3, 'TRIGONAL':4,

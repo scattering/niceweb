@@ -46,7 +46,7 @@
     require("devices");
     require("file");
     require("sampleAlignment");
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
+    nice.api = nice.api || {};
 
     /**
      * Simple interface for getting an interface for the actual Client API.  

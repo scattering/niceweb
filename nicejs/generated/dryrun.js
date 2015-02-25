@@ -36,8 +36,8 @@
     var nice = global.nice || {};
     require("data");
     require("queue");
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
-    nice.api.dryrun = global.nice.api ? (global.nice.api.dryrun ||  {}) : {};
+    nice.api = nice.api || {};
+    nice.api.dryrun = nice.api.dryrun || {};
 
     nice.api.dryrun.DryRunRecord = Slice.defineObject(
         function(name, predictedPosition, commandedPosition, validity, validityString, errors)

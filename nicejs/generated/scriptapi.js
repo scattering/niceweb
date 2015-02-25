@@ -34,7 +34,7 @@
     require("nice");
     
     var nice = global.nice || {};
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
+    nice.api = nice.api || {};
 
     nice.api.ScriptApiManager = Slice.defineObject(
         undefined,

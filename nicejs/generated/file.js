@@ -36,8 +36,8 @@
     
     var nice = global.nice || {};
     require("nice");
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
-    nice.api.file = global.nice.api ? (global.nice.api.file ||  {}) : {};
+    nice.api = nice.api || {};
+    nice.api.file = nice.api.file || {};
     Slice.defineSequence(nice.api.file, "FileNodeArrayHelper", "Ice.ObjectHelper", false, "nice.api.file.FileNode");
 
     nice.api.file.FileNode = Slice.defineObject(

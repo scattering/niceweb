@@ -34,8 +34,8 @@
     require("data");
     
     var nice = global.nice || {};
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
-    nice.api.system = global.nice.api ? (global.nice.api.system ||  {}) : {};
+    nice.api = nice.api || {};
+    nice.api.system = nice.api.system || {};
 
     nice.api.system.StaticSystemState = Slice.defineObject(
         function(instrumentID, instrumentName, codeVersionID, testDeployment, mainCSS, dryrunCSS, fileSeparator, consoleCommandPackagesPaths)

@@ -33,8 +33,8 @@
     
     var Ice = global.Ice || {};
     var nice = global.nice ||  {};
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
-    nice.api.events = global.nice.api ? (global.nice.api.events ||  {}) : {};
+    nice.api = nice.api || {};
+    nice.api.events = nice.api.events || {};
 
     /**
      * Event state
