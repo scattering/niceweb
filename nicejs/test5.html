@@ -33,7 +33,7 @@
   <script type="text/javascript">
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
-    
+    var logging_in = false;
     var router = "Glacier2/router:ws -p 4064 -h h123062.ncnr.nist.gov";
     
     var State = {
@@ -466,9 +466,12 @@ getCursorPosition = function(input) {
         }
     }
 
-  window.onload = function() {
-    var hostname = document.location.hostname || "127.0.0.1";
-    signin("NiceGlacier2/router:ws -p 4064 -h " + hostname, "1.0", true, "user").then(
+dialog_login = function() {
+    var hostname = document.getElementById("instrument_ip").value;
+    var username = document.getElementById("username").value;
+    var password = document.getElementById("password").value;
+    
+    signin("NiceGlacier2/router:ws -p 1232 -h " + hostname, "1.0", true, username, password).then(
         function(communicator, router, session, adapter) {
             var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
             return mgr.getAPI('client').then(
@@ -485,14 +488,21 @@ getCursorPosition = function(input) {
                     });
             });
     });
-    
+    document.getElementById("login").close();
+    logging_in = false;
+
+}
+
+  window.onload = function() {
+    document.getElementById("login").show();
+    logging_in = true;
     document.body.onkeydown = function(ev) {
         var keyCode = ev.keyCode || ev.which;
         var command_line = document.getElementById('command_line');
         // block backspace when not in command line
         if ((document.activeElement != command_line) && (keyCode == 8)) { ev.preventDefault(); }
         // put focus in command line if not there for a-z keys.
-        if (keyCode > 63 && keyCode < 91) {
+        if (!logging_in && keyCode > 63 && keyCode < 91) {
             command_line.focus();
         } 
     }
@@ -579,8 +589,14 @@ getCursorPosition = function(input) {
   <h2>Login</h2>
   <label for="instrument_ip">Instrument address</label>
   <input type="text" id="instrument_ip" value="magik.ncnr.nist.gov">
-  <hl>
-  
+  <br>
+  <label for="username">Username:</label>
+  <input type="text" id="username" value="" placeholder="username">
+  <br>
+  <label for="password">Password:</label>
+  <input type="password" id="password" placeholder="password">
+  <br>
+  <input type="button" onclick="dialog_login()" value="Go">
 </dialog>
 <div id="command" class="ui-layout-north">
     Command: <input type="text" id="command_line" name="command_line" list="tabcomplete" autocomplete="off"/>
