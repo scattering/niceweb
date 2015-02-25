@@ -35,7 +35,7 @@
     
     var nice = global.nice || {};
     require("exceptions");
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
+    nice.api = nice.api || {};
 
     /**
      * Misc

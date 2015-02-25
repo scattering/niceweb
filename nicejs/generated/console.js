@@ -34,8 +34,8 @@
     require("events");
     
     var nice = global.nice || {};
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
-    nice.api.console = global.nice.api ? (global.nice.api.console ||  {}) : {};
+    nice.api = nice.api || {};
+    nice.api.console = nice.api.console || {};
 
     /**
      * Console state

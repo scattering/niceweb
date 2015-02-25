@@ -35,8 +35,8 @@
     require("data");
     
     var nice = global.nice || {};
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
-    nice.api.experiment = global.nice.api ? (global.nice.api.experiment ||  {}) : {};
+    nice.api = nice.api || {};
+    nice.api.experiment = nice.api.experiment || {};
 
     nice.api.experiment.PublishMode = Slice.defineEnum({
         'NORMAL':0, 'DEFERRED':1, 'PROPRIETARY':2});

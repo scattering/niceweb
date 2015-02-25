@@ -30,8 +30,8 @@
     
     var Ice = global.Ice || {};
     var nice = global.nice ||  {};
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
-    nice.api.exceptions = global.nice.api ? (global.nice.api.exceptions ||  {}) : {};
+    nice.api = nice.api || {};
+    nice.api.exceptions = nice.api.exceptions || {};
 
     nice.api.exceptions.TopicException = Slice.defineUserException(
         function(reason, _cause)

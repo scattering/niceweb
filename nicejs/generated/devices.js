@@ -35,8 +35,8 @@
     
     var nice = global.nice || {};
     require("nice");
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
-    nice.api.devices = global.nice.api ? (global.nice.api.devices ||  {}) : {};
+    nice.api = nice.api || {};
+    nice.api.devices = nice.api.devices || {};
 
     nice.api.devices.NodeStatusValue = Slice.defineObject(
         function(userVal, userUnit, internalVal, internalUnit, validity, validityString, timeStampAfter)

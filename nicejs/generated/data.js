@@ -33,8 +33,8 @@
     
     var Ice = global.Ice || {};
     var nice = global.nice ||  {};
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
-    nice.api.data = global.nice.api ? (global.nice.api.data ||  {}) : {};
+    nice.api = nice.api || {};
+    nice.api.data = nice.api.data || {};
 
     /**
      * Various data types
@@ -1358,7 +1358,7 @@
         "onSubscribe": [, , , , , , [["nice.api.data.ByteArrayListHelper"], ["nice.api.data.PeakFitDataPlusArrayHelper"]], , , true, ],
         "peakFit": [, , , , , , [["nice.api.data.PeakFitDataPlus", true]], , , true, ]
     });
-    nice.api.PolState = global.nice.api ? (global.nice.api.PolState ||  {}) : {};
+    nice.api.PolState = nice.api.PolState || {};
 
     nice.api.PolState.PolarizerState = Slice.defineEnum({
         'UP':0, 'DOWN':1, 'BEAM_OUT':2});
@@ -1389,7 +1389,7 @@
     nice.api.PolState.PolarizerStateValuePrx = Slice.defineProxy(nice.api.data.ValuePrx, nice.api.PolState.PolarizerStateValue.ice_staticId, undefined);
 
     Slice.defineOperations(nice.api.PolState.PolarizerStateValue, nice.api.PolState.PolarizerStateValuePrx);
-    nice.api.UpOrDownState = global.nice.api ? (global.nice.api.UpOrDownState ||  {}) : {};
+    nice.api.UpOrDownState = nice.api.UpOrDownState || {};
 
     nice.api.UpOrDownState.UpOrDown = Slice.defineEnum({
         'UP':0, 'DOWN':1});

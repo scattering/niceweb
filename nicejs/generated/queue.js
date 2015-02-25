@@ -38,8 +38,8 @@
     var nice = global.nice || {};
     require("nice");
     require("events");
-    nice.api = global.nice ? (global.nice.api ||  {}) : {};
-    nice.api.queue = global.nice.api ? (global.nice.api.queue ||  {}) : {};
+    nice.api = nice.api || {};
+    nice.api.queue = nice.api.queue || {};
 
     /**
      * Command state
