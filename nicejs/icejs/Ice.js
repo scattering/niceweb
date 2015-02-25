@@ -120,7 +120,7 @@
         if(stack !== undefined)
         {
 
-            var name =  object.ice_name ? object.ice_name().replace("::", ".") : "";
+            var name =  object.ice_name ? object.ice_name().replace(/::/g, ".") : "";
             Object.defineProperty(object, "stack", {
                 get: function(){
                     return stack;
@@ -9086,7 +9086,7 @@
             var obj = null, Class;
             try
             {
-                var typeId = id.length > 2 ? id.substr(2).replace("::", ".") : "";
+                var typeId = id.length > 2 ? id.substr(2).replace(/::/g, ".") : "";
                 /*jshint -W061 */
                 Class = eval(typeId);
                 /*jshint +W061 */
@@ -9184,7 +9184,7 @@
 
             try
             {
-                var typeId = id.length > 2 ? id.substr(2).replace("::", ".") : "";
+                var typeId = id.length > 2 ? id.substr(2).replace(/::/g, ".") : "";
                 /*jshint -W061 */
                 Class = eval(typeId);
                 /*jshint +W061 */
