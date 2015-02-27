@@ -297,8 +297,9 @@
                 );
             }
             
-            remote_control = function(hostname) {
-                signin("NiceGlacier2/router:ws -p 4064 -h " + hostname, "1.0", true, "user").then(
+            remote_control = function(hostname, port) {
+                var port = (port == null) ? 4064 : port;
+                signin("NiceGlacier2/router:ws -p " + port.toFixed() + " -h " + hostname, "1.0", true, "user").then(
                     function(communicator, router, session, adapter) {
                         var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
                         return mgr.getAPI('client').then(
