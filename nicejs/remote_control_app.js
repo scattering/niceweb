@@ -319,6 +319,13 @@
                                 //alert(treeToHTML(mydh));
                                 $('#content').html(treeToHTML(mydh)).trigger('create');
                         });
+                }).then(
+                    function() {
+                        return api.getRefreshTimeout().then(
+                            function(timeout_sec) {
+                                // trigger a refresh every 70% of timeout;
+                                window.setInterval(api.refresh, timeout_sec * 0.7 * 1000);
+                        });
                 });
                 
             }
