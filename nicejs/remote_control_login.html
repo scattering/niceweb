@@ -36,7 +36,7 @@
         </style>
         
         <script src="//code.jquery.com/jquery-1.9.1.min.js"></script>
-        <script src="//code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.js"></script>
+        <script src="//code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
 <!--        <script src="my.js">-->
         </script>
 <!--        <script src="/static/geturlvars.js"></script> -->
@@ -122,27 +122,40 @@
                     <h4>(you are probably outside the firewall)</h4>
 			    </div>
 	        </div>
-	        <div data-role="popup" id="popupLogin" data-theme="a" class="ui-corner-all">
-                <div data-role="header" data-theme="a">
-		            <h1>Login</h1>
-		            <a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-iconpos="notext" class="ui-btn-right">Close</a>
-	            </div><!-- /header -->
-                <div data-role="content" data-theme="d">
-                    <div data-role="fieldcontain">
-	                     <label for="hostname">Hostname:</label>
-	                     <input type="text" name="hostname" id="hostname" value="magik.ncnr.nist.gov"/>
-			        </div>
-			        <div data-role="fieldcontain">
-	                     <label for="username">Username:</label>
-	                     <input type="text" name="username" id="username" value="" placeholder="username" />
-			        </div>
-			        <div data-role="fieldcontain">
-	                     <label for="password">Username:</label>
-	                     <input type="password" name="password" id="password" value="" placeholder="password" />
-			        </div>
-                    <p><a onclick="login();" data-role="button" data-theme='e' data-icon="arrow-d" data-iconpos="right" data-inline='true' class='jog_button'>down</a></p>
-			    </div>
-	        </div>
+	        <a href="#popupLogin" data-rel="popup" data-position-to="window" class="ui-btn ui-corner-all ui-shadow ui-btn-inline ui-icon-check ui-btn-icon-left ui-btn-a" data-transition="pop">Sign in</a>
+<div data-role="popup" id="popupLogin" data-theme="a" class="ui-corner-all">
+    <form>
+        <div style="padding:10px 20px;">
+            <h3>Please sign in</h3>
+            <label for="un" class="ui-hidden-accessible">Username:</label>
+            <input type="text" name="user" id="un" value="" placeholder="username" data-theme="a">
+            <label for="pw" class="ui-hidden-accessible">Password:</label>
+            <input type="password" name="pass" id="pw" value="" placeholder="password" data-theme="a">
+            <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check">Sign in</button>
+        </div>
+    </form>
+</div>
+<!--	        <div data-role="popup" id="popupLogin" data-theme="a" class="ui-corner-all">-->
+<!--                <div data-role="header" data-theme="a">-->
+<!--		            <h1>Login</h1>-->
+<!--		            <a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-iconpos="notext" class="ui-btn-right">Close</a>-->
+<!--	            </div><!-- /header -->-->
+<!--                <div data-role="content" data-theme="d">-->
+<!--                    <div data-role="fieldcontain">-->
+<!--	                     <label for="hostname">Hostname:</label>-->
+<!--	                     <input type="text" name="hostname" id="hostname" value="magik.ncnr.nist.gov"/>-->
+<!--			        </div>-->
+<!--			        <div data-role="fieldcontain">-->
+<!--	                     <label for="username">Username:</label>-->
+<!--	                     <input type="text" name="username" id="username" value="" placeholder="username" />-->
+<!--			        </div>-->
+<!--			        <div data-role="fieldcontain">-->
+<!--	                     <label for="password">Username:</label>-->
+<!--	                     <input type="password" name="password" id="password" value="" placeholder="password" />-->
+<!--			        </div>-->
+<!--                    <p><a onclick="login();" data-role="button" data-theme='e' data-icon="arrow-d" data-iconpos="right" data-inline='true' class='jog_button'>down</a></p>-->
+<!--			    </div>-->
+<!--	        </div>-->
         </div>
         <script>
             //App custom javascript
