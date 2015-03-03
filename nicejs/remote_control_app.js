@@ -153,7 +153,7 @@
                 var step = parseFloat($('#jog_step_value')[0].value);
                 var current_destination = parseFloat($('#motor_target')[0].value);
                 var new_destination = current_destination + step;
-                $('#motor_target').attr('value', new_destination.toPrecision(4));
+                $('#motor_target').val(new_destination.toPrecision(4));
                 // not doing relative move from NICE perspective - precalculating destination, so
                 // 'relative' argument is false
                 //Controller.emit('move', [active_device.toString(), new_destination.toString()], false);
@@ -163,7 +163,7 @@
                 var step = -1.0 * parseFloat($('#jog_step_value')[0].value);
                 var current_destination = parseFloat($('#motor_target')[0].value);
                 var new_destination = current_destination + step;
-                $('#motor_target').attr('value', new_destination.toPrecision(4));
+                $('#motor_target').val(new_destination.toPrecision(4));
                 //Controller.emit('move', [active_device.toString(), new_destination.toString()], false);
                 move(active_device.toString(), new_destination.toString());
             }
