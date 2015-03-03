@@ -476,7 +476,7 @@ dialog_login = function() {
     var username = document.getElementById("username").value;
     var password = document.getElementById("password").value;
     
-    signin("NiceGlacier2/router:ws -p 1232 -h " + hostname, "1.0", true, username, password).then(
+    signin("NiceGlacier2/router:ws -p 4063 -h " + hostname, "1.0", true, username, password).then(
         function(communicator, router, session, adapter) {
             var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
             return mgr.getAPI('client').then(
