@@ -69,8 +69,9 @@
                     //function() { $('#popupLogin').popup('close') }
                 );
             }
-            window.onload = function() {
-                $('#popupLogin').popup('open');
+            document.ready = function() {
+                
+                $('#popupLogin').popup({history: false}).popup('open');
             }
         </script>
     </head>
@@ -88,7 +89,7 @@
                 Loading...
                 
             </div>
-            <div data-role="popup" id="popupJog" data-theme="a" class="ui-corner-all jog_popup">
+            <div data-role="popup" id="popupJog" data-theme="a" data-history="false" class="ui-corner-all jog_popup">
                 <div data-role="header" data-theme="e">
 		            <h1>Move</h1>
 		            <a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-iconpos="notext" class="ui-btn-right">Close</a>
@@ -112,18 +113,8 @@
 			        <p><a onclick="moveToTarget();" data-role="button" data-theme='e'>Go</a></p>
 			        <p><a onclick="stopAll();" data-role="button" data-theme='b'>Stop</a></p>
 			    </div>
-	        </div>
-	        <div data-role="popup" id="popupNoControl" data-theme="a" class="ui-corner-all jog_popup">
-                <div data-role="header" data-theme="a">
-		            <h1>No Control</h1>
-		            <a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-iconpos="notext" class="ui-btn-right">Close</a>
-	            </div><!-- /header -->
-                <div data-role="content" data-theme="d">
-                    <h3>You do not have a control connection</h3>
-                    <h4>(you are probably outside the firewall)</h4>
-			    </div>
-	        </div>       
-            <div data-role="popup" id="popupLogin" data-theme="a" class="ui-corner-all">
+	        </div>  
+            <div data-role="popup" id="popupLogin" data-theme="a" data-history="false" class="ui-corner-all">
                  <a href="#" data-rel="back" class="ui-btn ui-corner-all ui-shadow ui-btn-a ui-icon-delete ui-btn-icon-notext ui-btn-right">Close</a>
                 <form onSubmit="login();">
                     <div style="padding:10px 20px;">
