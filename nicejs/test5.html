@@ -498,7 +498,11 @@ dialog_login = function() {
 }
 
   window.onload = function() {
-    document.getElementById("login").show();
+    var dialog = document.getElementById("login");
+    if (!dialog.show) {
+        dialogPolyfill.registerDialog(dialog);
+    }
+    dialog.show();
     logging_in = true;
     document.body.onkeydown = function(ev) {
         var keyCode = ev.keyCode || ev.which;
