@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>
+        </title>
+        <link rel="stylesheet" href="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.css" />
+        <link rel="stylesheet" href="/static/my.css" />
+        <style>
+            .ui-li-static {
+                padding: 0.25em 6px;
+            }
+            .ui-block-a {
+                text-align: left;
+            }
+            .ui-block-b {
+                text-align: right;
+            }
+            .ui-block-c {
+                text-align: right;
+            }
+            .device-name {
+                color: red;
+            }
+            .device-value {
+                color: blue;
+            }
+            .ui-btn {
+                padding: 3px;
+                margin: 3px;
+            }
+            .jog_popup {
+                text-align: center;
+            }
+        </style>
+        
+        <script src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
+        <script src="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.js"></script>
+<!--        <script src="my.js">-->
+        </script>
+<!--        <script src="/static/geturlvars.js"></script> -->
+        <script src="icejs/Ice.js"></script>
+        <script src="icejs/Glacier2.js"></script>
+        <script src="icejs/IceStorm.js"></script>
+        <script src="icejs/IceGrid.js"></script>
+
+        <script src="generated/data.js"></script>
+        <script src="generated/devices.js"></script>
+        <script src="generated/console.js"></script>
+        <script src="generated/dryrun.js"></script>
+        <script src="generated/exceptions.js"></script>
+        <script src="generated/nice.js"></script>
+        <script src="generated/events.js"></script>
+        <script src="generated/experiment.js"></script>
+        <script src="generated/queue.js"></script>
+        <script src="generated/sampleAlignment.js"></script>
+        <script src="generated/clientapi.js"></script>
+        <script src="connect_zeroc.js"></script>
+        <script type="text/javascript" src="remote_control_app.js"></script>
+        <script type="text/javascript">
+            WS_PORT = 9999;
+            function login() {
+                var hostname = document.getElementById('hostname').value;
+                var username = document.getElementById('username').value;
+                var password = document.getElementById('password').value;
+                var port = WS_PORT;
+                remote_control(hostname, port, username, password).then(
+                    function() { $('#popupLogin').close() }
+                );
+            }
+            window.onload = function() {
+                $('#popupLogin').popup();
+            }
+        </script>
+    </head>
+<!--    <body class="ui-mobile-viewport ui-overlay-c">-->
+    <body>
+        <!-- Home -->
+        <div data-role="page" id="page1" data-theme='b' >
+        <div data-theme="e" data-role="header">
+                <h3 id="instrument_header">
+                    NICE remote control
+                </h3>
+            </div>
+            <div data-role="content" id="content">
+                Loading...
+                
+            </div>
+            <div data-role="popup" id="popupJog" data-theme="a" class="ui-corner-all jog_popup">
+                <div data-role="header" data-theme="e">
+		            <h1>Move</h1>
+		            <a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-iconpos="notext" class="ui-btn-right">Close</a>
+	            </div><!-- /header -->
+                <div data-role="content" data-theme="d">
+                    <h3>
+                        <div id="jog_motor_name">Motorname:</div>
+                        <span id="jog_motor_value" deviceid="">value</span>
+                    </h3>
+		            <p><a onclick="jogUp();" data-role="button" data-theme='e' data-icon="arrow-u" data-iconpos="right" data-inline='true' class='jog_button'>up</a></p>
+		            <div data-role="fieldcontain">
+	                     <label for="number">Jog step:</label>
+	                     <input type="number" name="number" id="jog_step_value" value="0.1" step=0.01 />
+			        </div>
+		            <p><a onclick="jogDown();" data-role="button" data-theme='e' data-icon="arrow-d" data-iconpos="right" data-inline='true' class='jog_button'>down</a></p>
+		            <p><p>
+		            <div data-role="fieldcontain">
+	                     <label for="number">Target:</label>
+	                     <input type="number" name="number" id="motor_target" value="" step=0.01 />
+			        </div>
+			        <p><a onclick="moveToTarget();" data-role="button" data-theme='e'>Go</a></p>
+			        <p><a onclick="stopAll();" data-role="button" data-theme='b'>Stop</a></p>
+			    </div>
+	        </div>
+	        <div data-role="popup" id="popupNoControl" data-theme="a" class="ui-corner-all jog_popup">
+                <div data-role="header" data-theme="a">
+		            <h1>No Control</h1>
+		            <a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-iconpos="notext" class="ui-btn-right">Close</a>
+	            </div><!-- /header -->
+                <div data-role="content" data-theme="d">
+                    <h3>You do not have a control connection</h3>
+                    <h4>(you are probably outside the firewall)</h4>
+			    </div>
+	        </div>
+	        <div data-role="popup" id="popupLogin" data-theme="a" class="ui-corner-all jog_popup">
+                <div data-role="header" data-theme="a">
+		            <h1>Login</h1>
+		            <a href="#" data-rel="back" data-role="button" data-theme="a" data-icon="delete" data-iconpos="notext" class="ui-btn-right">Close</a>
+	            </div><!-- /header -->
+                <div data-role="content" data-theme="d">
+                    <div data-role="fieldcontain">
+	                     <label for="hostname">Hostname:</label>
+	                     <input type="text" name="hostname" id="hostname" value="magik.ncnr.nist.gov"/>
+			        </div>
+			        <div data-role="fieldcontain">
+	                     <label for="username">Username:</label>
+	                     <input type="text" name="username" id="username" value="" placeholder="username" />
+			        </div>
+			        <div data-role="fieldcontain">
+	                     <label for="password">Username:</label>
+	                     <input type="password" name="password" id="password" value="" placeholder="password" />
+			        </div>
+                    <p><a onclick="login();" data-role="button" data-theme='e' data-icon="arrow-d" data-iconpos="right" data-inline='true' class='jog_button'>down</a></p>
+			    </div>
+	        </div>
+        </div>
+        <script>
+            //App custom javascript
+        </script>
+    </body>
+</html>
