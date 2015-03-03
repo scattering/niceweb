@@ -306,6 +306,7 @@ var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
             h = history[i];
             if ((h.level._name == 'ERROR') || (h.level._name == 'INFO' && h.eventID != -3)) {
                 p = document.createElement('p');
+                if (h.commandUUID) { p.setAttribute('commandUUID', h.commandUUID) }
                 p.innerHTML = history[i].message;
                 console_div.appendChild(p);
             }
@@ -508,7 +509,8 @@ dialog_login = function() {
         var keyCode = ev.keyCode || ev.which;
         var command_line = document.getElementById('command_line');
         // block backspace when not in command line
-        if ((document.activeElement != command_line) && (keyCode == 8)) { ev.preventDefault(); }
+        //if ((document.activeElement != command_line) && (keyCode == 8)) { ev.preventDefault(); }
+        if ((document.activeElement.type != "text") && (keyCode == 8)) { ev.preventDefault(); }
         // put focus in command line if not there for a-z keys.
         if (!logging_in && keyCode > 63 && keyCode < 91) {
             command_line.focus();
