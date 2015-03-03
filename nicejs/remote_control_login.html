@@ -6,10 +6,10 @@
         <title>
         </title>
         <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jquerymobile/1.4.5/jquery.mobile.css" />
-        <link rel="stylesheet" href="/static/my.css" />
+        <link rel="stylesheet" href="../static/my.css" />
         <style>
             .ui-li-static {
-                /* padding: 0.25em 6px; */
+                padding: 0.25em 6px;
             }
             .ui-block-a {
                 text-align: left;
@@ -66,7 +66,7 @@
                 var password = document.getElementById('pw').value;
                 var port = WS_PORT;
                 remote_control(hostname, port, username, password).then(
-                    function() { $('#popupLogin').popup('close') }
+                    //function() { $('#popupLogin').popup('close') }
                 );
             }
             window.onload = function() {
