@@ -56,7 +56,17 @@
             }
         ).then(
             function(timeout) {
-                window.setInterval(router.refreshSession, timeout.toNumber() * 0.7 * 1000);
+                var refreshSession = function()
+                {
+                    router.refreshSession().delay(timeout.toNumber() * 50).then(
+                        function()
+                        {
+                            console.log('refreshing session... ' + (new Date()));
+                            refreshSession();
+                        });
+                };
+                refreshSession();
+                //window.setInterval(router.refreshSession, timeout.toNumber() * 0.7 * 1000);
                 return communicator.createObjectAdapterWithRouter("", router);
             }
         ).then(
