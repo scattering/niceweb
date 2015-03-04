@@ -488,14 +488,14 @@ dialog_login = function() {
                             return subscribe(api, router, adapter, queueMonitor, 'queue').then(
                             //return setupQueueMonitor(cam, router, adapter).then(
                                 function() {
-                                    return setupConsoleMonitor(cam, router, adapter).then(
+                                    return setupConsoleMonitor(cam, router, adapter) /*.then(
                                         function() {
                                             api.getRefreshTimeout().then(
                                                 function(timeout_sec) {
                                                     // trigger a refresh every 70% of timeout;
                                                     window.setInterval(api.refresh, timeout_sec * 0.7 * 1000);
                                             });
-                                    });
+                                    });*/
                             });
                     });
             });

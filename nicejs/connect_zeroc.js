@@ -52,6 +52,11 @@
             function(s)
             {   
                 session = s;
+                return router.getSessionTimeout();
+            }
+        ).then(
+            function(timeout) {
+                window.setInterval(router.refreshSession, timeout * 0.7 * 1000);
                 return communicator.createObjectAdapterWithRouter("", router);
             }
         ).then(
