@@ -56,7 +56,7 @@
             }
         ).then(
             function(timeout) {
-                window.setInterval(router.refreshSession, timeout * 0.7 * 1000);
+                window.setInterval(router.refreshSession, timeout.toNumber() * 0.7 * 1000);
                 return communicator.createObjectAdapterWithRouter("", router);
             }
         ).then(
