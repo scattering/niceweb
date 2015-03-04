@@ -1,6 +1,7 @@
 <html>
 <head>
   <link rel="stylesheet" href="http://nicedata.ncnr.nist.gov/niceclient/static/css/layout-default-latest.css" />
+  <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
   <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
             type="text/css" rel="Stylesheet" />
   <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
@@ -38,7 +39,6 @@
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
     var logging_in = false;
-    var router = "Glacier2/router:ws -p 4064 -h h123062.ncnr.nist.gov";
     
     var State = {
         Disconnected: 0,
@@ -219,7 +219,6 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
     },
     nodeStatusChanged: function(path, nodeID, status, __current) {
         // Called when an individual command's state changes
-        // FIXME: this shouldn't be breaking.
         if (nodeID in this._commands) {
             this._commands[nodeID].status = status;        
             var node = this.jstree.get_node(nodeID);
@@ -258,76 +257,66 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
     }
 });
 
-var setupQueueMonitor = function(api, router, adapter) {
-    var setup = new Promise();
-
-    //
-    // Get the session timeout and the router client category, and
-    // create the client object adapter.
-    //
-    // Use Ice.Promise.all to wait for the completion of all the
-    // calls.
-    //
-    Promise.all(
-        router.getSessionTimeout(),
-        router.getCategoryForClient()
-    ).then(
-        function(timeoutArgs, categoryArgs, adapterArgs)
-        {
-            var timeout = timeoutArgs[0];
-            var category = categoryArgs[0];
-            //var adapter = adapterArgs[0];
-
-            //
-            // Create the ChatCallback servant and add it to the
-            // ObjectAdapter.
-            //
-            var qmI = new QueueMonitorI("#queue_panel");
-            var qmPrx = nice.api.queue.QueueMonitorPrx.uncheckedCast(adapter.add(qmI, new Ice.Identity("queueMonitor", category)));
-            api.subscribeToQueue(qmPrx);
-            //
-            queueMonitor = qmI;
-            setup.succeed();
-            return adapter;
-        }
-    );
-    return setup
-}
-
 var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
     __init__: function(console_id) {
         this.console_id = console_id;
     },
     onSubscribe: function(history, __current) {
         this._history = history;
-        var html = "", h, p, msg;
+        var last_visible_p;
+        var html = "", h, p, msg, msg_span, ts, t;
         var console_div = document.getElementById(this.console_id);
         for (var i=0; i<history.length; i++) {
             h = history[i];
-            if ((h.level._name == 'ERROR') || (h.level._name == 'INFO' && h.eventID != -3)) {
-                p = document.createElement('p');
-                if (h.commandUUID) { p.setAttribute('commandUUID', h.commandUUID) }
-                p.innerHTML = history[i].message;
+            p = this._format_event(h);
+            if (p != null) {
                 console_div.appendChild(p);
+                last_visible_p = p;
             }
-            //html += '<p>' + history[i].message + '</p>';
         }
-        if (p != null && p.scrollIntoView) {
-            p.scrollIntoView(true);
+        if (last_visible_p != null && last_visible_p.scrollIntoView) {
+            last_visible_p.scrollIntoView(true);
         }
-        //document.body.innerHTML=html;
     },
     switchedCurrentExperiment: function(history, __current) {
         this.onSubscribe(history, __current);
     },
     report: function(event, __current) {
         this._lastEvent = event;
-        if ((event.level._name == 'ERROR') || (event.level._name == 'INFO' && event.eventID != -3)) {
-            var p = document.createElement('p');
-            p.innerHTML = event.message;
+        var p = this._format_event(event);
+        if (p != null) {
             document.getElementById(this.console_id).appendChild(p);
             p.scrollIntoView(true);
         }
+    },
+    
+    _format_event: function(event) {
+        var p = null;
+        var level = event.level._name;
+        if ((level == 'ERROR') || (level == 'SERIOUS') || (level == 'IMPORTANT') || (level == 'INFO' && event.eventID != -3)) {
+            p = document.createElement('p');
+            p.classList.add('console-item');            
+            if (event.commandUUID) { p.setAttribute('commandUUID', event.commandUUID) }
+            var ts = document.createElement('span');
+            ts.classList.add('console-timestamp');
+            var t = new Date(event.timestamp.toNumber());
+            ts.innerHTML = t.toISOString().split("T")[0] + ' ' + t.toTimeString().split(" ")[0] + ' > ';
+            p.appendChild(ts);
+            var msg_div = document.createElement('div');
+            msg_div.classList.add('console-message');
+            if (level != 'INFO') {
+                var notifier = document.createElement('span');
+                notifier.classList.add('console-flag');
+                notifier.classList.add(level.toLowerCase() + '-event');
+                notifier.textContent = level + ": ";
+                msg_div.appendChild(notifier);
+            }
+            var msg_span = document.createElement('span');
+            msg_span.innerHTML = event.message;
+            msg_div.appendChild(msg_span);
+            p.appendChild(msg_div);
+        }
+        return p
     }
 });
 
@@ -363,51 +352,12 @@ function subscribe(api, router, adapter, servant, stream) {
     );
 }
 
-var setupConsoleMonitor = function(api, router, adapter) {
-    var setup = new Promise();
-
-    //
-    // Get the session timeout and the router client category, and
-    // create the client object adapter.
-    //
-    // Use Ice.Promise.all to wait for the completion of all the
-    // calls.
-    //
-    Promise.all(
-        router.getSessionTimeout(),
-        router.getCategoryForClient()
-    ).then(
-        function(timeoutArgs, categoryArgs, adapterArgs)
-        {
-            var timeout = timeoutArgs[0];
-            var category = categoryArgs[0];
-            //var adapter = adapterArgs[0];
-
-            //
-            // Create the ChatCallback servant and add it to the
-            // ObjectAdapter.
-            //
-            var cmI = new ConsoleMonitorI("console");
-            var cmPrx = nice.api.console.ConsoleMonitorPrx.uncheckedCast(adapter.add(cmI, new Ice.Identity("consoleMonitor", category)));
-            api.subscribeToConsole(cmPrx);
-            //
-            return cmI;
-        }
-    ).then(
-        function(cmI) {
-            consoleMonitor = cmI; // global
-            setup.succeed();
-        }
-    );
-    return setup
-}
-
 function submitCommand() {
     var command_line = document.getElementById('command_line');
     var command = command_line.value.trim('\n');
     command_offset = 0;
-    api.console(command);
     command_line.value = "";
+    return api.console(command);
 }
 
 function getCommandCompletion(command_stub, callback) {
@@ -485,22 +435,17 @@ dialog_login = function() {
                         function(cam) {
                             api = cam;
                             queueMonitor = new QueueMonitorI("#queue_panel");
-                            return subscribe(api, router, adapter, queueMonitor, 'queue').then(
-                            //return setupQueueMonitor(cam, router, adapter).then(
-                                function() {
-                                    return setupConsoleMonitor(cam, router, adapter) /*.then(
-                                        function() {
-                                            api.getRefreshTimeout().then(
-                                                function(timeout_sec) {
-                                                    // trigger a refresh every 70% of timeout;
-                                                    window.setInterval(api.refresh, timeout_sec * 0.7 * 1000);
-                                            });
-                                    });*/
-                            });
+                            consoleMonitor = new ConsoleMonitorI("console");
+                            return Promise.all(
+                                subscribe(api, router, adapter, queueMonitor, 'queue'),
+                                subscribe(api, router, adapter, consoleMonitor, 'console')
+                            );
                     });
             });
     });
     document.getElementById("login").close();
+    document.getElementById("top_panel").getElementsByClassName("instrument-name")[0].innerHTML="Instrument connected: " + hostname;
+    document.getElementById("top_panel").classList.add("connected");
     logging_in = false;
 
 }
@@ -523,14 +468,17 @@ dialog_login = function() {
             command_line.focus();
         } 
     }
+    
     var layout = $('body').layout({
 		east__size:			300
 	,	west__size:			0
 	,   south__size:        "auto"
+	,   north_size:         "auto"
 		// RESIZE Accordion widget when panes resize
 	,	west__onresize:		$.layout.callbacks.resizePaneAccordions
 	,	east__onresize:		$.layout.callbacks.resizePaneAccordions
 	,	south__onresize:		$.layout.callbacks.resizePaneAccordions
+	,	north__onresize:		$.layout.callbacks.resizePaneAccordions
 	});
     
         
@@ -598,6 +546,27 @@ dialog_login = function() {
         width: 100%;
         height: 30px;    
     }
+    #top_panel {
+        background-color: LightYellow;
+        height: 30px;
+        padding-top: 0px;
+        padding-bottom: 0px;
+        font-weight: normal;
+        font-family: 'Open Sans';
+        /* font-variant: small-caps; */
+    }
+    #top_panel.connected {
+        background-color: LightGreen;
+    }
+    .console-timestamp{
+        vertical-align: top;
+    }
+    .console-message {
+        display: inline-block;
+    }
+    .console-flag {
+        font-weight: bold;
+    }
   </style>
   <link rel="stylesheet" type="text/css" href="css/main.css">
 </head>
@@ -615,13 +584,15 @@ dialog_login = function() {
   <br>
   <input type="button" onclick="dialog_login()" value="Go">
 </dialog>
-<div id="command" class="ui-layout-north">
+<div id="command" class="ui-layout-south">
     Command: <input type="text" id="command_line" name="command_line" list="tabcomplete" autocomplete="off"/>
     <datalist id="tabcomplete">
         <option value="move sampleAngle">
     </datalist>
 </div>
-<div id="bottom_panel" class="ui-layout-south"></div>
+<div id="top_panel" class="ui-layout-north">
+    <h3 class="instrument-name">Instrument: </h3>
+</div>
 <div id="queue_panel" class="ui-layout-east">
     <div id="queue"></div>
 </div>

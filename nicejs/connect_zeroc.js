@@ -58,7 +58,13 @@
             function(timeout) {
                 var refreshSession = function()
                 {
-                    router.refreshSession().delay(timeout.toNumber() * 50).then(
+                    router.refreshSession().exception(
+                        function(ex) 
+                        {
+                            //console.log("refresh failed: ", ex);
+                            alert('Sesssion refresh failed' + ex);
+                        }
+                    ).delay(timeout.toNumber() * 500).then(
                         function()
                         {
                             console.log('refreshing session... ' + (new Date()));
