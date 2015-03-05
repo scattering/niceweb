@@ -1601,24 +1601,19 @@
         },
         toNumber: function()
         {
-            if((this.high & Long.SIGN_MASK) != 0)
+            if((this.high & Long.SIGN_MASK) !== 0)
             {
-                var low = ~this.low;
-                var high = ~this.high;
-                if(low < 0xFFFFFFFF)
+                if(this.high === 0xFFFFFFFF && this.low !== 0)
                 {
-                    low += 1;
+                    return -(~this.low + 1);
                 }
-                else
+                var high = ~this.high + 1;
+                if(high > Long.HIGH_MAX)
                 {
-                    low = 0;
-                    high += 1;
-                    if(high > Long.HIGH_MAX)
-                    {
-                        return Number.NEGATIVE_INFINITY;
-                    }
+                    return Number.NEGATIVE_INFINITY;
                 }
-                return -1 * (high * Long.HIGH_MASK) + low;
+
+                return -1 * (high * Long.HIGH_MASK) + this.low;
             }
             else
             {
@@ -3451,9 +3446,9 @@
                 throw new Error(__BufferUnderflowException__);
             }
             var v = new Long();
-            v.low = this.v.getInt32(this._position, true);
+            v.low = this.v.getUint32(this._position, true);
             this._position += 4;
-            v.high = this.v.getInt32(this._position, true);
+            v.high = this.v.getUint32(this._position, true);
             this._position += 4;
             return v;
         },

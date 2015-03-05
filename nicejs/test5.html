@@ -1,12 +1,12 @@
 <html>
 <head>
-  <link rel="stylesheet" href="http://nicedata.ncnr.nist.gov/niceclient/static/css/layout-default-latest.css" />
+  <link rel="stylesheet" href="../../niceclient/static/css/layout-default-latest.css" />
   <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
   <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
             type="text/css" rel="Stylesheet" />
   <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
   <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
-  <script src="http://nicedata.ncnr.nist.gov/niceclient/static/jquery.layout-latest.js"></script>
+  <script src="../../niceclient/static/jquery.layout-latest.js"></script>
   <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
   <link rel="stylesheet" href="http://ncnr.nist.gov/instruments/magik/jstree/dist/themes/default/style.min.css"/>
   <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jstree/dist/jstree.js"></script>
@@ -294,13 +294,17 @@ var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
         var p = null;
         var level = event.level._name;
         if ((level == 'ERROR') || (level == 'SERIOUS') || (level == 'IMPORTANT') || (level == 'INFO' && event.eventID != -3)) {
-            p = document.createElement('p');
+            p = document.createElement('div');
             p.classList.add('console-item');            
-            if (event.commandUUID) { p.setAttribute('commandUUID', event.commandUUID) }
-            var ts = document.createElement('span');
+            if (event.commandUUID) { p.setAttribute('command_uuid', event.commandUUID) }
+            var ts = document.createElement('div');
             ts.classList.add('console-timestamp');
+            var timestamp = event.timestamp;
+            if (timestamp.low < 0) {
+                timestamp.low += Ice.Long.HIGH_MASK;
+            }
             var t = new Date(event.timestamp.toNumber());
-            ts.innerHTML = t.toISOString().split("T")[0] + ' ' + t.toTimeString().split(" ")[0] + ' > ';
+            ts.textContent = t.toISOString().split("T")[0] + ' ' + t.toTimeString().split(" ")[0] + ' > ';
             p.appendChild(ts);
             var msg_div = document.createElement('div');
             msg_div.classList.add('console-message');
@@ -477,8 +481,8 @@ dialog_login = function() {
 		// RESIZE Accordion widget when panes resize
 	,	west__onresize:		$.layout.callbacks.resizePaneAccordions
 	,	east__onresize:		$.layout.callbacks.resizePaneAccordions
-	,	south__onresize:		$.layout.callbacks.resizePaneAccordions
-	,	north__onresize:		$.layout.callbacks.resizePaneAccordions
+	,	south__onresize:    $.layout.callbacks.resizePaneAccordions
+	,	north__onresize:    $.layout.callbacks.resizePaneAccordions
 	});
     
         
@@ -558,11 +562,23 @@ dialog_login = function() {
     #top_panel.connected {
         background-color: LightGreen;
     }
-    .console-timestamp{
+    #console {
+        overflow: auto;
+    }
+    .console-item {
+        clear: left;
+        display: block;
+    }
+    .console-timestamp {
+        display: inline-block;
         vertical-align: top;
+        float: left;
     }
     .console-message {
         display: inline-block;
+        vertical-align: top;
+        float: left;
+        width: 80%;
     }
     .console-flag {
         font-weight: bold;
@@ -574,7 +590,7 @@ dialog_login = function() {
 <dialog id="login">
   <h2>Login</h2>
   <label for="instrument_ip">Instrument address</label>
-  <input type="text" id="instrument_ip" value="h123062.ncnr.nist.gov">
+  <input type="text" id="instrument_ip" value="happy.home">
   <br>
   <label for="username">Username:</label>
   <input type="text" id="username" value="" placeholder="username">
