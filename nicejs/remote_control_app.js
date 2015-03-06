@@ -130,7 +130,7 @@
                 $('#jog_motor_name').html(nodeID.toString());
                 $('#jog_motor_value').attr('deviceid', nodeID.replace('.','_'));
                 update_devices();
-                $('#motor_target').attr('value', $('#jog_motor_value').html());
+                $('#motor_target').val($('#jog_motor_value').html());
                 if (controller_connected == true) {
                     $('#popupJog').popup('open');
                 }
@@ -319,15 +319,7 @@
                                 //alert(treeToHTML(mydh));
                                 $('#content').html(treeToHTML(mydh)).trigger('create');
                         });
-                }).then(
-                    function() {
-                        return api.getRefreshTimeout().then(
-                            function(timeout_sec) {
-                                // trigger a refresh every 70% of timeout;
-                                window.setInterval(api.refresh, timeout_sec * 0.7 * 1000);
-                        });
                 });
-                
             }
 
     //$(document).bind('pageinit', connect);
