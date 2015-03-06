@@ -1,5 +1,6 @@
 <html>
 <head>
+  <link rel="icon" type="image/png" href="appicon.png" />
   <link rel="stylesheet" href="../../niceclient/static/css/layout-default-latest.css" />
   <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
   <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
@@ -39,6 +40,7 @@
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
     var logging_in = false;
+    var link = {};
     
     var State = {
         Disconnected: 0,
@@ -46,6 +48,11 @@
         Connected:2
     };
     SORT_KEYS = true;
+    
+    var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+    if (localStorage && localStorage.nice_hostname) {
+        hostname = localStorage.nice_hostname
+    }
     
     function getEnumValues(ice_enum) {
         var enumVals = [];
@@ -432,6 +439,11 @@ dialog_login = function() {
     
     signin("NiceGlacier2/router:ws -p 9999 -h " + hostname, "1.0", true, username, password).then(
         function(communicator, router, session, adapter) {
+            // globals:
+            link.communicator = communicator
+            link.router = router
+            link.session = session
+            link.monitor_adapter = adapter
             var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
             return mgr.getAPI('client').then(
                 function(ca) {
@@ -443,10 +455,13 @@ dialog_login = function() {
                             return Promise.all(
                                 subscribe(api, router, adapter, queueMonitor, 'queue'),
                                 subscribe(api, router, adapter, consoleMonitor, 'console')
-                            );
+                            ).then(function(q,c) { qq = q; cc = c});
                     });
             });
     });
+    if (localStorage) {
+        localStorage.nice_hostname = hostname;
+    }
     document.getElementById("login").close();
     document.getElementById("top_panel").getElementsByClassName("instrument-name")[0].innerHTML="Instrument connected: " + hostname;
     document.getElementById("top_panel").classList.add("connected");
@@ -459,6 +474,7 @@ dialog_login = function() {
     if (!dialog.show) {
         dialogPolyfill.registerDialog(dialog);
     }
+    document.getElementById("instrument_ip").value = hostname;
     dialog.show();
     logging_in = true;
     document.body.onkeydown = function(ev) {
@@ -585,6 +601,7 @@ dialog_login = function() {
     }
   </style>
   <link rel="stylesheet" type="text/css" href="css/main.css">
+  <title>NICE console</title>
 </head>
 <body>
 <dialog id="login">
