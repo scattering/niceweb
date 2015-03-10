@@ -10,6 +10,8 @@
     <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
     <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
     <script src="../../niceclient/static/jquery.layout-latest.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="plot_d3_rz.js"></script>
 
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/jquery.jqplot.min.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasTextRenderer.min.js"></script>
@@ -75,6 +77,7 @@
         currently_drawing = false;
         draw_again = false;
         var refreshRequested = false;
+        var sl; // slice listener.
 
         var state = State.Disconnected;
         var hasError = false;
@@ -150,6 +153,20 @@
             } 
         });
 
+        var plottableX = {
+            "options": {
+                "series": [{"label": "x-slice"}]
+            },
+            "data": [[[1,2], [3,4], [5,6]]]
+            
+        }
+        var plottableY = {
+            "options": {
+                "series": [{"label": "y-slice"}]
+            },
+            "data": [[[1,2], [3,4], [5,6]]]
+            
+        }
 
         var plottable2d = {
             "dims": {
@@ -163,7 +180,7 @@
                 "zmin": 1.0
             },
             "options": {
-                "interactors": [{ type:'master', scrollZoom: true, dragPan: true },
+                "interactors": [{ type:'master', scrollZoom: true, dragPan: true, "forceload": true },
 		                              { type:'Rectangle', 
 		                                name:'rectangle',
 		                                color1: '#ffffff',
@@ -175,7 +192,7 @@
 		                                ymax: 400}],
                 "fixedAspect": {
                     "aspectRatio": 1.0, 
-                    "fixAspect": false
+                    "fixAspect": true
                 },
                 "axes": {
 	               xaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}},
@@ -192,20 +209,9 @@
         
         var plotAreaDetector = function(detectorName) {
             var target = 'plotwrap';
-            //var countsNodeName = deviceName + '.' + 'counts';
-            //if (!(countsNodeName in devicesMonitor.nodes)) {
-            //    console.log('no counter node named ' + countsNodeName);
-            //    return
-            //}
             var detector = detectors[detectorName];
             var zdata = detector.data; //devicesMonitor.nodes[countsNodeName].currentValue.userVal.val;
             var dims = detector.dims;
-            //var dimNodeName = deviceName + '.' + 'dimension';
-            //if (!(dimNodeName in devicesMonitor.nodes)) {
-            //    console.log('no counter node named ' + dimNodeName);
-            //    return
-            //}
-            //var dims = devicesMonitor.nodes[dimNodeName].currentValue.userVal.val;
             var z = []
             var rowlength = dims[0];
             var zmax = -Infinity;
@@ -267,16 +273,78 @@
             plots[next_target] = null;
             plots[next_target] = plot;
             colorbars[next_target] = colorbar;
+            plot.series[0].generate_cumsums();
             plot.replot(); // for aspect ratio plugin!
             colorbar.plugins._interactor.zoomMax(); // for scale!
+            
+            var slicebox = plot.plugins.interactors.rectangle;
+            slice_listener = function(series) {
+                slicebox.p1.listeners.push(this);
+                slicebox.p3.listeners.push(this);
+                var p0 = series;
+                this.update = function(pos) {
+                    var width = p0.dims.xdim;
+                    var height = p0.dims.ydim;
+                    //console.log(slicebox.p1.coords.x, p0.dims.xmin, p0.dims.xdim);
+                    i_min = Math.floor((slicebox.p1.coords.x - p0.dims.xmin) / p0.dims.dx);
+                    i_min = Math.min(Math.max(i_min, 0), p0.dims.xdim);
+                    i_max = Math.ceil((slicebox.p3.coords.x - p0.dims.xmin) / p0.dims.dx);
+                    i_max = Math.max(Math.min(i_max, p0.dims.xdim), 0);
+                    j_min = Math.floor((slicebox.p3.coords.y - p0.dims.ymin) / p0.dims.dy);
+                    j_min = Math.min(Math.max(j_min, 0), p0.dims.ydim);
+                    j_max = Math.ceil((slicebox.p1.coords.y - p0.dims.ymin) / p0.dims.dy);
+                    j_max = Math.max(Math.min(j_max, p0.dims.ydim), 0);
+                    var xdata = [], ydata = [];
+                    var xi=0, yi=0;
+                    for (var c=i_min; c <=i_max-1; c++) {
+                        xdata[xi++] = ([p0.dims.xmin + c*p0.dims.dx, p0.cumsum_x[c][j_max] - p0.cumsum_x[c][j_min]]);
+                    }
+                    for (var r=j_min; r<=j_max-1; r++) {
+                        ydata[yi++] = ([p0.cumsum_y[i_max][r] - p0.cumsum_y[i_min][r], p0.dims.ymin + r*p0.dims.dy]);
+                    }
+                    plottableX.data = [xdata];
+                    $("#xplot_plot").empty();
+                    plotD3("#xplot_plot", plottableX, false, false, true, false); // logx, logy, showline, showmarker);
+                    
+                    plottableY.data = [ydata];
+                    $("#yplot_plot").empty();
+                    plotD3("#yplot_plot", plottableY, false, false, true, false);
+                    
+                    /*
+                    yslice.series[0].data = ydata;
+                    yslice.resetAxesScale();
+                    yslice.grid._offsets.left = yslice.axes.yaxis._elem.width();
+                    */
+                    /*
+                    if (yslice_timer == null) {
+                        yslice_timer = setTimeout(function() {
+                            yslice.resetAxesScale();
+                            yslice.grid._offsets.left = yslice.axes.yaxis._elem.width();
+                            yslice.replot();
+                            //clearTimeout(yslice_timer);
+                            yslice_timer = null;
+                            }, yslice_delay);
+                    }
+                    */
+                    //yslice.replot();
+                };
+                return this;  
+            };
+            sl = slice_listener(plot.series[0]);
+            plot.series[0].generate_cumsums()
+            //generate_cumsums(plot.series[0]);
+            sl.update();
+            
         } else {
             var plot = plots[next_target];
             var colorbar = colorbars[next_target];
             plot.series[0].set_data(data.z[0], data.dims, true); // defer update: colorbar will trigger it later
+            plot.series[0].generate_cumsums()
             colorbar.series[0].set_dims(data.dims);
             //plot.replot();
             colorbar.plugins._interactor.zoomMax(); // for scale!
             colorbar.replot();
+            sl.update();
         }
         
     }
@@ -334,9 +402,11 @@
             $('#plotwrap_plot').width($('#plotwrap').width() - 150);
             if (plots.plotwrap.replot) plots.plotwrap.replot();
             if (plots.plotwrap.plugins && plots.plotwrap.plugins.cursor.resetZoom) plots.plotwrap.plugins.cursor.resetZoom();
-            
         }
         if (colorbars && colorbars.plotwrap && colorbars.plotwrap.replot) colorbars.plotwrap.replot();
+        
+        $('#xplot_plot').width($('#plotwrap').width() || 50);
+        if (sl && sl.update) sl.update();
     }
     
     window.onload = function() {
@@ -349,11 +419,11 @@
         document.getElementById("instrument_ip").value = hostname;
         dialog.show();
         logging_in = true;
-        
+    
         var layout = $('body').layout({
 		    east__size:			500
 	    ,	west__size:			0
-	    ,   south__size:        100
+	    ,   south__size:        200
 	    ,   north_size:         "auto"
 		    // RESIZE Accordion widget when panes resize
 	    ,	west__onresize:		$.layout.callbacks.resizePaneAccordions
@@ -362,6 +432,8 @@
 	    ,	north__onresize:    $.layout.callbacks.resizePaneAccordions
 	    ,   center__onresize:   "fitPlots"
 	    });
+	    
+	    fitPlots();
         //signin();
     }
   </script>
@@ -387,7 +459,98 @@
     #top_panel.connected {
         background-color: LightGreen;
     }
+    #xplot_plot {
+        width: 100%;
+        height: 100%;
+    }
+    #yplot_plot {
+        width: 100%;
+        height: 100%;
+    }
   </style>
+  <style type="text/css">                    
+    body {
+      font: 10px sans-serif;
+      margin: 50px;
+      user-select: none; 
+      -webkit-user-select: none; 
+      -moz-user-select: none;
+    }
+     
+    .grid .tick {
+        stroke: lightgrey;
+        opacity: 0.7;
+        shape-rendering: crispEdges;
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+    }
+     
+    .grid path {
+        stroke-width: 0;
+    }
+     
+    .axis path {
+        fill: none;
+        stroke: #bbb;
+        shape-rendering: crispEdges;
+    }
+     
+    .axis text {
+        fill: #555;
+    }
+     
+    .axis line {	
+        stroke: #e7e7e7;
+        shape-rendering: crispEdges;
+    }
+     
+    .axis .axis-label {
+        font-size: 14px;
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+    }
+    
+    .legend, .tick {
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+    }
+     
+    .line {
+        fill: none;
+        stroke-width: 1.5px;
+    }
+    
+    .highlight {
+        stroke-width: 4.5px;
+    }
+     
+    .dot {
+        /* consider the stroke-with the mouse detect radius? */
+        stroke: transparent;
+        stroke-width: 10px;  
+        cursor: pointer;
+    }
+     
+    .dot:hover {
+        stroke: rgba(68, 127, 255, 0.3);
+    }
+    
+    rect {
+      fill: #fff;
+      user-select: none; 
+      -webkit-user-select: none; 
+      -moz-user-select: none;
+    }
+
+    rect.zoom {
+      stroke: steelblue;
+      fill-opacity: 0.5;
+    }
+  </style>
+  <title>Live 2d data</title>
 </head>
 <body>
 <dialog id="login">
@@ -406,8 +569,12 @@
 <div id="top_panel" class="ui-layout-north">
     <h3 class="instrument-name">Instrument: </h3>
 </div>
-<div id="xplot" class="ui-layout-south"></div>
-<div id="yplot" class="ui-layout-east"></div>
+<div id="xplot" class="ui-layout-south">
+    <div id="xplot_plot"></div>
+</div>
+<div id="yplot" class="ui-layout-east">
+    <div id="yplot_plot"></div>
+</div>
 <div id="plotwrap" class="ui-layout-wrapper ui-layout-center"></div>
 </body>
 </html>
