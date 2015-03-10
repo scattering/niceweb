@@ -1,9 +1,15 @@
 <html>
 <head>
     <!-- Reference the theme's stylesheet on the Google CDN -->
-    <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/start/jquery-ui.css" />
+    
+    <link rel="icon" type="image/png" href="css/appicon.png" />
+    <link rel="stylesheet" href="../../niceclient/static/css/layout-default-latest.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
+    <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
+            type="text/css" rel="Stylesheet" />
     <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
     <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+    <script src="../../niceclient/static/jquery.layout-latest.js"></script>
 
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/jquery.jqplot.min.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasTextRenderer.min.js"></script>
@@ -23,23 +29,28 @@
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors_plugin_base.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/rectangle_interactor_plugin.js"></script>
     
+    <!-- dialog support -->
+    <link rel="stylesheet" href="../static/dialog-polyfill.css" />
+    <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
+    
     <script src="icejs/Ice.js"></script>
     <script src="icejs/Glacier2.js"></script>
     <script src="icejs/IceStorm.js"></script>
     <script src="icejs/IceGrid.js"></script>
 
-    <script src="nicejs/slice/data.js"></script>
-    <script src="nicejs/slice/devices.js"></script>
-    <script src="nicejs/slice/console.js"></script>
-    <script src="nicejs/slice/system.js"></script>
-    <script src="nicejs/slice/dryrun.js"></script>
-    <script src="nicejs/slice/exceptions.js"></script>
-    <script src="nicejs/slice/nice.js"></script>
-    <script src="nicejs/slice/events.js"></script>
-    <script src="nicejs/slice/experiment.js"></script>
-    <script src="nicejs/slice/queue.js"></script>
-    <script src="nicejs/slice/sampleAlignment.js"></script>
-    <script src="nicejs/slice/clientapi.js"></script>
+    <script src="generated/data.js"></script>
+    <script src="generated/devices.js"></script>
+    <script src="generated/console.js"></script>
+    <script src="generated/system.js"></script>
+    <script src="generated/dryrun.js"></script>
+    <script src="generated/exceptions.js"></script>
+    <script src="generated/nice.js"></script>
+    <script src="generated/events.js"></script>
+    <script src="generated/experiment.js"></script>
+    <script src="generated/queue.js"></script>
+    <script src="generated/sampleAlignment.js"></script>
+    <script src="generated/clientapi.js"></script>
+    <script src="connect_zeroc.js"></script>
     <script src="JSON.parseMore.js"></script>
     <script src="testdata.js"></script>
     <script type="text/javascript">
@@ -53,263 +64,179 @@
             Connecting: 1,
             Connected:2
         };
-
-var state = State.Disconnected;
-var hasError = false;
-active = false;
-
-var signin = function()
-{
-    var communicator;
-    var router;
-    Promise.try (
-        function()
-        {
-            //
-            // Start animating the loading progress bar.
-            //
-            //startProgress();
-
-            var hostname = document.location.hostname || "127.0.0.1";
-            //
-            // If the demo is accessed vi https, use a secure (WSS) endpoint, otherwise
-            // use a non-secure (WS) endpoint.
-            //
-            // The web server will act as a reverse proxy for WebSocket connections. This
-            // facilitates the setup of WSS with self-signed certificates because Firefox
-            // and Internet Explorer certificate exceptions are only valid for the same
-            // port and host.
-            //
-            var secure = document.location.protocol.indexOf("https") != -1;
-            var router = secure ? "Glacier2/router:wss -p 4065 -h " + hostname :
-                                  "Glacier2/router:ws -p 4064 -h " + hostname ;
-
-            //
-            // Initialize the communicator with the Ice.Default.Router property
-            // set to the chat demo Glacier2 router.
-            //
-            var id = new Ice.InitializationData();
-            id.properties = Ice.createProperties();
-            id.properties.setProperty("Ice.Default.Router", router);
-            id.properties.setProperty("Ice.Default.EncodingVersion", "1.0");
-            id.properties.setProperty("Ice.ACM.Client", "0");
-            id.properties.setProperty("Ice.MessageSizeMax", "100000");
-
-            communicator = Ice.initialize(id);
-            
-            cm = communicator;
-            //
-            // Get a proxy to the Glacier2 router using checkedCast to ensure
-            // the Glacier2 server is available.
-            //
-            rt_prx = RouterPrx.checkedCast(communicator.getDefaultRouter());
-            //console.log(rt_prx);
-            return rt_prx;
+        var logging_in = false;
+        var link = {};
+        var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+        if (localStorage && localStorage.nice_hostname) {
+            hostname = localStorage.nice_hostname
         }
-    ).then(
-        function(r, s)
-        {
-            myrouter = r;
-            
-            //console.log(r, s);
-            //
-            // Create a session with the Glacier2 router.
-            //
-            var s = myrouter.createSession("", "");
-            //console.log(s);
-            return s
-        }
-    ).then(
-        function(session)
-        {   
-            //console.log(session)
-            mysession = session;
-            mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
-            //mgr = Glacier2ClientManagerApiPrx.uncheckedCast(session);
-            return mgr;
-            //run(communicator, router, ChatSessionPrx.uncheckedCast(session));
-        }
-    ).then(
-        function(mgr){
-            ca = mgr.getAPI('client');
-            return ca;
-        }
-    ).then(
-        function(ca) {
-            cam = nice.api.ClientApiPrx.checkedCast(ca);
-            return cam;
-        }
-    ).then(
-        function(api) {
-            my_api = api;
-            var adapter = communicator.createObjectAdapterWithRouter("", myrouter);
-            return adapter
-        }
-    ).then(
-        function(adapter) {
-            myadapter = adapter;
-            active = true;
-            setupDevicesMonitor(my_api, myrouter, myadapter);
-            //setupConsoleMonitor(myrouter, communicator,  mysession);
-            //run(communicator, myrouter, mysession);
-        }
-    ).exception(
-        function(ex)
-        {
-            //
-            // Handle any exceptions that occurred during session creation.
-            //
-            alert(ex.toString());
-            
-            if(communicator)
-            {
-                communicator.destroy();
-            }
-        });
-};
+        
+        var detectors = {areaDetector: {dims: null, data: null}};
+        currently_drawing = false;
+        draw_again = false;
+        var refreshRequested = false;
 
-var DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
-    onSubscribe: function(devices, nodes, groups, __current) {
-        this.devices = this.HashMapToObject(devices);
-        this.nodes = this.HashMapToObject(nodes);
-        this.groups = this.HashMapToObject(groups);
-        this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
-    },
-    changed: function(nodes, __current) {
-        var changed = this.HashMapToObject(nodes);
-        jQuery.extend(this.nodes, changed);
-        this._lastChanged = changed;
-        this.postChangedHooks.forEach( function(callback) { callback(changed); });
-    },
-    removed: function(devices, nodes, __current) {
-        this._lastDevicesRemoved = this.HashMapToObject(devices);
-        this._lastNodesRemoved = this.HashMapToObject(nodes);
-    },
-    added: function(devices, nodes, __current) {
-        this._lastDevicesAdded = this.HashMapToObject(devices);
-        this._lastNodesAdded = this.HashMapToObject(nodes);
-    },
-    getAllDeviceNames: function() {
-        var devices = [];
-        this.devices.forEach(function(d) { devices.push(d); });
-        return devices;
-    },
-    HashMapToObject: function(m) {
-        var obj={}; 
-        m.forEach( function(dn) { 
-            obj[dn]=m.get(dn);
-        }); 
-        return obj
-    } 
-});
+        var state = State.Disconnected;
+        var hasError = false;
+        active = false;
 
+        function capitalize(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
 
-var setupDevicesMonitor = function(api, router, adapter) {
-    var setup = new Promise();
-
-    //
-    // Get the session timeout and the router client category, and
-    // create the client object adapter.
-    //
-    // Use Ice.Promise.all to wait for the completion of all the
-    // calls.
-    //
-    Promise.all(
-        router.getSessionTimeout(),
-        router.getCategoryForClient()
-    ).then(
-        function(timeoutArgs, categoryArgs, adapterArgs)
-        {
-            var timeout = timeoutArgs[0];
-            var category = categoryArgs[0];
-            //var adapter = adapterArgs[0];
-
+        function subscribe(api, router, adapter, servant, stream) {
             //
-            // Create the ChatCallback servant and add it to the
-            // ObjectAdapter.
+            // Get the session timeout and the router client category, and
+            // create the client object adapter.
             //
-            var dvmI = new DevicesMonitorI();
-            dvmI.postChangedHooks = [
-                function(nodes) { 
-                    if ('areaDetector.counts' in nodes) {
-                        show2dData(plotAreaDetector('areaDetector'), 'plotwrap');
-                    }
+            // Use Ice.Promise.all to wait for the completion of all the
+            // calls.
+            //
+            return Promise.all(
+                router.getSessionTimeout(),
+                router.getCategoryForClient()
+            ).then(
+                function(timeoutArgs, categoryArgs)
+                {
+                    var timeout = timeoutArgs[0];
+                    var category = categoryArgs[0];
+                    //
+                    // Create the  servant and add it to the
+                    // ObjectAdapter.
+                    //
+                    var proxyClass = nice.api[stream][capitalize(stream) + 'MonitorPrx'];
+                    var preProxy = adapter.add(servant, new Ice.Identity(stream + "Monitor", category));
+                    var monitorProxy = proxyClass.uncheckedCast(preProxy);
+                    return api['subscribeTo' + capitalize(stream)](monitorProxy);
                 }
-            ];
-            var dvmPrx = nice.api.devices.DevicesMonitorPrx.uncheckedCast(adapter.add(dvmI, new Ice.Identity("devicesMonitor", category)));
-            api.subscribeToDevices(dvmPrx);
-            devicesMonitor = dvmI;
-            
-            return dvmI;
+            );
         }
-    );
-}
 
-var plottable2d = {
-    "dims": {
-        "xdim": 128, 
-        "xmax": 128, 
-        "xmin": 0.0, 
-        "ydim": 128, 
-        "ymax": 128, 
-        "ymin": 0.0, 
-        "zmax": 899.0, 
-        "zmin": 1.0
-    },
-    "options": {
-        "fixedAspect": {
-            "aspectRatio": 1.0, 
-            "fixAspect": true
-        },
-        "axes": {
-	       xaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}},
-	       yaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}
-	    }
-    }, 
-    "title": "live 2d data", 
-    "type": "2d", 
-    "xlabel": "X", 
-    "ylabel": "Y", 
-    "z": [],
-    "zlabel": "Intensity (I)"
-}
 
-    var plotAreaDetector = function(deviceName) {
-        var target = 'plotwrap';
-        var countsNodeName = deviceName + '.' + 'counts';
-        if (!(countsNodeName in devicesMonitor.nodes)) {
-            console.log('no counter node named ' + countsNodeName);
-            return
+        var DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
+            onSubscribe: function(devices, nodes, groups, __current) {
+                this.devices = this.HashMapToObject(devices);
+                this.nodes = this.HashMapToObject(nodes);
+                var changed = this.nodes;
+                this.groups = this.HashMapToObject(groups);
+                this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
+                this.postChangedHooks.forEach( function(callback) { callback(changed); });
+            },
+            changed: function(nodes, __current) {
+                var changed = this.HashMapToObject(nodes);
+                jQuery.extend(this.nodes, changed);
+                this._lastChanged = changed;
+                this.postChangedHooks.forEach( function(callback) { callback(changed); });
+            },
+            removed: function(devices, nodes, __current) {
+                this._lastDevicesRemoved = this.HashMapToObject(devices);
+                this._lastNodesRemoved = this.HashMapToObject(nodes);
+            },
+            added: function(devices, nodes, __current) {
+                this._lastDevicesAdded = this.HashMapToObject(devices);
+                this._lastNodesAdded = this.HashMapToObject(nodes);
+            },
+            getAllDeviceNames: function() {
+                var devices = [];
+                this.devices.forEach(function(d) { devices.push(d); });
+                return devices;
+            },
+            HashMapToObject: function(m) {
+                var obj={}; 
+                m.forEach( function(dn) { 
+                    obj[dn]=m.get(dn);
+                }); 
+                return obj
+            } 
+        });
+
+
+        var plottable2d = {
+            "dims": {
+                "xdim": 128, 
+                "xmax": 128, 
+                "xmin": 0.0, 
+                "ydim": 128, 
+                "ymax": 128, 
+                "ymin": 0.0, 
+                "zmax": 899.0, 
+                "zmin": 1.0
+            },
+            "options": {
+                "interactors": [{ type:'master', scrollZoom: true, dragPan: true },
+		                              { type:'Rectangle', 
+		                                name:'rectangle',
+		                                showrect: false,
+		                                xmin: 100, 
+		                                ymin: 101,
+		                                xmax: 200, 
+		                                ymax: 400}],
+                "fixedAspect": {
+                    "aspectRatio": 1.0, 
+                    "fixAspect": false
+                },
+                "axes": {
+	               xaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}},
+	               yaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}
+	            }
+            }, 
+            "title": "live 2d data", 
+            "type": "2d", 
+            "xlabel": "X", 
+            "ylabel": "Y", 
+            "z": [],
+            "zlabel": "Intensity (I)"
         }
-        var zdata = devicesMonitor.nodes[countsNodeName].currentValue.userVal.val;
-        var dimNodeName = deviceName + '.' + 'dimension';
-        if (!(dimNodeName in devicesMonitor.nodes)) {
-            console.log('no counter node named ' + dimNodeName);
-            return
+        
+        var plotAreaDetector = function(detectorName) {
+            var target = 'plotwrap';
+            //var countsNodeName = deviceName + '.' + 'counts';
+            //if (!(countsNodeName in devicesMonitor.nodes)) {
+            //    console.log('no counter node named ' + countsNodeName);
+            //    return
+            //}
+            var detector = detectors[detectorName];
+            var zdata = detector.data; //devicesMonitor.nodes[countsNodeName].currentValue.userVal.val;
+            var dims = detector.dims;
+            //var dimNodeName = deviceName + '.' + 'dimension';
+            //if (!(dimNodeName in devicesMonitor.nodes)) {
+            //    console.log('no counter node named ' + dimNodeName);
+            //    return
+            //}
+            //var dims = devicesMonitor.nodes[dimNodeName].currentValue.userVal.val;
+            var z = []
+            var rowlength = dims[0];
+            var zmax = -Infinity;
+            var zmin = Infinity;
+            var row, zmaxtemp, zmintemp;
+            for (var i=0; i<rowlength; i++) {
+                row = zdata.slice(i*rowlength, (i+1) * rowlength);
+                zmaxtemp = Math.max.apply(Math, row);
+                zmintemp = Math.min.apply(Math, row);
+                zmax = Math.max(zmax, zmaxtemp);
+                zmin = Math.min(zmin, zmintemp);
+                z.push(row);
+            }
+            var plottable = {};
+            jQuery.extend(true, plottable, plottable2d);
+            plottable.z = [z];
+            plottable.dims.xdim = plottable.dims.xmax = dims[0];
+            plottable.dims.ydim = plottable.dims.ymax = dims[1];
+            plottable.dims.zmin = zmin;
+            plottable.dims.zmax = zmax;
+            return plottable;
         }
-        var dims = devicesMonitor.nodes[dimNodeName].currentValue.userVal.val;
-        var z = []
-        var rowlength = dims[0];
-        var zmax = -Infinity;
-        var zmin = Infinity;
-        var row, zmaxtemp, zmintemp;
-        for (var i=0; i<rowlength; i++) {
-            row = zdata.slice(i*rowlength, (i+1) * rowlength);
-            zmaxtemp = Math.max.apply(Math, row);
-            zmintemp = Math.min.apply(Math, row);
-            zmax = Math.max(zmax, zmaxtemp);
-            zmin = Math.min(zmin, zmintemp);
-            z.push(row);
+    
+    var updateLoop = function() {
+        if (refreshRequested) {
+            refreshRequested = false;
+            console.log("requested: ", new Date());
+            show2dData(plotAreaDetector('areaDetector'), 'plotwrap');
         }
-        var plottable = {};
-        jQuery.extend(true, plottable, plottable2d);
-        plottable.z = [z];
-        plottable.dims.xdim = plottable.dims.xmax = dims[0];
-        plottable.dims.ydim = plottable.dims.ymax = dims[1];
-        plottable.dims.zmin = zmin;
-        plottable.dims.zmax = zmax;
-        return plottable;
+        requestAnimationFrame(updateLoop);
     }
+    
+    requestAnimationFrame(updateLoop); // start the drawing loop;
 
     var show2dData = function(data, next_target) {
         if (!(plots[next_target])) {
@@ -343,41 +270,142 @@ var plottable2d = {
         } else {
             var plot = plots[next_target];
             var colorbar = colorbars[next_target];
-            plot.series[0].set_data(data.z[0], data.dims);
+            plot.series[0].set_data(data.z[0], data.dims, true); // defer update: colorbar will trigger it later
             colorbar.series[0].set_dims(data.dims);
-            plot.replot();
+            //plot.replot();
             colorbar.plugins._interactor.zoomMax(); // for scale!
             colorbar.replot();
         }
         
     }
 
+    dialog_login = function() {
+        var hostname = document.getElementById("instrument_ip").value;
+        var username = document.getElementById("username").value;
+        var password = document.getElementById("password").value;
+        
+        signin_result = signin("NiceGlacier2/router:ws -p 9999 -h " + hostname, "1.0", true, username, password).then(
+            function(communicator, router, session, adapter) {
+                // globals:
+                link.communicator = communicator
+                link.router = router
+                link.session = session
+                link.monitor_adapter = adapter
+                var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
+                return mgr.getAPI('client').then(
+                    function(ca) {
+                        return nice.api.ClientApiPrx.checkedCast(ca).then(
+                            function(cam) {
+                                api = cam;
+                                devicesMonitor = new DevicesMonitorI();
+                                devicesMonitor.postChangedHooks = [
+                                    function(nodes) {
+                                        if ('areaDetector.dimension' in nodes) {
+                                            detectors.areaDetector.dims = nodes['areaDetector.dimension'].currentValue.userVal.val;
+                                        }
+                                        if ('areaDetector.counts' in nodes) {
+                                            detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;
+                                            
+                                            console.log('trigger: ', new Date(), window.refreshRequested);
+                                            window.refreshRequested = true;
+                                        }
+                                    }
+                                ];
+                                return subscribe(api, router, adapter, devicesMonitor, 'devices');
+                        });
+                });
+        }).exception(
+            function(ex) {console.log(ex)}
+        );
+        if (localStorage) {
+            localStorage.nice_hostname = hostname;
+        }
+        document.getElementById("login").close();
+        document.getElementById("top_panel").getElementsByClassName("instrument-name")[0].innerHTML="Instrument connected: " + hostname;
+        document.getElementById("top_panel").classList.add("connected");
+        logging_in = false;
+
+    }
+    
+    var fitPlots = function() {
+        if (plots && plots.plotwrap) {
+            $('#plotwrap_plot').width($('#plotwrap').width() - 150);
+            if (plots.plotwrap.replot) plots.plotwrap.replot();
+            if (plots.plotwrap.plugins && plots.plotwrap.plugins.cursor.resetZoom) plots.plotwrap.plugins.cursor.resetZoom();
+            
+        }
+        if (colorbars && colorbars.plotwrap && colorbars.plotwrap.replot) colorbars.plotwrap.replot();
+    }
+    
     window.onload = function() {
         plots = {};
         colorbars = {};
-        signin();
+        var dialog = document.getElementById("login");
+        if (!dialog.show) {
+            dialogPolyfill.registerDialog(dialog);
+        }
+        document.getElementById("instrument_ip").value = hostname;
+        dialog.show();
+        logging_in = true;
+        
+        var layout = $('body').layout({
+		    east__size:			500
+	    ,	west__size:			0
+	    ,   south__size:        100
+	    ,   north_size:         "auto"
+		    // RESIZE Accordion widget when panes resize
+	    ,	west__onresize:		$.layout.callbacks.resizePaneAccordions
+	    ,	east__onresize:		$.layout.callbacks.resizePaneAccordions
+	    ,	south__onresize:    $.layout.callbacks.resizePaneAccordions
+	    ,	north__onresize:    $.layout.callbacks.resizePaneAccordions
+	    ,   center__onresize:   "fitPlots"
+	    });
+        //signin();
     }
   </script>
   <style type="text/css">
-    #command {
-        width: 100%;
-        height: 50px;
-        background:#F0F0F0;
-        position: fixed;
-        top: 0;
-        left: 0;
-    }
-    #command input {
-        width: 1005;
-        height: 30px;    
+    #login {
+        top: 28%;
+        position: absolute;
+        z-index: 10;
     }
     #plotwrap {
         width: 100%;
         height 100%;
     }
+    #top_panel {
+        background-color: LightYellow;
+        height: 30px;
+        padding-top: 0px;
+        padding-bottom: 0px;
+        font-weight: normal;
+        font-family: 'Open Sans';
+        /* font-variant: small-caps; */
+    }
+    #top_panel.connected {
+        background-color: LightGreen;
+    }
   </style>
 </head>
 <body>
-<div id="plotwrap"></div>
+<dialog id="login">
+  <h2>Login</h2>
+  <label for="instrument_ip">Instrument address</label>
+  <input type="text" id="instrument_ip" value="happy.home">
+  <br>
+  <label for="username">Username:</label>
+  <input type="text" id="username" value="" placeholder="username">
+  <br>
+  <label for="password">Password:</label>
+  <input type="password" id="password" placeholder="password">
+  <br>
+  <input type="button" onclick="dialog_login()" value="Go">
+</dialog>
+<div id="top_panel" class="ui-layout-north">
+    <h3 class="instrument-name">Instrument: </h3>
+</div>
+<div id="xplot" class="ui-layout-south"></div>
+<div id="yplot" class="ui-layout-east"></div>
+<div id="plotwrap" class="ui-layout-wrapper ui-layout-center"></div>
 </body>
 </html>

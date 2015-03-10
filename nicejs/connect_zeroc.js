@@ -30,6 +30,7 @@
                 var id = new Ice.InitializationData();
                 id.properties = Ice.createProperties();
                 id.properties.setProperty("Ice.Default.Router", routerEndpoint);
+                id.properties.setProperty("Ice.MessageSizeMax", "100000");
                 if (encoding != null) {
                     id.properties.setProperty("Ice.Default.EncodingVersion", encoding);
                 }
