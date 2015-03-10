@@ -1,4 +1,4 @@
-function plotD3(target_id, data, log_x, log_y, show_line, show_points) {
+function plotD3(target_id, data, log_x, log_y, show_line, show_points, vcursor, hcursor) {
 
     //************************************************************
     // Data notice the structure
@@ -83,11 +83,11 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points) {
     // Create Margins and Axis and hook our zoom function
     //************************************************************
     
-    var container = d3.select(target_id).node();
+    var container = d3.select("#" + target_id).node();
     
-    var margin = {top: 10, right: 10, bottom: 20, left: 50},
-        width = container.clientWidth - margin.left - margin.right - 25,
-        height = container.clientHeight - margin.top - margin.bottom - 25;
+    var margin = {top: 10, right: 10, bottom: 50, left: 50},
+        width = container.clientWidth - margin.left - margin.right,
+        height = container.clientHeight - margin.top - margin.bottom;
 	
 	var x = d3.scale.linear()
         .domain([min_x, max_x])
@@ -124,7 +124,7 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points) {
     //************************************************************
     // Generate our SVG object
     //************************************************************	
-    var svg = d3.select(target_id).append("svg")
+    var svg = d3.select("#" + target_id).append("svg")
 	    .call(zoom)
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
@@ -194,8 +194,7 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points) {
 	    .attr("class", "axis-label")
 	    .attr("x", width/2.0)
 	    .attr("text-anchor", "middle")
-	    //.attr("transform", "translate(0," + height + ")")
-        .attr("y", height + 40)
+        .attr("y", height + 35)
 	    .text('x-axis');
      
     svg.append("g")
@@ -212,8 +211,8 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points) {
 	    .attr("x", -height/2)
 	    .text('Intensity (arb. units)');	
      
-    svg.append("clipPath")
-	    .attr("id", "clip")
+    svg.append("defs").append("clipPath")
+	    .attr("id", target_id + "_clip") // local def
 	    .append("rect")
 	    .attr("width", width)
 	    .attr("height", height);
@@ -270,7 +269,7 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points) {
             .enter()
             .append("path")
             .attr("class", "line")
-            .attr("clip-path", "url(#clip)")
+            .attr("clip-path", "url(#"+target_id+"_clip)")
             .attr('stroke', function(d,i){ 			
 	            return colors[i%colors.length];
             })
@@ -292,7 +291,7 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points) {
 	        .enter()
 	        .append("g")
             .attr("class", "dots")
-	        .attr("clip-path", "url(#clip)");	
+	        .attr("clip-path", "url(#"+target_id+"_clip)");
          
         points.selectAll('.dot')
 	        .data(function(d, index){ 		
@@ -339,4 +338,67 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points) {
       svg.select(".x.axis").call(xAxis);
       svg.select(".y.axis").call(yAxis);
     }
+    
+    //************************************************************
+    // Vertical cursor (or horizontal)
+    //************************************************************
+    if (vcursor) {
+        var vertical = d3.select("#"+target_id)
+            .append("div")
+            .attr("class", "remove vertical-cursor")
+            .style("position", "absolute")
+            .style("z-index", "19")
+            .style("width", "1px")
+            .style("height", height + "px")
+            //.attr("transform", "translate(0," + margin.top + ")")
+            .style("top", margin.top + 10 + "px")
+            //.style("bottom", "30px")
+            .style("left", "0px")
+            .style("background", "#000");
+
+        d3.select("#"+target_id)
+          .on("mouseenter", function(){
+             vertical.style("display", "block")})
+          .on("mouseleave", function(){
+             vertical.style("display", "none")})
+          .on("mousemove", function(){  
+             mousex = d3.mouse(this);
+             mousex = mousex[0] + 5;
+             vertical.style("left", mousex + "px" )})
+          .on("mouseover", function(){  
+             mousex = d3.mouse(this);
+             mousex = mousex[0] + 5;
+             vertical.style("left", mousex + "px")});
+    }
+    
+    if (hcursor) {
+        var horizontal = d3.select("#"+target_id)
+            .append("div")
+            .attr("class", "remove horizontal-cursor")
+            .style("position", "absolute")
+            .style("z-index", "19")
+            .style("width", width + "px")
+            .style("height", "1px")
+            //.attr("transform", "translate(0," + margin.top + ")")
+            .style("left", margin.left + 10 + "px")
+            //.style("bottom", "30px")
+            .style("top", "0px")
+            .style("background", "#000");
+
+        d3.select("#"+target_id)
+          .on("mouseenter", function(){
+             horizontal.style("display", "block")})
+          .on("mouseleave", function(){
+             horizontal.style("display", "none")})
+          .on("mousemove", function(){  
+             mousey = d3.mouse(this);
+             mousey = mousey[1] + 5;
+             horizontal.style("top", mousey + "px" )})
+          .on("mouseover", function(){  
+             mousey = d3.mouse(this);
+             mousey = mousey[1] + 5;
+             horizontal.style("top", mousey + "px")});
+    }
+    
+    return svg;
 }

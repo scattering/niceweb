@@ -125,11 +125,18 @@
                 this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
                 this.postChangedHooks.forEach( function(callback) { callback(changed); });
             },
+            
             changed: function(nodes, __current) {
                 var changed = this.HashMapToObject(nodes);
                 jQuery.extend(this.nodes, changed);
                 this._lastChanged = changed;
                 this.postChangedHooks.forEach( function(callback) { callback(changed); });
+            },
+            dynamicDevicesAdded: function(addRemoveID, childDeviceIDs, __current) {
+                alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
+            },
+            dynamicDevicesRemoved: function(addRemoveID, __current) {
+                alert('device removed: ' + addRemoveID);
             },
             removed: function(devices, nodes, __current) {
                 this._lastDevicesRemoved = this.HashMapToObject(devices);
@@ -141,7 +148,9 @@
             },
             getAllDeviceNames: function() {
                 var devices = [];
-                this.devices.forEach(function(d) { devices.push(d); });
+                for (var d in this.devices) {
+                    devices.push(d); 
+                }
                 return devices;
             },
             HashMapToObject: function(m) {
@@ -180,7 +189,17 @@
                 "zmin": 1.0
             },
             "options": {
-                "interactors": [{ type:'master', scrollZoom: true, dragPan: true, "forceload": true },
+                "interactors": [{ type:'master', scrollZoom: true, dragPan: true, alpha: 1.0 },
+                                      { type:'Rectangle', 
+		                                name:'roi_rectangle',
+		                                color1: '#ff0000',
+		                                color2: '#ff7777',
+		                                showrect: false,
+		                                show: false,
+		                                xmin: 50, 
+		                                ymin: 51,
+		                                xmax: 300, 
+		                                ymax: 301},
 		                              { type:'Rectangle', 
 		                                name:'rectangle',
 		                                color1: '#ffffff',
@@ -189,7 +208,8 @@
 		                                xmin: 100, 
 		                                ymin: 101,
 		                                xmax: 200, 
-		                                ymax: 400}],
+		                                ymax: 400}
+		                              ],
                 "fixedAspect": {
                     "aspectRatio": 1.0, 
                     "fixAspect": true
@@ -262,6 +282,7 @@
                 id:next_target + "_plot"}));
             plotbox.append($('<div />', {style:"display: inline-block; width: 100px; height: 100%;", id:next_target + "_colorbar"}));
             var plot = renderImageData2(data, transform, next_target + "_plot");
+            plot.plugins.interactors.roi_rectangle.grobs.forEach(function(a,b) { a.onDrag = function() {} });
             var cbar_options = {
                 axes: {y2axis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}},
                 interactors: [{"type": "master", "scrollZoom": true, "dragPan": true, "forceload": true}]
@@ -278,6 +299,37 @@
             colorbar.plugins._interactor.zoomMax(); // for scale!
             
             var slicebox = plot.plugins.interactors.rectangle;
+            var ymaxctl = new pointTextControl(slicebox.p1, 'y', 'y<sub>max</sub>', 5);
+            ymaxctl.div.setAttribute('style', 'display: block; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(ymaxctl.div);
+            var xminctl = new pointTextControl(slicebox.p1, 'x', 'x<sub>min</sub>', 5);
+            xminctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(xminctl.div);
+            var xmaxctl = new pointTextControl(slicebox.p3, 'x', 'x<sub>max</sub>', 5);
+            xmaxctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(xmaxctl.div);
+            var yminctl = new pointTextControl(slicebox.p3, 'y', 'y<sub>min</sub>', 5);
+            yminctl.div.setAttribute('style', 'display: block; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(yminctl.div);
+            var hr = document.createElement('div'); hr.innerHTML = "<hr>";
+            document.getElementById('slicecontrols').appendChild(hr);
+            var maxbutton = document.createElement('input');
+            maxbutton.setAttribute('type', 'button');
+            maxbutton.setAttribute('value', 'Maximize to data');
+            var maximize = function () {
+                xminctl.update({x: plot.series[0].dims.xmin});
+                xminctl.update_external();
+                ymaxctl.update({y: plot.series[0].dims.ymax});
+                ymaxctl.update_external();
+                xmaxctl.update({x: plot.series[0].dims.xmax});
+                xmaxctl.update_external();
+                yminctl.update({y: plot.series[0].dims.ymin});
+                yminctl.update_external();
+            }
+            maxbutton.onclick = maximize;
+            
+            document.getElementById('slicecontrols').appendChild(maxbutton);
+            
             slice_listener = function(series) {
                 slicebox.p1.listeners.push(this);
                 slicebox.p3.listeners.push(this);
@@ -304,11 +356,11 @@
                     }
                     plottableX.data = [xdata];
                     $("#xplot_plot").empty();
-                    plotD3("#xplot_plot", plottableX, false, false, true, false); // logx, logy, showline, showmarker);
+                    xplot = plotD3("xplot_plot", plottableX, false, false, true, false, true, false); // logx, logy, showline, showmarker, vcursor, hcursor);
                     
                     plottableY.data = [ydata];
                     $("#yplot_plot").empty();
-                    plotD3("#yplot_plot", plottableY, false, false, true, false);
+                    yplot = plotD3("yplot_plot", plottableY, false, false, true, false, false, true);
                     
                     /*
                     yslice.series[0].data = ydata;
@@ -348,7 +400,46 @@
         }
         
     }
-
+    
+    pointTextControl = function(p, coord, label, precision) {
+        // coord should be 'x' or 'y'
+        var precision = precision || 3;
+        this.precision = precision;
+        this.coord = coord;
+        this.p = p;
+        var textbox = document.createElement('input');
+        textbox.setAttribute('type', 'text');
+        textbox.setAttribute('style', 'width:90px');
+        var input_label = document.createElement('label');
+        var div = document.createElement('div');
+        div.innerHTML = label;
+        // div.appendChild(document.createTextNode(label))
+        div.appendChild(textbox);
+        this.div = div;
+        this.div.setAttribute('id', 'ptTextControl_' + label);
+        this.div.setAttribute('style', 'display: inline; padding: 5px 10px;');
+        //this.div.setAttribute('style', 'position: relative; float: left; padding: 5px; text-align: top;');
+        this.textbox = textbox;
+        this.update = function(pos) {
+            textbox.value = pos[coord].toPrecision(precision);
+        }
+        var me = this;
+        this.update_external = function() {
+            var mypos = {}; mypos[coord] = textbox.value;
+            
+            var newpos = p.putCoords ? p.putCoords(mypos) : mypos;
+            var dpos = {}; dpos[coord] = newpos[coord] - p.pos[coord];
+            p.move(dpos);
+            p.parent.onDrag();  // centers
+            p.parent.redraw();
+        }
+        
+        textbox.onchange = this.update_external;
+        p.listeners.push(this);
+        this.update(p.getCoords());
+        return this;
+    }
+    
     dialog_login = function() {
         var hostname = document.getElementById("instrument_ip").value;
         var username = document.getElementById("username").value;
@@ -379,6 +470,18 @@
                                             console.log('trigger: ', new Date(), window.refreshRequested);
                                             window.refreshRequested = true;
                                         }
+                                        if ('areaDetector.roiShape' in nodes) {
+                                            var shape = devicesMonitor.HashMapToObject(nodes['areaDetector.roiShape']);
+                                            var roi_rectangle = (((plots.plotwrap || {}).plugins || {}).interactors || {}).roi_rectangle;
+                                            if (roi_rectangle) {
+                                                if (shape.name == "rect") {
+                                                    // fill me in;
+                                                } else {
+                                                    roi_rectangle.show = false;
+                                                    plots.plotwrap.redraw();
+                                                } 
+                                            }
+                                        }
                                     }
                                 ];
                                 return subscribe(api, router, adapter, devicesMonitor, 'devices');
@@ -405,7 +508,9 @@
         }
         if (colorbars && colorbars.plotwrap && colorbars.plotwrap.replot) colorbars.plotwrap.replot();
         
-        $('#xplot_plot').width($('#plotwrap').width() || 50);
+        var xplot_width = $('#plotwrap').width() || 100;
+        $('#xplot_plot').width(xplot_width);
+        $('#slicecontrols').width($('.ui-layout-south').width() - xplot_width - 25); 
         if (sl && sl.update) sl.update();
     }
     
@@ -453,30 +558,29 @@
         padding-top: 0px;
         padding-bottom: 0px;
         font-weight: normal;
-        font-family: 'Open Sans';
+        font-family: 'Open Sans' !important;
         /* font-variant: small-caps; */
     }
     #top_panel.connected {
         background-color: LightGreen;
     }
     #xplot_plot {
-        width: 100%;
+        width: 50%;
         height: 100%;
+        display: inline-block;
     }
     #yplot_plot {
         width: 100%;
         height: 100%;
     }
+    #slicecontrols {
+        width: 100%;
+        height: 100%;
+        display: inline-block;
+        text-align: center;
+    }
   </style>
   <style type="text/css">                    
-    body {
-      font: 10px sans-serif;
-      margin: 50px;
-      user-select: none; 
-      -webkit-user-select: none; 
-      -moz-user-select: none;
-    }
-     
     .grid .tick {
         stroke: lightgrey;
         opacity: 0.7;
@@ -571,6 +675,7 @@
 </div>
 <div id="xplot" class="ui-layout-south">
     <div id="xplot_plot"></div>
+    <div id="slicecontrols" class="controls"></div>
 </div>
 <div id="yplot" class="ui-layout-east">
     <div id="yplot_plot"></div>
