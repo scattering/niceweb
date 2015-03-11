@@ -22,7 +22,7 @@
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.InteractiveLegend.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.FixedAspect.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.GracefulAxisRenderer.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.touchEvents.js"></script>
+<!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.touchEvents.js"></script>-->
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.heatmapRenderer.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.colorbarRenderer.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/plotting_api2.js"></script>
@@ -189,11 +189,12 @@
                 "zmin": 1.0
             },
             "options": {
-                "interactors": [{ type:'master', scrollZoom: true, dragPan: true, alpha: 1.0 },
+                "interactors": [{ type:'master', scrollZoom: true, dragPan: true, alpha: 0.8 },
                                       { type:'Rectangle', 
 		                                name:'roi_rectangle',
 		                                color1: '#ff0000',
-		                                color2: '#ff7777',
+		                                color2: '#ff0000',
+		                                showcenter: false,
 		                                showrect: false,
 		                                show: false,
 		                                xmin: 50, 
@@ -205,10 +206,10 @@
 		                                color1: '#ffffff',
 		                                color2: '#ffdddd',
 		                                showrect: false,
-		                                xmin: 100, 
-		                                ymin: 101,
-		                                xmax: 200, 
-		                                ymax: 400}
+		                                xmin: 10, 
+		                                ymin: 10,
+		                                xmax: 502, 
+		                                ymax: 502}
 		                              ],
                 "fixedAspect": {
                     "aspectRatio": 1.0, 
@@ -224,7 +225,8 @@
             "xlabel": "X", 
             "ylabel": "Y", 
             "z": [],
-            "zlabel": "Intensity (I)"
+            "zlabel": "Intensity (I)",
+            "roi": {x1: null, x2: null, y1: null, y2:null}
         }
         
         var plotAreaDetector = function(detectorName) {
@@ -232,6 +234,7 @@
             var detector = detectors[detectorName];
             var zdata = detector.data; //devicesMonitor.nodes[countsNodeName].currentValue.userVal.val;
             var dims = detector.dims;
+            var roi = detector.roi;
             var z = []
             var rowlength = dims[0];
             var zmax = -Infinity;
@@ -252,20 +255,33 @@
             plottable.dims.ydim = plottable.dims.ymax = dims[1];
             plottable.dims.zmin = zmin;
             plottable.dims.zmax = zmax;
+            if (roi) {
+                jQuery.extend(true, plottable.roi, roi);
+            }
             return plottable;
         }
     
     var updateLoop = function() {
         if (refreshRequested) {
             refreshRequested = false;
-            console.log("requested: ", new Date());
+            //console.log("requested: ", new Date());
             show2dData(plotAreaDetector('areaDetector'), 'plotwrap');
         }
         requestAnimationFrame(updateLoop);
     }
     
     requestAnimationFrame(updateLoop); // start the drawing loop;
-
+    
+    var setMaskWindow = function(xmin, xmax, ymin, ymax) {
+        // limits should be in pixels
+        var set_string = "{name=rect, ";
+        set_string += "x1=" + xmin.toFixed(0) + ", ";
+        set_string += "x2=" + xmax.toFixed(0) + ", ";
+        set_string += "y1=" + ymin.toFixed(0) + ", ";
+        set_string += "y2=" + ymax.toFixed(0) + "}";
+        return api.move(["areaDetector.roiShape", set_string], false)
+    }
+    
     var show2dData = function(data, next_target) {
         if (!(plots[next_target])) {
             // if there is no plot, then create one:
@@ -282,7 +298,20 @@
                 id:next_target + "_plot"}));
             plotbox.append($('<div />', {style:"display: inline-block; width: 100px; height: 100%;", id:next_target + "_colorbar"}));
             var plot = renderImageData2(data, transform, next_target + "_plot");
-            plot.plugins.interactors.roi_rectangle.grobs.forEach(function(a,b) { a.onDrag = function() {} });
+            var roi_rectangle = plot.plugins.interactors.roi_rectangle;
+            roi_rectangle.grobs.forEach(function(a,b) { a.onDrag = function() {}; a.show_pos = false; });
+            var shape = data.roi;
+            if (shape) {
+                roi_rectangle.p1.coords.y = roi_rectangle.p2.coords.y = parseFloat(shape.y1);
+                roi_rectangle.p3.coords.y = roi_rectangle.p4.coords.y = parseFloat(shape.y2);
+                roi_rectangle.p1.coords.x = roi_rectangle.p4.coords.x = parseFloat(shape.x1);
+                roi_rectangle.p2.coords.x = roi_rectangle.p3.coords.x = parseFloat(shape.x2);
+                roi_rectangle.show = true;
+            } else {
+                roi_rectangle.show = false;
+            }
+            plot.plugins.interactors.rectangle.grobs.forEach(function(a,b) { a.show_pos = false; });
+
             var cbar_options = {
                 axes: {y2axis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}},
                 interactors: [{"type": "master", "scrollZoom": true, "dragPan": true, "forceload": true}]
@@ -313,6 +342,7 @@
             document.getElementById('slicecontrols').appendChild(yminctl.div);
             var hr = document.createElement('div'); hr.innerHTML = "<hr>";
             document.getElementById('slicecontrols').appendChild(hr);
+            
             var maxbutton = document.createElement('input');
             maxbutton.setAttribute('type', 'button');
             maxbutton.setAttribute('value', 'Maximize to data');
@@ -326,9 +356,32 @@
                 yminctl.update({y: plot.series[0].dims.ymin});
                 yminctl.update_external();
             }
-            maxbutton.onclick = maximize;
-            
+            maxbutton.onclick = maximize;            
             document.getElementById('slicecontrols').appendChild(maxbutton);
+            
+            var setNewBoxButton = document.createElement('input');
+            setNewBoxButton.setAttribute('type', 'button');
+            setNewBoxButton.setAttribute('class', 'set-new-roi');
+            setNewBoxButton.setAttribute('value', 'Set new ROI');
+            var submitChanges = function() {
+                //cfg.x2.value = xmaxctl.textbox.value;
+                //cfg.x1.value = xminctl.textbox.value;
+                //cfg.y1.value = yminctl.textbox.value;
+                //cfg.y2.value = ymaxctl.textbox.value;
+                var xmin = parseFloat(xminctl.textbox.value);
+                var xmax = parseFloat(xmaxctl.textbox.value);
+                var ymin = parseFloat(yminctl.textbox.value);
+                var ymax = parseFloat(ymaxctl.textbox.value);
+                setMaskWindow(xmin, xmax, ymin, ymax);                        
+            };
+            setNewBoxButton.onclick = submitChanges;
+            document.getElementById('slicecontrols').appendChild(setNewBoxButton);
+            document.getElementById('slicecontrols').appendChild(hr);
+            var roiDisplay = document.createElement('div');
+            roiDisplay.setAttribute('class', 'roi-display');
+            roiDisplay.setAttribute('id', 'roi_display');
+            roiDisplay.innerHTML = JSON.stringify(shape);
+            document.getElementById('slicecontrols').appendChild(roiDisplay);
             
             slice_listener = function(series) {
                 slicebox.p1.listeners.push(this);
@@ -391,8 +444,22 @@
             var plot = plots[next_target];
             var colorbar = colorbars[next_target];
             plot.series[0].set_data(data.z[0], data.dims, true); // defer update: colorbar will trigger it later
-            plot.series[0].generate_cumsums()
+            plot.series[0].generate_cumsums();
             colorbar.series[0].set_dims(data.dims);
+            var roi_rectangle = plot.plugins.interactors.roi_rectangle;
+            var shape = data.roi;
+            document.getElementById('roi_display').innerHTML = JSON.stringify(shape);
+            if (shape) {
+                roi_rectangle.p1.coords.y = roi_rectangle.p2.coords.y = parseFloat(shape.y1);
+                roi_rectangle.p3.coords.y = roi_rectangle.p4.coords.y = parseFloat(shape.y2);
+                roi_rectangle.p1.coords.x = roi_rectangle.p4.coords.x = parseFloat(shape.x1);
+                roi_rectangle.p2.coords.x = roi_rectangle.p3.coords.x = parseFloat(shape.x2);
+                roi_rectangle.show = true;
+            } else {
+                roi_rectangle.show = false;
+            }
+            roi_rectangle.redraw();
+            roi_rectangle.redraw();
             //plot.replot();
             colorbar.plugins._interactor.zoomMax(); // for scale!
             colorbar.replot();
@@ -440,6 +507,26 @@
         return this;
     }
     
+    var updateRoiRectangle = function(nodes) {
+        if ('areaDetector.roiShape' in nodes) {
+            var shape = devicesMonitor.HashMapToObject(nodes['areaDetector.roiShape'].currentValue.userVal.val);
+            var roi_rectangle = (((plots.plotwrap || {}).plugins || {}).interactors || {}).roi_rectangle;
+            var roi_rect_opts = plottable2d.options.interactors[1];
+            if (roi_rectangle) {
+                if (shape.name == "rect") {
+                    roi_rectangle.p1.coords.y = roi_rectangle.p2.coords.y = parseFloat(shape.y1);
+                    roi_rectangle.p3.coords.y = roi_rectangle.p4.coords.y = parseFloat(shape.y2);
+                    roi_rectangle.p1.coords.x = roi_rectangle.p4.coords.x = parseFloat(shape.x1);
+                    roi_rectangle.p2.coords.x = roi_rectangle.p3.coords.x = parseFloat(shape.x2);
+                    roi_rectangle.show = true;
+                } else {
+                    roi_rectangle.show = false;
+                } 
+                plots.plotwrap.redraw();
+            }
+        }
+    }
+    
     dialog_login = function() {
         var hostname = document.getElementById("instrument_ip").value;
         var username = document.getElementById("username").value;
@@ -467,20 +554,19 @@
                                         if ('areaDetector.counts' in nodes) {
                                             detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;
                                             
-                                            console.log('trigger: ', new Date(), window.refreshRequested);
+                                            //console.log('trigger: ', new Date(), window.refreshRequested);
                                             window.refreshRequested = true;
                                         }
                                         if ('areaDetector.roiShape' in nodes) {
-                                            var shape = devicesMonitor.HashMapToObject(nodes['areaDetector.roiShape']);
-                                            var roi_rectangle = (((plots.plotwrap || {}).plugins || {}).interactors || {}).roi_rectangle;
-                                            if (roi_rectangle) {
-                                                if (shape.name == "rect") {
-                                                    // fill me in;
-                                                } else {
-                                                    roi_rectangle.show = false;
-                                                    plots.plotwrap.redraw();
-                                                } 
+                                            var shape = devicesMonitor.HashMapToObject(nodes['areaDetector.roiShape'].currentValue.userVal.val);
+                                            if (shape.name == 'rect') {
+                                                //console.log(shape);
+                                                detectors.areaDetector.roi = shape;
+                                            } else {
+                                                detectors.areaDetector.roi = null;
                                             }
+                                                window.refreshRequested = true;
+                                            //updateRoiRectangle(nodes);
                                         }
                                     }
                                 ];
@@ -564,6 +650,12 @@
     #top_panel.connected {
         background-color: LightGreen;
     }
+    #top_panel h3 {
+        font-size: 16pt;
+        margin-top: 6pt;
+        margin-bottom: 6pt;
+        font-weight: normal;
+    }
     #xplot_plot {
         width: 50%;
         height: 100%;
@@ -578,6 +670,12 @@
         height: 100%;
         display: inline-block;
         text-align: center;
+    }
+    .set-new-roi {
+        background-color: #dd0000;
+        color: white;
+        margin-left: 30px;
+        font-weight: bold;
     }
   </style>
   <style type="text/css">                    
