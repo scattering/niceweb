@@ -99,4 +99,32 @@
         );
         return signinPromise; 
     }
+    
+    subscribe = function(api, router, adapter, servant, stream) {
+        //
+        // Get the session timeout and the router client category, and
+        // create the client object adapter.
+        //
+        // Use Ice.Promise.all to wait for the completion of all the
+        // calls.
+        //
+        return Promise.all(
+            router.getSessionTimeout(),
+            router.getCategoryForClient()
+        ).then(
+            function(timeoutArgs, categoryArgs)
+            {
+                var timeout = timeoutArgs[0];
+                var category = categoryArgs[0];
+                //
+                // Create the  servant and add it to the
+                // ObjectAdapter.
+                //
+                var proxyClass = nice.api[stream][capitalize(stream) + 'MonitorPrx'];
+                var preProxy = adapter.add(servant, new Ice.Identity(stream + "Monitor", category));
+                var monitorProxy = proxyClass.uncheckedCast(preProxy);
+                return api['subscribeTo' + capitalize(stream)](monitorProxy);
+            }
+        );
+    }
 })(Ice, Glacier2);

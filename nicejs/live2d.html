@@ -3,15 +3,17 @@
     <!-- Reference the theme's stylesheet on the Google CDN -->
     
     <link rel="icon" type="image/png" href="css/appicon.png" />
-    <link rel="stylesheet" href="../../niceclient/static/css/layout-default-latest.css" />
+    <link rel="stylesheet" type="text/css" href="../../niceclient/static/css/layout-default-latest.css" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
     <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
             type="text/css" rel="Stylesheet" />
-    <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
-    <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
-    <script src="../../niceclient/static/jquery.layout-latest.js"></script>
-    <script src="http://d3js.org/d3.v3.min.js"></script>
-    <script src="plot_d3_rz.js"></script>
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
+    <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
+<!--    Moved this to local host because it loads so slowly.-->
+<!--    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>-->
+    <script type="text/javascript" src="d3.v3.min.js"></script>
+    <script type="text/javascript" src="plot_d3_rz.js"></script>
 
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/jquery.jqplot.min.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasTextRenderer.min.js"></script>
@@ -60,12 +62,7 @@
         var RouterPrx = Glacier2.RouterPrx;
         
         var router = "Glacier2/router:ws -p 4064 -h h123062.ncnr.nist.gov";
-        
-        var State = {
-            Disconnected: 0,
-            Connecting: 1,
-            Connected:2
-        };
+                
         var logging_in = false;
         var link = {};
         var hostname = "h123062.ncnr.nist.gov"; // default NICE host
@@ -79,42 +76,12 @@
         var refreshRequested = false;
         var sl; // slice listener.
 
-        var state = State.Disconnected;
         var hasError = false;
         active = false;
 
         function capitalize(string) {
             return string.charAt(0).toUpperCase() + string.slice(1);
         }
-
-        function subscribe(api, router, adapter, servant, stream) {
-            //
-            // Get the session timeout and the router client category, and
-            // create the client object adapter.
-            //
-            // Use Ice.Promise.all to wait for the completion of all the
-            // calls.
-            //
-            return Promise.all(
-                router.getSessionTimeout(),
-                router.getCategoryForClient()
-            ).then(
-                function(timeoutArgs, categoryArgs)
-                {
-                    var timeout = timeoutArgs[0];
-                    var category = categoryArgs[0];
-                    //
-                    // Create the  servant and add it to the
-                    // ObjectAdapter.
-                    //
-                    var proxyClass = nice.api[stream][capitalize(stream) + 'MonitorPrx'];
-                    var preProxy = adapter.add(servant, new Ice.Identity(stream + "Monitor", category));
-                    var monitorProxy = proxyClass.uncheckedCast(preProxy);
-                    return api['subscribeTo' + capitalize(stream)](monitorProxy);
-                }
-            );
-        }
-
 
         var DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
             onSubscribe: function(devices, nodes, groups, __current) {
@@ -614,7 +581,7 @@
         var layout = $('body').layout({
 		    east__size:			500
 	    ,	west__size:			0
-	    ,   south__size:        200
+	    ,   south__size:        250
 	    ,   north_size:         "auto"
 		    // RESIZE Accordion widget when panes resize
 	    ,	west__onresize:		$.layout.callbacks.resizePaneAccordions
