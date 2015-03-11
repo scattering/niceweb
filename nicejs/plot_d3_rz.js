@@ -1,18 +1,21 @@
-function plotD3(target_id, data, log_x, log_y, show_line, show_points, vcursor, hcursor) {
-
-    //************************************************************
-    // Data notice the structure
-    //************************************************************
-    var default_data = 	[
-	    [{'x':1,'y':0},{'x':2,'y':5},{'x':3,'y':10},{'x':4,'y':0},{'x':5,'y':6},{'x':6,'y':11},{'x':7,'y':9},{'x':8,'y':4},{'x':9,'y':11},{'x':10,'y':2}],
-	    [{'x':1,'y':1},{'x':2,'y':6},{'x':3,'y':11},{'x':4,'y':1},{'x':5,'y':7},{'x':6,'y':12},{'x':7,'y':8},{'x':8,'y':3},{'x':9,'y':13},{'x':10,'y':3}],
-	    [{'x':1,'y':2},{'x':2,'y':7},{'x':3,'y':12},{'x':4,'y':2},{'x':5,'y':8},{'x':6,'y':13},{'x':7,'y':7},{'x':8,'y':2},{'x':9,'y':4},{'x':10,'y':7}],
-	    [{'x':1,'y':3},{'x':2,'y':8},{'x':3,'y':13},{'x':4,'y':3},{'x':5,'y':9},{'x':6,'y':14},{'x':7,'y':6},{'x':8,'y':1},{'x':9,'y':7},{'x':10,'y':9}],
-	    [{'x':1,'y':4},{'x':2,'y':9},{'x':3,'y':14},{'x':4,'y':4},{'x':5,'y':10},{'x':6,'y':15},{'x':7,'y':5},{'x':8,'y':0},{'x':9,'y':8},{'x':10,'y':5}]
-    ];
+function plotD3(target_id, data, options) {
+    var defaultOptions = {
+        log_x: false,
+        log_y: false,
+        show_line: true,
+        show_points: true,
+        vcursor: false,
+        hcursor: false,
+        xlabel: 'x-axis',
+        ylabel: 'y-axis'
+    }
     
-    var data = (data == null)? default_data : data
-    
+    var options = options || {}, value = null;
+    for (var key in defaultOptions) {
+        if (!(key in options)) {
+            options[key] = defaultOptions[key];
+        }
+    }
     
     var max_y = -Infinity;
     var min_y = Infinity;
@@ -22,8 +25,8 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points, vcursor, 
     var linf = function(x) { return x }
     var logf = function(x) { return Math.log(x) / Math.LN10 }
     
-    var tx = log_x ? logf : linf;
-    var ty = log_y ? logf : linf;
+    var tx = options.log_x ? logf : linf;
+    var ty = options.log_y ? logf : linf;
     
     var newy, newx;
     var labels = data.options.series.map(function(d) { return d.label });
@@ -195,7 +198,7 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points, vcursor, 
 	    .attr("x", width/2.0)
 	    .attr("text-anchor", "middle")
         .attr("y", height + 35)
-	    .text('x-axis');
+	    .text(options.xlabel);
      
     svg.append("g")
         .attr("class", "y axis")
@@ -209,7 +212,7 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points, vcursor, 
 	    .attr("transform", "rotate(-90)")
 	    .attr("y", (-margin.left) + 10)
 	    .attr("x", -height/2)
-	    .text('Intensity (arb. units)');	
+	    .text(options.ylabel);	
      
     svg.append("defs").append("clipPath")
 	    .attr("id", target_id + "_clip") // local def
@@ -257,7 +260,7 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points, vcursor, 
     //************************************************************
     // Create D3 line object and draw data on our SVG object
     //************************************************************
-    if (show_line) {
+    if (options.show_line) {
         var line = d3.svg.line()
             .defined(function(d) { return (d && isFinite(d.y)); })
             .interpolate("linear")	
@@ -284,7 +287,7 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points, vcursor, 
     //************************************************************
     // Draw points on SVG object based on the data given
     //************************************************************
-    if (show_points) {
+    if (options.show_points) {
         var points = svg.selectAll('.dots')
             //.defined(function(d) { return isFinite(d.y); })
 	        .data(data)
@@ -342,7 +345,7 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points, vcursor, 
     //************************************************************
     // Vertical cursor (or horizontal)
     //************************************************************
-    if (vcursor) {
+    if (options.vcursor) {
         var vertical = d3.select("#"+target_id)
             .append("div")
             .attr("class", "remove vertical-cursor")
@@ -371,7 +374,7 @@ function plotD3(target_id, data, log_x, log_y, show_line, show_points, vcursor, 
              vertical.style("left", mousex + "px")});
     }
     
-    if (hcursor) {
+    if (options.hcursor) {
         var horizontal = d3.select("#"+target_id)
             .append("div")
             .attr("class", "remove horizontal-cursor")

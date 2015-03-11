@@ -335,33 +335,6 @@ function capitalize(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-function subscribe(api, router, adapter, servant, stream) {
-    //
-    // Get the session timeout and the router client category, and
-    // create the client object adapter.
-    //
-    // Use Ice.Promise.all to wait for the completion of all the
-    // calls.
-    //
-    return Promise.all(
-        router.getSessionTimeout(),
-        router.getCategoryForClient()
-    ).then(
-        function(timeoutArgs, categoryArgs)
-        {
-            var timeout = timeoutArgs[0];
-            var category = categoryArgs[0];
-            //
-            // Create the  servant and add it to the
-            // ObjectAdapter.
-            //
-            var proxyClass = nice.api[stream][capitalize(stream) + 'MonitorPrx'];
-            var preProxy = adapter.add(servant, new Ice.Identity(stream + "Monitor", category));
-            var monitorProxy = proxyClass.uncheckedCast(preProxy);
-            return api['subscribeTo' + capitalize(stream)](monitorProxy);
-        }
-    );
-}
 
 function submitCommand() {
     var command_line = document.getElementById('command_line');
@@ -619,9 +592,9 @@ dialog_login = function() {
 </dialog>
 <div id="command" class="ui-layout-south">
     Command: <input type="text" id="command_line" name="command_line" list="tabcomplete" autocomplete="off"/>
-    <datalist id="tabcomplete">
-        <option value="move sampleAngle">
-    </datalist>
+<!--    <datalist id="tabcomplete">-->
+<!--        <option value="move sampleAngle">-->
+<!--    </datalist>-->
 </div>
 <div id="top_panel" class="ui-layout-north">
     <h3 class="instrument-name">Instrument: </h3>

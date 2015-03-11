@@ -68,7 +68,7 @@
                     ).delay(timeout.toNumber() * 500).then(
                         function()
                         {
-                            console.log('refreshing session... ' + (new Date()));
+                            //console.log('refreshing session... ' + (new Date()));
                             refreshSession();
                         });
                 };

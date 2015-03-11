@@ -28,6 +28,7 @@
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.heatmapRenderer.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.colorbarRenderer.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/plotting_api2.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.set_transform.js"></script>
     
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors_plugin_base.js"></script>
@@ -182,6 +183,8 @@
                     "aspectRatio": 1.0, 
                     "fixAspect": true
                 },
+                "transform": {"zaxis": "log"},
+                "seriesDefaults": {"rendererOptions": {"transform": "log"}},
                 "axes": {
 	               xaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}},
 	               yaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}
@@ -249,6 +252,16 @@
         return api.move(["areaDetector.roiShape", set_string], false)
     }
     
+    var updateTransform = function(ev) {
+        if (plots && plots.plotwrap && colorbars && colorbars.plotwrap) {
+            var logselected = ev.target.checked; 
+            var transform = logselected? 'log' : 'lin';
+            plots.plotwrap.series[0].set_transform(transform);
+            colorbars.plotwrap.plugins._interactor.zoomMax();
+            sl.update();
+        }
+    }
+    
     var show2dData = function(data, next_target) {
         if (!(plots[next_target])) {
             // if there is no plot, then create one:
@@ -264,6 +277,9 @@
                 style:"display: inline-block; left: 0; top: 0; width:"+(plotbox.width()-150).toFixed()+"px; height: 100%;", 
                 id:next_target + "_plot"}));
             plotbox.append($('<div />', {style:"display: inline-block; width: 100px; height: 100%;", id:next_target + "_colorbar"}));
+            var ztransform = $('<label />', {'class': 'transform', 'axis': 'zaxis'}).text('logZ').append($('<input />', {'type': 'checkbox', 'id': 'ztransform', 'checked': true}));
+            plotbox.append(ztransform);
+            ztransform.prop('checked', true).change(updateTransform);
             var plot = renderImageData2(data, transform, next_target + "_plot");
             var roi_rectangle = plot.plugins.interactors.roi_rectangle;
             roi_rectangle.grobs.forEach(function(a,b) { a.onDrag = function() {}; a.show_pos = false; });
@@ -343,7 +359,7 @@
             };
             setNewBoxButton.onclick = submitChanges;
             document.getElementById('slicecontrols').appendChild(setNewBoxButton);
-            document.getElementById('slicecontrols').appendChild(hr);
+            document.getElementById('slicecontrols').appendChild(document.createElement('hr'));
             var roiDisplay = document.createElement('div');
             roiDisplay.setAttribute('class', 'roi-display');
             roiDisplay.setAttribute('id', 'roi_display');
@@ -375,12 +391,15 @@
                         ydata[yi++] = ([p0.cumsum_y[i_max][r] - p0.cumsum_y[i_min][r], p0.dims.ymin + r*p0.dims.dy]);
                     }
                     plottableX.data = [xdata];
+                    
+                    var zislog = document.getElementById('ztransform').checked;
+                    var intensity_label = (zislog) ? "Log counts" : "counts";
                     $("#xplot_plot").empty();
-                    xplot = plotD3("xplot_plot", plottableX, false, false, true, false, true, false); // logx, logy, showline, showmarker, vcursor, hcursor);
+                    xplot = plotD3("xplot_plot", plottableX, {log_y: zislog, showline: true, show_points: false, vcursor: true, ylabel: intensity_label});
                     
                     plottableY.data = [ydata];
                     $("#yplot_plot").empty();
-                    yplot = plotD3("yplot_plot", plottableY, false, false, true, false, false, true);
+                    yplot = plotD3("yplot_plot", plottableY,  {log_x: zislog, showline: true, show_points: false, hcursor: true, xlabel: intensity_label});
                     
                     /*
                     yslice.series[0].data = ydata;
@@ -403,7 +422,7 @@
                 return this;  
             };
             sl = slice_listener(plot.series[0]);
-            plot.series[0].generate_cumsums()
+            plot.series[0].generate_cumsums();
             //generate_cumsums(plot.series[0]);
             sl.update();
             
@@ -581,7 +600,7 @@
         var layout = $('body').layout({
 		    east__size:			500
 	    ,	west__size:			0
-	    ,   south__size:        250
+	    ,   south__size:        300
 	    ,   north_size:         "auto"
 		    // RESIZE Accordion widget when panes resize
 	    ,	west__onresize:		$.layout.callbacks.resizePaneAccordions
@@ -643,6 +662,11 @@
         color: white;
         margin-left: 30px;
         font-weight: bold;
+    }
+    label.transform {
+        position: absolute;
+        bottom: 10;
+        left: 10;
     }
   </style>
   <style type="text/css">                    
