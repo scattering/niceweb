@@ -199,7 +199,9 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
         this.root = root;
     },
     onSubscribe: function(queueState, root, __current) {
-        // Called when we initially subscribe to the queue topic 
+        // Called when we initially subscribe to the queue topic
+        this.state = queueState;
+        this._update_controls(queueState);
         this._root = root;
         this._commands = {};
         this._addToNodeTable(this, root);
@@ -235,10 +237,23 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
     },
     stateChanged: function(queueState, __current) {
         //console.log('stateChanged:', queueState);
+        this.state = queueState;
+        this._update_controls(queueState);
     },
     ////////////////////////////////////////////////////////////////////
     // END OF API IMPLEMENTATION OVERRIDES
     ////////////////////////////////////////////////////////////////////
+    _update_controls: function(queueState) {
+        var name = queueState._name;
+        if (name == 'SUSPENDED') {
+            $('.pause-button').hide();
+            $('.resume-button').show();
+        } else {
+            $('.pause-button').show();
+            $('.resume-button').hide();
+        }
+        $('#queue_state').text(name);
+    },
     _removeFromNodeTable: function(ctx, node) {
         /*
         Removes a node from the id->node map. This is done recursively for all the node's children.
@@ -331,6 +346,18 @@ var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
     }
 });
 
+var SystemMonitorI = Ice.Class(nice.api.system.SystemMonitor, {
+    onSubscribe: function(state, __current) {
+        this._state = state;
+    },
+    stateChanged: function(state, __current) {
+        this._state = state;
+    },
+    serverShutdown: function( __current) {
+        alert("Server has shut down!");
+    }
+});
+
 function capitalize(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
@@ -344,16 +371,28 @@ function submitCommand() {
     return api.console(command);
 }
 
+function instrument_stop() {
+    return api.stop();
+}
+
 function getCommandCompletion(command_stub, callback) {
     var command_stub = (command_stub.term) ? command_stub.term : command_stub;
     var tokens = command_stub.split(/\s+/);
     var last_length = tokens[tokens.length - 1].length;
     var root = command_stub.slice(0, (command_stub.length - last_length));
-    api.complete(command_stub).then(callback); //function(result) {
-    /*
-        var completions = result.fullCompletions.sort(
+    api.complete(command_stub).then(function(result) {
+        var completions = [];
+        sorted = result.fullCompletions.sort(
             function(a,b) { 
-                return (a.replacementText > b.replacementText)? 1 : -1});
+                return ((a.relevance > b.relevance) || 
+                         ((a.relevance == b.relevance) && (a.replacementText < b.replacementText))) ? -1 : 1
+            }
+        );
+        sorted.forEach(function(s) { completions.push(root + s.replacementText); });
+        $('body').layout().allowOverflow('command_line');
+        callback(completions);
+    });
+    /*
         var completionlist = document.getElementById('tabcomplete');
         while (completionlist.firstChild) {
             completionlist.removeChild(completionlist.firstChild);
@@ -425,10 +464,12 @@ dialog_login = function() {
                             api = cam;
                             queueMonitor = new QueueMonitorI("#queue_panel");
                             consoleMonitor = new ConsoleMonitorI("console");
+                            systemMonitor = new SystemMonitorI();
                             return Promise.all(
                                 subscribe(api, router, adapter, queueMonitor, 'queue'),
-                                subscribe(api, router, adapter, consoleMonitor, 'console')
-                            ).then(function(q,c) { qq = q; cc = c});
+                                subscribe(api, router, adapter, consoleMonitor, 'console'),
+                                subscribe(api, router, adapter, systemMonitor, 'system')
+                            )// .then(function(q,c) { qq = q; cc = c});
                     });
             });
     });
@@ -450,19 +491,62 @@ dialog_login = function() {
     document.getElementById("instrument_ip").value = hostname;
     dialog.show();
     logging_in = true;
+    
+    
+    $('#command_line').on('keydown', function(ev) {
+        var keyCode = ev.keyCode || ev.which;
+        if (keyCode == 38 || keyCode == 40) {
+            ev.preventDefault();
+            var cursor_pos = cl.selectionStart;
+            command_match = new RegExp("^"+cl.value.slice(0, cursor_pos), "i"); // ignore case            
+            var matching_commands = queueMonitor._root.children.filter(function(item) { return command_match.test(item.status.commandStr) });
+            if (matching_commands.length == 0) { 
+                return 
+            }
+            //command_offset += bump[ev.keyIdentifier];
+            command_offset += bump[keyCode];
+            var index = command_offset % matching_commands.length;
+            if (index < 0) {
+                index += matching_commands.length;
+            }
+            cl.value = matching_commands[index].status.commandStr;
+            cl.setSelectionRange(cursor_pos, cursor_pos);
+        }
+        else if (keyCode == 13 || keyCode == 10) {
+            if ($('ul.ui-autocomplete').is(':visible')) {
+                // if the autocomplete menu is up, don't submit!
+                return false;
+            }
+            ev.preventDefault();
+            ev.stopPropagation();
+            submitCommand();
+        }
+        else if (keyCode == 9) {
+            $(this).autocomplete("enable")
+                .autocomplete("search", this.value);
+            ev.preventDefault();
+            var cursor_pos = cl.selectionStart;
+            var command_stub = cl.value.slice(0, cursor_pos);
+            getCommandCompletion(command_stub, completionsHandler);
+        }
+
+    });
+    
+    
     document.body.onkeydown = function(ev) {
         var keyCode = ev.keyCode || ev.which;
         var command_line = document.getElementById('command_line');
         // block backspace when not in command line
         //if ((document.activeElement != command_line) && (keyCode == 8)) { ev.preventDefault(); }
         if ((document.activeElement.type != "text") && (keyCode == 8)) { ev.preventDefault(); }
-        // put focus in command line if not there for a-z keys.
-        if (!logging_in && keyCode > 63 && keyCode < 91) {
+        // put focus in command line if not there for number or a-z keys
+        if (!logging_in && keyCode > 47 && keyCode < 91) {
             command_line.focus();
         } 
     }
     
-    var layout = $('body').layout({
+    
+    myLayout = $('body').layout({
 		east__size:			300
 	,	west__size:			0
 	,   south__size:        "auto"
@@ -483,41 +567,17 @@ dialog_login = function() {
     // (still needs some tweaking to match what comes out of the api.complete command)
     // also need to remove the <datalist> from the document below
     // 
-    //$('#command_line').autocomplete({'source': getCommandCompletion});
+    $('#command_line').autocomplete({
+        'source': getCommandCompletion,
+        'position': { my : "left bottom", at: "left top" },
+        'disabled': true,
+        // disable the autocomplete after every selection... we want to 
+        // trigger it with 'tab' instead of a delay.
+        'close': function(ev, ui) { $(this).autocomplete("disable"); }
+    });
     
     var bump = {38: -1, 40: 1};
-    cl.onkeydown = function(ev) {
-        var keyCode = ev.keyCode || ev.which;
-        if (keyCode == 38 || keyCode == 40) {
-            ev.preventDefault();
-            var cursor_pos = cl.selectionStart;
-            command_match = new RegExp("^"+cl.value.slice(0, cursor_pos), "i"); // ignore case            
-            var matching_commands = queueMonitor._root.children.filter(function(item) { return command_match.test(item.status.commandStr) });
-            if (matching_commands.length == 0) { 
-                return 
-            }
-            //command_offset += bump[ev.keyIdentifier];
-            command_offset += bump[keyCode];
-            var index = command_offset % matching_commands.length;
-            if (index < 0) {
-                index += matching_commands.length;
-            }
-            cl.value = matching_commands[index].status.commandStr;
-            cl.setSelectionRange(cursor_pos, cursor_pos);
-        }
-        else if (keyCode == 13 || keyCode == 10) {
-            ev.preventDefault();
-            ev.stopPropagation();
-            submitCommand();
-        }
-        else if (keyCode == 9) {
-            ev.preventDefault();
-            var cursor_pos = cl.selectionStart;
-            var command_stub = cl.value.slice(0, cursor_pos);
-            getCommandCompletion(command_stub, completionsHandler);
-        }
-
-    }
+    
     
   }
   </script>
@@ -542,14 +602,17 @@ dialog_login = function() {
     #top_panel {
         background-color: LightYellow;
         height: 30px;
-        padding-top: 0px;
-        padding-bottom: 0px;
+        padding-top: 10px;
+        padding-bottom: 10px;
         font-weight: normal;
         font-family: 'Open Sans';
         /* font-variant: small-caps; */
     }
     #top_panel.connected {
         background-color: LightGreen;
+    }
+    #top_panel h3 {
+        display: inline-block;
     }
     #console {
         overflow: auto;
@@ -572,6 +635,22 @@ dialog_login = function() {
     .console-flag {
         font-weight: bold;
     }
+    .ui-autocomplete {
+        max-height: 150px;
+        overflow-y: auto;
+        /* prevent horizontal scrollbar */
+        overflow-x: hidden;
+        z-index: 3 !important;
+    }
+    .control-buttons {
+        float: right;
+        font-size: 14pt;
+        font-weight: bold;
+    }
+    .control-buttons .stop-button {
+        background-color: red;
+        color: white;
+    }
   </style>
   <link rel="stylesheet" type="text/css" href="css/main.css">
   <title>NICE console</title>
@@ -590,18 +669,22 @@ dialog_login = function() {
   <br>
   <input type="button" onclick="dialog_login()" value="Go">
 </dialog>
-<div id="command" class="ui-layout-south">
-    Command: <input type="text" id="command_line" name="command_line" list="tabcomplete" autocomplete="off"/>
-<!--    <datalist id="tabcomplete">-->
-<!--        <option value="move sampleAngle">-->
-<!--    </datalist>-->
-</div>
+
 <div id="top_panel" class="ui-layout-north">
     <h3 class="instrument-name">Instrument: </h3>
+    <div id="control_buttons" class="control-buttons">
+    <span id="queue_state"></span>
+    <input type="button" onclick="api.suspend();" value="Pause" class="pause-button" id="pause_button">
+    <input type="button" onclick="api.resume();" value="Resume" class="resume-button" id="resume_button">
+    <input type="button" onclick="api.stop();" value="Stop" class="stop-button">
+    </div>
 </div>
 <div id="queue_panel" class="ui-layout-east">
     <div id="queue"></div>
 </div>
 <div id="console" class="ui-layout-wrapper ui-layout-center"></div>
+<div id="command" class="ui-layout-south">
+    Command: <input type="text" id="command_line" name="command_line"/>
+</div>
 </body>
 </html>
