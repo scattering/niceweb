@@ -5,10 +5,12 @@
     <link rel="icon" type="image/png" href="css/appicon.png" />
     <link rel="stylesheet" type="text/css" href="../../niceclient/static/css/layout-default-latest.css" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
-<!--    <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"-->
-<!--            type="text/css" rel="Stylesheet" />-->
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Special+Elite" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Love+Ya+Like+A+Sister" />
+    <link href="http://code.jquery.com/ui/1.10.4/themes/start/jquery-ui.css"
+            type="text/css" rel="Stylesheet" />
     <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
-<!--    <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>-->
+    <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
     <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
 <!--    Moved this to local host because it loads so slowly.-->
 <!--    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>-->
@@ -27,7 +29,7 @@
 <!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.touchEvents.js"></script>-->
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.heatmapRenderer.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.colorbarRenderer.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/plotting_api2.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/plotting_api2.js"></script>
 <!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.set_transform.js"></script>-->
     
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors.js"></script>
@@ -156,7 +158,7 @@
                 "zmin": 1.0
             },
             "options": {
-                "interactors": [{ type:'master', scrollZoom: true, dragPan: true, alpha: 0.8 },
+                "interactors": [{ type:'master', scrollZoom: true, dragPan: true, rightZoom: false, alpha: 0.8 },
                                       { type:'Rectangle', 
 		                                name:'roi_rectangle',
 		                                color1: '#ff0000',
@@ -182,10 +184,10 @@
 		        "renderer": $.jqplot.heatmapRender,
 		        "series": [ {shadow: false, padding: 0, showMarker:false, showLine:false, breakOnNull:true} ],
 		        "grid": {shadow: false},
-                //"fixedAspect": {
-                //    "aspectRatio": 1.0, 
-                //    "fixAspect": true
-                //},
+                "fixedAspect": {
+                    "aspectRatio": 1.0, 
+                    "fixAspect": true
+                },
                 "transform": {"zaxis": "log"},
                 "seriesDefaults": {
                     "shadow": false,
@@ -193,11 +195,13 @@
                     "renderer": $.jqplot.heatmapRenderer
                 },
                 "axesDefaults": {
-                    labelRenderer: $.jqplot.CanvasAxisLabelRenderer,
-                    tickRenderer: $.jqplot.CanvasAxisTickRenderer,
-                    tickOptions: {formatString: "%.3g", _styles: {right: 0}}
+                    //labelRenderer: $.jqplot.CanvasAxisLabelRenderer,
+                    //tickRenderer: $.jqplot.CanvasAxisTickRenderer,
+                    //tickOptions: {formatString: "%.3g", _styles: {right: 0}}
                 },
                 "axes": {
+                    xaxis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer},
+                    yaxis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}
 	               //xaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}},
 	               //yaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}
 	            },
@@ -238,6 +242,11 @@
             plottable.dims.ydim = plottable.dims.ymax = dims[1];
             plottable.dims.zmin = zmin;
             plottable.dims.zmax = zmax;
+            var rectangle_opts = plottable.options.interactors[2];
+            rectangle_opts.xmin = 10;
+            rectangle_opts.xmax = dims[0] -10;
+            rectangle_opts.ymin = 10;
+            rectangle_opts.ymax = dims[1] - 10;
             if (roi) {
                 jQuery.extend(true, plottable.roi, roi);
             }
@@ -309,10 +318,11 @@
             plot.plugins.interactors.rectangle.grobs.forEach(function(a,b) { a.show_pos = false; });
 
             var cbar_options = {
-                axes: {y2axis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}},
+                //axes: {y2axis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}},
+                axes: {y2axis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}},
                 interactors: [{"type": "master", "scrollZoom": true, "dragPan": true, "forceload": true}]
             }
-            var colorbar = renderImageColorbar2(plot.series[0], next_target + '_colorbar');
+            var colorbar = renderImageColorbar2(plot.series[0], next_target + '_colorbar', cbar_options);
             if (next_target in plots && plots[next_target].destroy) {
                 plots[next_target].destroy();
             }
@@ -628,6 +638,14 @@
     }
   </script>
   <style type="text/css">
+    @font-face {
+        font-family: xkcd;
+        src: url("xkcd.otf");
+    }
+
+    body {
+        font-family: 'Love Ya Like A Sister' !important;
+    }
     #login {
         top: 28%;
         position: absolute;
@@ -643,7 +661,9 @@
         padding-top: 0px;
         padding-bottom: 0px;
         font-weight: normal;
-        font-family: 'Open Sans' !important;
+        /* font-family: 'Open Sans' !important; */
+        /* font-family: 'Special Elite' !important; */
+        /* font-family: 'xkcd' !important; */
         /* font-variant: small-caps; */
     }
     #top_panel.connected {
