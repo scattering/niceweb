@@ -32,11 +32,10 @@
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/plotting_api2.js"></script>   
 <!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.set_transform.js"></script>-->
     
-<!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors.js"></script>-->
-    <script type="text/javascript" src="../../jqplot.science/interactors/interactors.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors_plugin_base.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/rectangle_interactor_plugin.js"></script>
-    <script type="text/javascript" src="../../jqplot.science/interactors/circle_interactor_plugin.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/circle_interactor_plugin.js"></script>
     
     <!-- dialog support -->
     <link rel="stylesheet" href="../static/dialog-polyfill.css" />
@@ -79,6 +78,7 @@
         currently_drawing = false;
         draw_again = false;
         var refreshRequested = false;
+        var phisumRequested = false;
         var sl; // slice listener.
         var maskCanvas; // for integrations
 
@@ -195,8 +195,8 @@
                 "axesDefaults": {
                 },
                 "axes": {
-                    xaxis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer},
-                    yaxis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}	               
+                    xaxis: {renderer: $.jqplot.GracefulAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer},
+                    yaxis: {renderer: $.jqplot.GracefulAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}	               
 	            },
 	            "cursor": null
             }, 
@@ -242,6 +242,12 @@
         if (refreshRequested) {
             refreshRequested = false;
             show2dData(plotAreaDetector('areaDetector'), 'plotwrap');
+        }
+        if (phisumRequested) {
+            phisumRequested = false;
+            if (sl && sl.update_actual) {
+                sl.update_actual();
+            }
         }
         requestAnimationFrame(updateLoop);
     }
@@ -289,7 +295,7 @@
             
             var cbar_options = {
                 //axes: {y2axis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}},
-                axes: {y2axis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}},
+                axes: {y2axis: {renderer: $.jqplot.GracefulAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}},
                 interactors: [{"type": "master", "scrollZoom": true, "dragPan": true, "forceload": true}]
             }
             var colorbar = renderImageColorbar2(plot.series[0], next_target + '_colorbar', cbar_options);
@@ -365,7 +371,21 @@
                 this.update = function(pos) {
                     var width = p0.dims.xdim;
                     var height = p0.dims.ydim;
-
+                    phisumRequested = true;
+                    //this.update_actual();
+                    
+                    
+                    /*
+                    for (var r=j_min; r<=j_max-1; r++) {
+                        ydata[yi++] = ([p0.cumsum_y[i_max][r] - p0.cumsum_y[i_min][r], p0.dims.ymin + r*p0.dims.dy]);
+                    }
+                    plottableY.data = [ydata];
+                    $("#yplot_plot").empty();
+                    yplot = plotD3("yplot_plot", plottableY,  {log_x: zislog, showline: true, show_points: false, hcursor: true, xlabel: intensity_label});
+                    */
+                    
+                }
+                this.update_actual = function() {
                     var zislog = document.getElementById('ztransform').checked;
                     var intensity_label = (zislog) ? "Log counts" : "counts";
                     
@@ -383,17 +403,7 @@
                     plottableX.data = [phisum.xy];
                     $("#xplot_plot").empty();
                     xplot = plotD3("xplot_plot", plottableX, {log_y: zislog, showline: true, show_points: false, vcursor: true, ylabel: intensity_label, xlabel: 'Phi (deg)'});
-                    
-                    /*
-                    for (var r=j_min; r<=j_max-1; r++) {
-                        ydata[yi++] = ([p0.cumsum_y[i_max][r] - p0.cumsum_y[i_min][r], p0.dims.ymin + r*p0.dims.dy]);
-                    }
-                    plottableY.data = [ydata];
-                    $("#yplot_plot").empty();
-                    yplot = plotD3("yplot_plot", plottableY,  {log_x: zislog, showline: true, show_points: false, hcursor: true, xlabel: intensity_label});
-                    */
-                    
-                };
+                }
                 return this;  
             };
             sl = slice_listener(plot.series[0]);
