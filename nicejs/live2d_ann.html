@@ -75,11 +75,12 @@
             hostname = localStorage.nice_hostname
         }
         
-        var detectors = {areaDetector: {dims: null, data: null}};
+        var detectors = {areaDetector: {dims: null, data: null, beamCenterX: null, beamCenterY: null}};
         currently_drawing = false;
         draw_again = false;
         var refreshRequested = false;
         var sl; // slice listener.
+        var maskCanvas; // for integrations
 
         var hasError = false;
         active = false;
@@ -160,38 +161,23 @@
                 "zmin": 1.0
             },
             "options": {
-                "interactors": [{ type:'master', scrollZoom: true, dragPan: true, rightZoom: false, alpha: 0.8 },
-                                      { type:'Rectangle', 
-		                                name:'roi_rectangle',
-		                                color1: '#ff0000',
-		                                color2: '#ff0000',
-		                                showcenter: false,
-		                                showrect: false,
-		                                show: false,
-		                                xmin: 50, 
-		                                ymin: 51,
-		                                xmax: 300, 
-		                                ymax: 301},
-		                              { type:'Rectangle', 
-		                                name:'rectangle',
-		                                color1: '#ffffff',
-		                                color2: '#ffdddd',
-		                                showrect: false,
-		                                xmin: 10, 
-		                                ymin: 10,
-		                                xmax: 502, 
-		                                ymax: 502},
-		                              { type: 'Annulus',
-		                                name: 'annulus',
-		                                center_x: 50,
-		                                center_y: 50,
-		                                filled: false,
-		                                show_pos: false,
-		                                r1_x: 100,
-		                                r1_y: 50,
-		                                r2_x: 110,
-		                                r2_y: 60}
-		                              ],
+                "interactors": [
+                    { type:'master', 
+                      scrollZoom: true, 
+                      dragPan: true, 
+                      rightZoom: false, 
+                      alpha: 0.8 },                                      
+                    { type: 'Annulus',
+                      name: 'annulus',
+                      center_x: 50,
+                      center_y: 50,
+                      filled: false,
+                      show_pos: false,
+                      r1_x: 100,
+                      r1_y: 50,
+                      r2_x: 110,
+                      r2_y: 60}
+                ],
                 "sortData": false,
 		        "renderer": $.jqplot.heatmapRender,
 		        "series": [ {shadow: false, padding: 0, showMarker:false, showLine:false, breakOnNull:true} ],
@@ -207,15 +193,10 @@
                     "renderer": $.jqplot.heatmapRenderer
                 },
                 "axesDefaults": {
-                    //labelRenderer: $.jqplot.CanvasAxisLabelRenderer,
-                    //tickRenderer: $.jqplot.CanvasAxisTickRenderer,
-                    //tickOptions: {formatString: "%.3g", _styles: {right: 0}}
                 },
                 "axes": {
                     xaxis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer},
-                    yaxis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}
-	               //xaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}},
-	               //yaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}
+                    yaxis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}	               
 	            },
 	            "cursor": null
             }, 
@@ -225,7 +206,6 @@
             "ylabel": "Y", 
             "z": [],
             "zlabel": "Intensity (I)",
-            "roi": {x1: null, x2: null, y1: null, y2:null}
         }
         
         var plotAreaDetector = function(detectorName) {
@@ -254,21 +234,13 @@
             plottable.dims.ydim = plottable.dims.ymax = dims[1];
             plottable.dims.zmin = zmin;
             plottable.dims.zmax = zmax;
-            var rectangle_opts = plottable.options.interactors[2];
-            rectangle_opts.xmin = 10;
-            rectangle_opts.xmax = dims[0] -10;
-            rectangle_opts.ymin = 10;
-            rectangle_opts.ymax = dims[1] - 10;
-            if (roi) {
-                jQuery.extend(true, plottable.roi, roi);
-            }
+            
             return plottable;
         }
     
     var updateLoop = function() {
         if (refreshRequested) {
             refreshRequested = false;
-            //console.log("requested: ", new Date());
             show2dData(plotAreaDetector('areaDetector'), 'plotwrap');
         }
         requestAnimationFrame(updateLoop);
@@ -300,9 +272,6 @@
         if (!(plots[next_target])) {
             // if there is no plot, then create one:
             $('#' + next_target).empty();
-            //if (!(counterNodeName in devicesMonitor.nodes)) {
-            //    return
-            //}
             
             var transform = 'log';
             var plotbox = $('<div />', {class:'ui-widget-content', style:"display: block; width: 100%; height: 100%;", id:"plotbox"});
@@ -311,24 +280,13 @@
                 style:"display: inline-block; left: 0; top: 0; width:"+(plotbox.width()-150).toFixed()+"px; height: 100%;", 
                 id:next_target + "_plot"}));
             plotbox.append($('<div />', {style:"display: inline-block; width: 100px; height: 100%;", id:next_target + "_colorbar"}));
-            var ztransform = $('<label />', {'class': 'transform', 'axis': 'zaxis'}).text('logZ').append($('<input />', {'type': 'checkbox', 'id': 'ztransform', 'checked': true}));
+            var ztransform = $('<label />', {'class': 'transform', 'axis': 'zaxis'})
+                .text('logZ')
+                .append($('<input />', {'type': 'checkbox', 'id': 'ztransform', 'checked': true}));
             plotbox.append(ztransform);
             ztransform.prop('checked', true).change(updateTransform);
             var plot = renderImageData2(data, transform, next_target + "_plot");
-            var roi_rectangle = plot.plugins.interactors.roi_rectangle;
-            roi_rectangle.grobs.forEach(function(a,b) { a.onDrag = function() {}; a.show_pos = false; });
-            var shape = data.roi;
-            if (shape) {
-                roi_rectangle.p1.coords.y = roi_rectangle.p2.coords.y = parseFloat(shape.y1);
-                roi_rectangle.p3.coords.y = roi_rectangle.p4.coords.y = parseFloat(shape.y2);
-                roi_rectangle.p1.coords.x = roi_rectangle.p4.coords.x = parseFloat(shape.x1);
-                roi_rectangle.p2.coords.x = roi_rectangle.p3.coords.x = parseFloat(shape.x2);
-                roi_rectangle.show = true;
-            } else {
-                roi_rectangle.show = false;
-            }
-            plot.plugins.interactors.rectangle.grobs.forEach(function(a,b) { a.show_pos = false; });
-
+            
             var cbar_options = {
                 //axes: {y2axis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}},
                 axes: {y2axis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}},
@@ -345,148 +303,205 @@
             plot.replot(); // for aspect ratio plugin!
             colorbar.plugins._interactor.zoomMax(); // for scale!
             
-            var slicebox = plot.plugins.interactors.rectangle;
-            var ymaxctl = new pointTextControl(slicebox.p1, 'y', 'y<sub>max</sub>', 5);
-            ymaxctl.div.setAttribute('style', 'display: block; text-align: center; width: 100%; padding: 5px 10px;');
-            document.getElementById('slicecontrols').appendChild(ymaxctl.div);
-            var xminctl = new pointTextControl(slicebox.p1, 'x', 'x<sub>min</sub>', 5);
-            xminctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
-            document.getElementById('slicecontrols').appendChild(xminctl.div);
-            var xmaxctl = new pointTextControl(slicebox.p3, 'x', 'x<sub>max</sub>', 5);
-            xmaxctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
-            document.getElementById('slicecontrols').appendChild(xmaxctl.div);
-            var yminctl = new pointTextControl(slicebox.p3, 'y', 'y<sub>min</sub>', 5);
-            yminctl.div.setAttribute('style', 'display: block; text-align: center; width: 100%; padding: 5px 10px;');
-            document.getElementById('slicecontrols').appendChild(yminctl.div);
+            var slice_annulus = plot.plugins.interactors.annulus;
+            var r1ctl = new radiusTextControl(slice_annulus.c, slice_annulus.p1, 'r', 'r<sub>1</sub>', 5);
+            r1ctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(r1ctl.div);
+            var r2ctl = new radiusTextControl(slice_annulus.c, slice_annulus.p2, 'r', 'r<sub>2</sub>', 5);
+            r2ctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(r2ctl.div);
+            document.getElementById('slicecontrols').appendChild(document.createElement('br'));
+            var centerxctl = new pointTextControl(slice_annulus.c, 'x', 'center<sub>x</sub>', 5);
+            centerxctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(centerxctl.div);
+            var centeryctl = new pointTextControl(slice_annulus.c, 'y', 'center<sub>y</sub>', 5);
+            centeryctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(centeryctl.div);
+
             var hr = document.createElement('div'); hr.innerHTML = "<hr>";
             document.getElementById('slicecontrols').appendChild(hr);
             
-            var maxbutton = document.createElement('input');
-            maxbutton.setAttribute('type', 'button');
-            maxbutton.setAttribute('value', 'Maximize to data');
-            var maximize = function () {
-                xminctl.update({x: plot.series[0].dims.xmin});
-                xminctl.update_external();
-                ymaxctl.update({y: plot.series[0].dims.ymax});
-                ymaxctl.update_external();
-                xmaxctl.update({x: plot.series[0].dims.xmax});
-                xmaxctl.update_external();
-                yminctl.update({y: plot.series[0].dims.ymin});
-                yminctl.update_external();
-            }
-            maxbutton.onclick = maximize;            
-            document.getElementById('slicecontrols').appendChild(maxbutton);
-            
-            var setNewBoxButton = document.createElement('input');
-            setNewBoxButton.setAttribute('type', 'button');
-            setNewBoxButton.setAttribute('class', 'set-new-roi');
-            setNewBoxButton.setAttribute('value', 'Set new ROI');
-            var submitChanges = function() {
-                //cfg.x2.value = xmaxctl.textbox.value;
-                //cfg.x1.value = xminctl.textbox.value;
-                //cfg.y1.value = yminctl.textbox.value;
-                //cfg.y2.value = ymaxctl.textbox.value;
-                var xmin = parseFloat(xminctl.textbox.value);
-                var xmax = parseFloat(xmaxctl.textbox.value);
-                var ymin = parseFloat(yminctl.textbox.value);
-                var ymax = parseFloat(ymaxctl.textbox.value);
-                setMaskWindow(xmin, xmax, ymin, ymax);                        
-            };
-            setNewBoxButton.onclick = submitChanges;
-            document.getElementById('slicecontrols').appendChild(setNewBoxButton);
+
             document.getElementById('slicecontrols').appendChild(document.createElement('hr'));
-            var roiDisplay = document.createElement('div');
-            roiDisplay.setAttribute('class', 'roi-display');
-            roiDisplay.setAttribute('id', 'roi_display');
-            roiDisplay.innerHTML = JSON.stringify(shape);
-            document.getElementById('slicecontrols').appendChild(roiDisplay);
+            var moveToButton = document.createElement('input');
+            moveToButton.setAttribute('type', 'button');
+            moveToButton.setAttribute('class', 'move-to-beam-center');
+            moveToButton.setAttribute('value', 'Move to beam center');
+            var moveToBeamCenter = function() {
+                var x = null, y = null;
+                if ('beamStop.beamCenterX' in devicesMonitor.nodes) {
+                    x = devicesMonitor.nodes['beamStop.beamCenterX'].currentValue.userVal.val; 
+                }
+                if ('beamStop.beamCenterY' in devicesMonitor.nodes) {
+                    y = devicesMonitor.nodes['beamStop.beamCenterY'].currentValue.userVal.val;
+                }
+                if (x != null && y != null) {
+                    centerxctl.update({x: x});
+                    centerxctl.update_external();
+                    centeryctl.update({y: y});
+                    centeryctl.update_external();
+                    
+                    //slice_annulus.c.coords.x = x;
+                    //slice_annulus.c.coords.y = y;
+                    //plot.redraw();
+                    //if (sl.update) sl.update();
+                } else {
+                    alert('beam center is not defined');
+                }
+            };
+            moveToButton.onclick = moveToBeamCenter;
+            document.getElementById('slicecontrols').appendChild(moveToButton);
+            //var roiDisplay = document.createElement('div');
+            //roiDisplay.setAttribute('class', 'roi-display');
+            //roiDisplay.setAttribute('id', 'roi_display');
+            //roiDisplay.innerHTML = JSON.stringify(shape);
+            //document.getElementById('slicecontrols').appendChild(roiDisplay);
             
             slice_listener = function(series) {
-                slicebox.p1.listeners.push(this);
-                slicebox.p3.listeners.push(this);
+                slice_annulus.p1.listeners.push(this);
+                slice_annulus.p2.listeners.push(this);
+                slice_annulus.c.listeners.push(this);
                 var p0 = series;
                 this.update = function(pos) {
                     var width = p0.dims.xdim;
                     var height = p0.dims.ydim;
-                    //console.log(slicebox.p1.coords.x, p0.dims.xmin, p0.dims.xdim);
-                    i_min = Math.floor((slicebox.p1.coords.x - p0.dims.xmin) / p0.dims.dx);
-                    i_min = Math.min(Math.max(i_min, 0), p0.dims.xdim);
-                    i_max = Math.ceil((slicebox.p3.coords.x - p0.dims.xmin) / p0.dims.dx);
-                    i_max = Math.max(Math.min(i_max, p0.dims.xdim), 0);
-                    j_min = Math.floor((slicebox.p3.coords.y - p0.dims.ymin) / p0.dims.dy);
-                    j_min = Math.min(Math.max(j_min, 0), p0.dims.ydim);
-                    j_max = Math.ceil((slicebox.p1.coords.y - p0.dims.ymin) / p0.dims.dy);
-                    j_max = Math.max(Math.min(j_max, p0.dims.ydim), 0);
+
+                    var zislog = document.getElementById('ztransform').checked;
+                    var intensity_label = (zislog) ? "Log counts" : "counts";
+                    
                     var xdata = [], ydata = [];
+                    
+                    /*
                     var xi=0, yi=0;
                     for (var c=i_min; c <=i_max-1; c++) {
                         xdata[xi++] = ([p0.dims.xmin + c*p0.dims.dx, p0.cumsum_x[c][j_max] - p0.cumsum_x[c][j_min]]);
                     }
+                    */
+                    var r1 = dist(slice_annulus.p1.coords, slice_annulus.c.coords);
+                    var r2 = dist(slice_annulus.p2.coords, slice_annulus.c.coords);
+                    var phisum = multiplySumArc(p0.source_data, p0.dims, slice_annulus.c.coords.x, slice_annulus.c.coords.y, r1, r2);
+                    plottableX.data = [phisum.xy];
+                    $("#xplot_plot").empty();
+                    xplot = plotD3("xplot_plot", plottableX, {log_y: zislog, showline: true, show_points: false, vcursor: true, ylabel: intensity_label, xlabel: 'Phi (deg)'});
+                    
+                    /*
                     for (var r=j_min; r<=j_max-1; r++) {
                         ydata[yi++] = ([p0.cumsum_y[i_max][r] - p0.cumsum_y[i_min][r], p0.dims.ymin + r*p0.dims.dy]);
                     }
-                    plottableX.data = [xdata];
-                    
-                    var zislog = document.getElementById('ztransform').checked;
-                    var intensity_label = (zislog) ? "Log counts" : "counts";
-                    $("#xplot_plot").empty();
-                    xplot = plotD3("xplot_plot", plottableX, {log_y: zislog, showline: true, show_points: false, vcursor: true, ylabel: intensity_label});
-                    
                     plottableY.data = [ydata];
                     $("#yplot_plot").empty();
                     yplot = plotD3("yplot_plot", plottableY,  {log_x: zislog, showline: true, show_points: false, hcursor: true, xlabel: intensity_label});
+                    */
                     
-                    /*
-                    yslice.series[0].data = ydata;
-                    yslice.resetAxesScale();
-                    yslice.grid._offsets.left = yslice.axes.yaxis._elem.width();
-                    */
-                    /*
-                    if (yslice_timer == null) {
-                        yslice_timer = setTimeout(function() {
-                            yslice.resetAxesScale();
-                            yslice.grid._offsets.left = yslice.axes.yaxis._elem.width();
-                            yslice.replot();
-                            //clearTimeout(yslice_timer);
-                            yslice_timer = null;
-                            }, yslice_delay);
-                    }
-                    */
-                    //yslice.replot();
                 };
                 return this;  
             };
             sl = slice_listener(plot.series[0]);
-            plot.series[0].generate_cumsums();
-            //generate_cumsums(plot.series[0]);
+            maskCanvas.width = data.dims.xdim;
+            maskCanvas.height = data.dims.ydim;
             sl.update();
             
         } else {
             var plot = plots[next_target];
             var colorbar = colorbars[next_target];
             plot.series[0].set_data(data.z[0], data.dims, true); // defer update: colorbar will trigger it later
-            plot.series[0].generate_cumsums();
             colorbar.series[0].set_dims(data.dims);
-            var roi_rectangle = plot.plugins.interactors.roi_rectangle;
-            var shape = data.roi;
-            document.getElementById('roi_display').innerHTML = JSON.stringify(shape);
-            if (shape) {
-                roi_rectangle.p1.coords.y = roi_rectangle.p2.coords.y = parseFloat(shape.y1);
-                roi_rectangle.p3.coords.y = roi_rectangle.p4.coords.y = parseFloat(shape.y2);
-                roi_rectangle.p1.coords.x = roi_rectangle.p4.coords.x = parseFloat(shape.x1);
-                roi_rectangle.p2.coords.x = roi_rectangle.p3.coords.x = parseFloat(shape.x2);
-                roi_rectangle.show = true;
-            } else {
-                roi_rectangle.show = false;
-            }
-            roi_rectangle.redraw();
-            roi_rectangle.redraw();
+            //document.getElementById('roi_display').innerHTML = JSON.stringify(shape);
             //plot.replot();
             colorbar.plugins._interactor.zoomMax(); // for scale!
             colorbar.replot();
+            maskCanvas.width = data.dims.xdim;
+            maskCanvas.height = data.dims.ydim;
             sl.update();
         }
         
+    }
+    
+    function radians(deg) {
+        return Math.PI * deg/180.0;
+    }
+    function degrees(rad) {
+        return 180.0 * rad/Math.PI;
+    }
+    
+    function multiplySumArc(data, dims, center_x_coord, center_y_coord, r1_coord, r2_coord) {
+         //var maskCanvas = document.getElementById('mask');
+         var dxpos = (dims.xmax - dims.xmin) / (dims.xdim);
+         var dypos = (dims.ymax - dims.ymin) / (dims.ydim);
+         var center_x = (center_x_coord - dims.xmin) / dxpos;
+         var center_y = (center_y_coord - dims.ymin) / dypos;
+         var r1 = r1_coord / dxpos; // square pixels only!
+         var r2 = r2_coord / dxpos; // square pixels only!
+         //console.log(center_x, center_y, r1, r2);
+         
+         var ch = maskCanvas.height;
+         var cw = maskCanvas.width;
+         var maskCtx = maskCanvas.getContext('2d');
+         var angle_start = radians(-10.5);
+         var steps = 360;
+         var stepsize = radians(1.0);
+         var width = Math.abs(r2 - r1);
+         var r = (r1 + r2) / 2.0;
+         var angle=angle_start, maskData, sum, normalize, data;
+         maskCtx.fillStyle='#000000'; // for erasing
+         maskCtx.strokeStyle = '#ffffff'; // for drawing
+         maskCtx.lineWidth = width;
+         var angle_list=[], sum_list=[], normalize_list=[], xy_list=[];
+         var max_x, max_y, min_x, min_y, x1, x2, y1, y2, dx, dy;
+         var buffer_pixels = 3; // border around selection rectangle
+         maskCtx.fillRect(0,0,cw,ch);
+         for (var s=0; s<steps; s++) {            
+            maskCtx.beginPath();
+            maskCtx.arc(center_x, center_y, r, -angle, -(angle + stepsize), true);
+            maskCtx.stroke();
+            // assuming small steps: linear!
+            x1 = center_x + (Math.cos(angle) * r1); 
+            y1 = center_y - (Math.sin(angle) * r1); // plus is down
+            x2 = center_x + (Math.cos(angle + stepsize) * r1);
+            y2 = center_y - (Math.sin(angle + stepsize) * r1);
+            x3 = center_x + (Math.cos(angle) * r2); 
+            y3 = center_y - (Math.sin(angle) * r2); // plus is down
+            x4 = center_x + (Math.cos(angle + stepsize) * r2);
+            y4 = center_y - (Math.sin(angle + stepsize) * r2);
+            x1 = Math.round(x1);
+            x2 = Math.round(x2);
+            y1 = Math.round(y1);
+            y2 = Math.round(y2);
+            x3 = Math.round(x3);
+            x4 = Math.round(x4);
+            y3 = Math.round(y3);
+            y4 = Math.round(y4);
+            max_x = Math.min(cw, Math.max(x1, x2, x3, x4) + buffer_pixels);
+            min_x = Math.max(0, Math.min(x1, x2, x3, x4) - buffer_pixels);
+            max_y = Math.min(ch, Math.max(y1, y2, y3, y4) + buffer_pixels);
+            min_y = Math.max(0, Math.min(y1, y2, y3, y4) - buffer_pixels);
+            dx = max_x - min_x;
+            dy = max_y - min_y;
+            //console.log(min_x, max_x, min_y, max_y, dx, dy);
+            
+            sum = 0;
+            normalize = 0;
+            
+            if (dx > 0 && dy > 0) {                
+                maskData = maskCtx.getImageData(min_x,min_y,dx,dy).data;
+                //data = imgCtx.getImageData(min_x,min_y,dx,dy).data;
+                
+                for (var i=0; i<dx; i++) {
+                    for (var j=0; j<dy; j++) {
+                        var mi = (i*dy + j) * 4;
+                        normalize += maskData[mi];
+                        sum += maskData[mi] * data[min_x + i][min_y + j];
+                    }
+                }
+            }
+            angle_list[s] = angle;
+            sum_list[s] = sum;
+            normalize_list[s] = normalize;
+            xy_list[s] = [degrees(angle), (normalize == 0)? 0 : sum/normalize];
+            angle += stepsize;
+            maskCtx.fillRect(min_x,min_y,dx,dy);
+         }
+         return {xy: xy_list, angle: angle_list, sum: sum_list, normalize: normalize_list}
     }
     
     pointTextControl = function(p, coord, label, precision) {
@@ -528,25 +543,65 @@
         return this;
     }
     
-    var updateRoiRectangle = function(nodes) {
-        if ('areaDetector.roiShape' in nodes) {
-            var shape = devicesMonitor.HashMapToObject(nodes['areaDetector.roiShape'].currentValue.userVal.val);
-            var roi_rectangle = (((plots.plotwrap || {}).plugins || {}).interactors || {}).roi_rectangle;
-            var roi_rect_opts = plottable2d.options.interactors[1];
-            if (roi_rectangle) {
-                if (shape.name == "rect") {
-                    roi_rectangle.p1.coords.y = roi_rectangle.p2.coords.y = parseFloat(shape.y1);
-                    roi_rectangle.p3.coords.y = roi_rectangle.p4.coords.y = parseFloat(shape.y2);
-                    roi_rectangle.p1.coords.x = roi_rectangle.p4.coords.x = parseFloat(shape.x1);
-                    roi_rectangle.p2.coords.x = roi_rectangle.p3.coords.x = parseFloat(shape.x2);
-                    roi_rectangle.show = true;
-                } else {
-                    roi_rectangle.show = false;
-                } 
-                plots.plotwrap.redraw();
-            }
+    dist = function(a, b) {
+        return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+    };
+    
+    radiusTextControl = function(c, p, coord, label, precision) {
+        // coord should be 'r' or 't' for r or theta
+        var precision = precision || 3;
+        this.precision = precision;
+        this.coord = coord;
+        this.p = p;
+        this.c = c; // center
+        var textbox = document.createElement('input');
+        textbox.setAttribute('type', 'text');
+        textbox.setAttribute('style', 'width:90px');
+        var input_label = document.createElement('label');
+        var div = document.createElement('div');
+        div.innerHTML = label;
+        // div.appendChild(document.createTextNode(label))
+        div.appendChild(textbox);
+        this.div = div;
+        this.div.setAttribute('id', 'rTextControl_' + label);
+        this.div.setAttribute('style', 'display: inline; padding: 5px 10px;');
+        //this.div.setAttribute('style', 'position: relative; float: left; padding: 5px; text-align: top;');
+        this.textbox = textbox;
+        this.update = function(pos) {
+            var r = dist(pos, c.coords);
+            var t = Math.atan2(pos.y - c.coords.y, pos.x - c.coords.x);
+            var rtpos = {'r': r, 't': t};
+            textbox.value = rtpos[coord].toPrecision(precision);
         }
+        var me = this;
+        this.update_external = function() {
+            var rtpos = {
+                r: dist(p.coords, c.coords),
+                t: Math.atan2(p.coords.y - c.coords.y, p.coords.x - c.coords.x)
+            }
+            rtpos[coord] = textbox.value;
+            
+            var mypos = {
+                x: c.coords.x + Math.cos(rtpos.t) * rtpos.r,
+                y: c.coords.y + Math.sin(rtpos.t) * rtpos.r
+            }
+                       
+            var newpos = p.putCoords ? p.putCoords(mypos) : mypos;
+            var dpos = {
+                x: newpos.x - p.pos.x,
+                y: newpos.y - p.pos.y
+            }
+            p.move(dpos);
+            p.parent.onDrag();  // centers
+            p.parent.redraw();
+        }
+        
+        textbox.onchange = this.update_external;
+        p.listeners.push(this);
+        this.update(p.getCoords());
+        return this;
     }
+    
     
     dialog_login = function() {
         var hostname = document.getElementById("instrument_ip").value;
@@ -574,21 +629,16 @@
                                         }
                                         if ('areaDetector.counts' in nodes) {
                                             detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;
-                                            
-                                            //console.log('trigger: ', new Date(), window.refreshRequested);
+                                           
                                             window.refreshRequested = true;
                                         }
-                                        if ('areaDetector.roiShape' in nodes) {
-                                            var shape = devicesMonitor.HashMapToObject(nodes['areaDetector.roiShape'].currentValue.userVal.val);
-                                            if (shape.name == 'rect') {
-                                                //console.log(shape);
-                                                detectors.areaDetector.roi = shape;
-                                            } else {
-                                                detectors.areaDetector.roi = null;
-                                            }
-                                                window.refreshRequested = true;
-                                            //updateRoiRectangle(nodes);
+                                        if ('beamStop.beamCenterX' in nodes) {
+                                            detectors.areaDetector.beamCenterX = nodes['beamStop.beamCenterX'].currentValue.userVal.val;
                                         }
+                                        if ('beamStop.beamCenterY' in nodes) {
+                                            detectors.areaDetector.beamCenterY = nodes['beamStop.beamCenterY'].currentValue.userVal.val;
+                                        }
+                                        
                                     }
                                 ];
                                 return subscribe(api, router, adapter, devicesMonitor, 'devices');
@@ -624,6 +674,7 @@
     window.onload = function() {
         plots = {};
         colorbars = {};
+        maskCanvas = document.createElement('canvas');
         var dialog = document.getElementById("login");
         if (!dialog.show) {
             dialogPolyfill.registerDialog(dialog);
