@@ -198,15 +198,10 @@
                     "renderer": $.jqplot.heatmapRenderer
                 },
                 "axesDefaults": {
-                    //labelRenderer: $.jqplot.CanvasAxisLabelRenderer,
-                    //tickRenderer: $.jqplot.CanvasAxisTickRenderer,
-                    //tickOptions: {formatString: "%.3g", _styles: {right: 0}}
                 },
                 "axes": {
                     xaxis: {renderer: $.jqplot.GracefulAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer},
                     yaxis: {renderer: $.jqplot.GracefulAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}
-	                //xaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}},
-	                //yaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}
 	            },
 	            "cursor": null
             }, 
@@ -259,7 +254,6 @@
     var updateLoop = function() {
         if (refreshRequested) {
             refreshRequested = false;
-            //console.log("requested: ", new Date());
             show2dData(plotAreaDetector('areaDetector'), 'plotwrap');
         }
         if (sumRequested) {
@@ -430,11 +424,23 @@
                     
                     plottableX.data = [xdata];
                     $("#xplot_plot").empty();
-                    xplot = plotD3("xplot_plot", plottableX, {log_y: zislog, showline: true, show_points: false, vcursor: true, ylabel: intensity_label});
+                    xplot = plotD3("xplot_plot", plottableX, {
+                        log_y: zislog, 
+                        showline: true, 
+                        show_points: false, 
+                        vcursor: true, 
+                        ylabel: intensity_label,
+                        position_cursor: true});
                     
                     plottableY.data = [ydata];
                     $("#yplot_plot").empty();
-                    yplot = plotD3("yplot_plot", plottableY,  {log_x: zislog, showline: true, show_points: false, hcursor: true, xlabel: intensity_label});
+                    yplot = plotD3("yplot_plot", plottableY,  {
+                        log_x: zislog, 
+                        showline: true, 
+                        show_points: false, 
+                        hcursor: true, 
+                        xlabel: intensity_label,
+                        position_cursor: true});
 
                 };
                 return this;  
