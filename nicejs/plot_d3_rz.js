@@ -118,7 +118,7 @@ function plotD3(target_id, data, options) {
     
     var zoom = d3.behavior.zoom().x(x).y(y).on("zoom", zoomed);
 
-    var zoomRect = true;
+    var zoomRect = false;
     
     d3.select("#zoom-rect").on("change", function() {
       zoomRect = this.checked;
@@ -184,7 +184,8 @@ function plotD3(target_id, data, options) {
     
     svg.append("rect")
         .attr("width", width)
-        .attr("height", height);
+        .attr("height", height)
+        //.call(zoom);
             
     svg.append("g")
         .attr("class", "x axis")
@@ -247,6 +248,7 @@ function plotD3(target_id, data, options) {
           .attr("y", i * 25 + 8)
           .attr("height",30)
           .attr("width",100)
+          .style("text-anchor", "start")
           .style("fill", colors[i%colors.length])
           .text(labels[i])
           .on("mouseover", function() {
@@ -343,64 +345,68 @@ function plotD3(target_id, data, options) {
     }
     
     //************************************************************
+    // Position cursor (shows position of mouse in data coords)
+    //************************************************************
+    if (options.position_cursor) {
+        var position_disp = svg.append("text")
+          .attr("x", width - 10)
+          .attr("y", height - 10)
+          .style("text-anchor", "end");
+        
+        var follow = function (){  
+            var mouse = d3.mouse(this);
+            position_disp.text(
+                x.invert(mouse[0]).toPrecision(5) + 
+                ", " + 
+                y.invert(mouse[1]).toPrecision(5));
+        }
+        
+        svg
+          .on("mousemove.position_cursor", follow)
+          .on("mouseover.position_cursor", follow);
+    }
+    
+    //************************************************************
     // Vertical cursor (or horizontal)
     //************************************************************
     if (options.vcursor) {
-        var vertical = d3.select("#"+target_id)
-            .append("div")
-            .attr("class", "remove vertical-cursor")
-            .style("position", "absolute")
-            .style("z-index", "19")
-            .style("width", "1px")
-            .style("height", height + "px")
-            //.attr("transform", "translate(0," + margin.top + ")")
-            .style("top", margin.top + 10 + "px")
-            //.style("bottom", "30px")
-            .style("left", "0px")
-            .style("background", "#000");
-
-        d3.select("#"+target_id)
-          .on("mouseenter", function(){
-             vertical.style("display", "block")})
-          .on("mouseleave", function(){
-             vertical.style("display", "none")})
-          .on("mousemove", function(){  
-             mousex = d3.mouse(this);
-             mousex = mousex[0] + 5;
-             vertical.style("left", mousex + "px" )})
-          .on("mouseover", function(){  
-             mousex = d3.mouse(this);
-             mousex = mousex[0] + 5;
-             vertical.style("left", mousex + "px")});
+        var vertical = svg
+            .append("path")
+            .attr("class", "vertical-cursor")
+            .attr("d", "M 0 0 L 0 " + height)
+            .attr("stroke", "black")
+            .attr("stroke-width", 2);
+            
+        var follow_x = function (){  
+            var mouse = d3.mouse(this);
+            var mousex = mouse[0];
+            vertical.attr("d", "M " + mousex.toFixed(1) + " 0 L " + mousex.toFixed(1) + " " + height);
+        }
+             
+        svg
+          .on("mousemove.vcursor", follow_x)
+          .on("mouseover.vcursor", follow_x);
+          
     }
     
     if (options.hcursor) {
-        var horizontal = d3.select("#"+target_id)
-            .append("div")
-            .attr("class", "remove horizontal-cursor")
-            .style("position", "absolute")
-            .style("z-index", "19")
-            .style("width", width + "px")
-            .style("height", "1px")
-            //.attr("transform", "translate(0," + margin.top + ")")
-            .style("left", margin.left + 10 + "px")
-            //.style("bottom", "30px")
-            .style("top", "0px")
-            .style("background", "#000");
+        var horizontal = svg
+            .append("path")
+            .attr("class", "horizontal-cursor")
+            .attr("d", "M 0 0 L " + width + " 0")
+            .attr("stroke", "black")
+            .attr("stroke-width", 2);
 
-        d3.select("#"+target_id)
-          .on("mouseenter", function(){
-             horizontal.style("display", "block")})
-          .on("mouseleave", function(){
-             horizontal.style("display", "none")})
-          .on("mousemove", function(){  
-             mousey = d3.mouse(this);
-             mousey = mousey[1] + 5;
-             horizontal.style("top", mousey + "px" )})
-          .on("mouseover", function(){  
-             mousey = d3.mouse(this);
-             mousey = mousey[1] + 5;
-             horizontal.style("top", mousey + "px")});
+        var follow_y = function (){  
+            var mouse = d3.mouse(this);
+            var mousey = mouse[1];
+            horizontal.attr("d", "M 0 " + mousey.toFixed(1) + " L " + width + " " + mousey.toFixed(1));
+        }
+        
+        svg
+          .on("mousemove.hcursor", follow_y)
+          .on("mouseover.hcursor", follow_y); 
+             
     }
     
     return svg;

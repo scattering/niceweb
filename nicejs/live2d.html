@@ -33,10 +33,10 @@
 <!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.set_transform.js"></script>-->
     
 <!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors.js"></script>-->
-    <script type="text/javascript" src="../../jqplot.science/interactors/interactors.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors_plugin_base.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/rectangle_interactor_plugin.js"></script>
-    <script type="text/javascript" src="../../jqplot.science/interactors/circle_interactor_plugin.js"></script>
+<!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/circle_interactor_plugin.js"></script>-->
     
     <!-- dialog support -->
     <link rel="stylesheet" href="../static/dialog-polyfill.css" />
@@ -79,6 +79,7 @@
         currently_drawing = false;
         draw_again = false;
         var refreshRequested = false;
+        var sumRequested = false;
         var sl; // slice listener.
 
         var hasError = false;
@@ -180,17 +181,7 @@
 		                                xmin: 10, 
 		                                ymin: 10,
 		                                xmax: 502, 
-		                                ymax: 502},
-		                              { type: 'Annulus',
-		                                name: 'annulus',
-		                                center_x: 50,
-		                                center_y: 50,
-		                                filled: false,
-		                                show_pos: false,
-		                                r1_x: 100,
-		                                r1_y: 50,
-		                                r2_x: 110,
-		                                r2_y: 60}
+		                                ymax: 502}
 		                              ],
                 "sortData": false,
 		        "renderer": $.jqplot.heatmapRender,
@@ -203,19 +194,14 @@
                 "transform": {"zaxis": "log"},
                 "seriesDefaults": {
                     "shadow": false,
-                    "rendererOptions": {"transform": "log"},
+                    "rendererOptions": {"transform": "log", "draw_method": "backed"},
                     "renderer": $.jqplot.heatmapRenderer
                 },
                 "axesDefaults": {
-                    //labelRenderer: $.jqplot.CanvasAxisLabelRenderer,
-                    //tickRenderer: $.jqplot.CanvasAxisTickRenderer,
-                    //tickOptions: {formatString: "%.3g", _styles: {right: 0}}
                 },
                 "axes": {
-                    xaxis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer},
-                    yaxis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}
-	               //xaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}},
-	               //yaxis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}
+                    xaxis: {renderer: $.jqplot.GracefulAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer},
+                    yaxis: {renderer: $.jqplot.GracefulAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}
 	            },
 	            "cursor": null
             }, 
@@ -268,8 +254,13 @@
     var updateLoop = function() {
         if (refreshRequested) {
             refreshRequested = false;
-            //console.log("requested: ", new Date());
             show2dData(plotAreaDetector('areaDetector'), 'plotwrap');
+        }
+        if (sumRequested) {
+            sumRequested = false;
+            if (sl && sl.update_actual) {
+                sl.update_actual();
+            }
         }
         requestAnimationFrame(updateLoop);
     }
@@ -331,7 +322,7 @@
 
             var cbar_options = {
                 //axes: {y2axis: {renderer: $.jqplot.GracefulAxisRenderer, tickOptions: {fontSize: 18}, labelOptions: {fontSize: 18}}},
-                axes: {y2axis: {renderer: $.jqplot.LinearAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}},
+                axes: {y2axis: {renderer: $.jqplot.GracefulAxisRenderer, labelRenderer: $.jqplot.AxisLabelRenderer, tickRenderer: $.jqplot.AxisTickRenderer}},
                 interactors: [{"type": "master", "scrollZoom": true, "dragPan": true, "forceload": true}]
             }
             var colorbar = renderImageColorbar2(plot.series[0], next_target + '_colorbar', cbar_options);
@@ -406,8 +397,10 @@
                 slicebox.p3.listeners.push(this);
                 var p0 = series;
                 this.update = function(pos) {
-                    var width = p0.dims.xdim;
-                    var height = p0.dims.ydim;
+                    sumRequested = true;
+                }
+                this.update_actual = function() {
+                    
                     //console.log(slicebox.p1.coords.x, p0.dims.xmin, p0.dims.xdim);
                     i_min = Math.floor((slicebox.p1.coords.x - p0.dims.xmin) / p0.dims.dx);
                     i_min = Math.min(Math.max(i_min, 0), p0.dims.xdim);
@@ -425,40 +418,35 @@
                     for (var r=j_min; r<=j_max-1; r++) {
                         ydata[yi++] = ([p0.cumsum_y[i_max][r] - p0.cumsum_y[i_min][r], p0.dims.ymin + r*p0.dims.dy]);
                     }
-                    plottableX.data = [xdata];
-                    
+
                     var zislog = document.getElementById('ztransform').checked;
                     var intensity_label = (zislog) ? "Log counts" : "counts";
+                    
+                    plottableX.data = [xdata];
                     $("#xplot_plot").empty();
-                    xplot = plotD3("xplot_plot", plottableX, {log_y: zislog, showline: true, show_points: false, vcursor: true, ylabel: intensity_label});
+                    xplot = plotD3("xplot_plot", plottableX, {
+                        log_y: zislog, 
+                        showline: true, 
+                        show_points: false, 
+                        vcursor: true, 
+                        ylabel: intensity_label,
+                        position_cursor: true});
                     
                     plottableY.data = [ydata];
                     $("#yplot_plot").empty();
-                    yplot = plotD3("yplot_plot", plottableY,  {log_x: zislog, showline: true, show_points: false, hcursor: true, xlabel: intensity_label});
-                    
-                    /*
-                    yslice.series[0].data = ydata;
-                    yslice.resetAxesScale();
-                    yslice.grid._offsets.left = yslice.axes.yaxis._elem.width();
-                    */
-                    /*
-                    if (yslice_timer == null) {
-                        yslice_timer = setTimeout(function() {
-                            yslice.resetAxesScale();
-                            yslice.grid._offsets.left = yslice.axes.yaxis._elem.width();
-                            yslice.replot();
-                            //clearTimeout(yslice_timer);
-                            yslice_timer = null;
-                            }, yslice_delay);
-                    }
-                    */
-                    //yslice.replot();
+                    yplot = plotD3("yplot_plot", plottableY,  {
+                        log_x: zislog, 
+                        showline: true, 
+                        show_points: false, 
+                        hcursor: true, 
+                        xlabel: intensity_label,
+                        position_cursor: true});
+
                 };
                 return this;  
             };
             sl = slice_listener(plot.series[0]);
             plot.series[0].generate_cumsums();
-            //generate_cumsums(plot.series[0]);
             sl.update();
             
         } else {
@@ -657,6 +645,14 @@
 
     body {
         font-family: 'Love Ya Like A Sister' !important;
+    }
+    canvas, img {
+        image-rendering: optimizeSpeed;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: optimize-contrast;
+        image-rendering: pixelated;
+        -ms-interpolation-mode: nearest-neighbor;
     }
     #login {
         top: 28%;

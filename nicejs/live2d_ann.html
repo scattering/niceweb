@@ -137,7 +137,7 @@
 
         var plottableX = {
             "options": {
-                "series": [{"label": "x-slice"}]
+                "series": [{"label": "phi-slice"}]
             },
             "data": [[[1,2], [3,4], [5,6]]]
             
@@ -369,21 +369,8 @@
                 slice_annulus.c.listeners.push(this);
                 var p0 = series;
                 this.update = function(pos) {
-                    var width = p0.dims.xdim;
-                    var height = p0.dims.ydim;
                     phisumRequested = true;
                     //this.update_actual();
-                    
-                    
-                    /*
-                    for (var r=j_min; r<=j_max-1; r++) {
-                        ydata[yi++] = ([p0.cumsum_y[i_max][r] - p0.cumsum_y[i_min][r], p0.dims.ymin + r*p0.dims.dy]);
-                    }
-                    plottableY.data = [ydata];
-                    $("#yplot_plot").empty();
-                    yplot = plotD3("yplot_plot", plottableY,  {log_x: zislog, showline: true, show_points: false, hcursor: true, xlabel: intensity_label});
-                    */
-                    
                 }
                 this.update_actual = function() {
                     var zislog = document.getElementById('ztransform').checked;
