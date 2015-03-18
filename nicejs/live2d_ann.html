@@ -189,7 +189,7 @@
                 "transform": {"zaxis": "log"},
                 "seriesDefaults": {
                     "shadow": false,
-                    "rendererOptions": {"transform": "log"},
+                    "rendererOptions": {"transform": "log", "draw_method": "backed"},
                     "renderer": $.jqplot.heatmapRenderer
                 },
                 "axesDefaults": {
@@ -403,6 +403,7 @@
                     plottableX.data = [phisum.xy];
                     $("#xplot_plot").empty();
                     xplot = plotD3("xplot_plot", plottableX, {log_y: zislog, showline: true, show_points: false, vcursor: true, ylabel: intensity_label, xlabel: 'Phi (deg)'});
+                    xplot.svg.select('.x.axis').call(xplot.xAxis.tickValues([0,45,90,135,180,225,270,315,360]));
                 }
                 return this;  
             };
