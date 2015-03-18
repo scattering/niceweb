@@ -142,13 +142,16 @@
 							rel = data.event.pageY - off.top;
 							h = ref.height();
 							if(rel < h / 3) {
-								o = ['b', 'i', 'a'];
+								//o = ['b', 'i', 'a'];
+								o = ['b', 'a'];
 							}
 							else if(rel > h - h / 3) {
-								o = ['a', 'i', 'b'];
+								//o = ['a', 'i', 'b'];
+								o = ['a', 'b'];
 							}
 							else {
-								o = rel > h / 2 ? ['i', 'a', 'b'] : ['i', 'b', 'a'];
+								//o = rel > h / 2 ? ['i', 'a', 'b'] : ['i', 'b', 'a'];
+								o = rel > h / 2 ? ['a', 'b'] : ['b', 'a'];
 							}
 							$.each(o, function (j, v) {
 								switch(v) {

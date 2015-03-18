@@ -170,8 +170,75 @@ function q2jstree(root){
             'animation': 0,
             'check_callback': true
         },
-        'plugins': ['contextmenu', 'dnd_nice'] //, 'dnd' , 'search'] // 'state', 'types', 'wholerow']
+        'plugins': ['contextmenu', 'dnd_nice'], //, 'dnd' , 'search'] // 'state', 'types', 'wholerow']
+        'contextmenu': {
+            "items": function($node) {
+                var tree = $("#tree").jstree(true);
+                return {
+                    "Create": {
+                        "separator_before": false,
+                        "separator_after": false,
+                        "label": "Create",
+                        "action": function (obj) { 
+                            $node = tree.create_node($node);
+                            tree.edit($node);
+                        }
+                    },
+                    /*
+                    "Rename": {
+                        "separator_before": false,
+                        "separator_after": false,
+                        "label": "Rename",
+                        "action": function (obj) { 
+                            tree.edit($node);
+                        }
+                    },
+                    */                         
+                    "Delete": {
+                        "separator_before": false,
+                        "separator_after": false,
+                        "label": "Remove",
+                        "action": function (obj) { 
+                            tree.delete_node($node);
+                        }
+                    },
+                    "copy": {
+                        "separator_before": true,
+                        "separator_after": false,
+                        "label": "copy",
+                        "action": function(a,b,c) {
+                            console.log('copy: ', a,b,c, this);
+                        }
+                    },
+                    "scrollConsoleTo": {
+                        "separator_before": false,
+                        "separator_after": false,
+                        "label": "show in console",
+                        "action": function(obj) {
+                            var uuid = obj.reference.parent().attr('id');
+                            var cmd = $('#console [command_uuid='+uuid+'] .console-message')
+                            cmd[0].scrollIntoView();
+                            //var offset = cmd.offset(); // Contains .top and .left
+
+                            //$('#console').scrollTop(offset.top - 20);
+                            /*
+                            $('#console').animate({
+                                scrollTop: offset.top,
+                                scrollLeft: offset.left
+                            });
+                            */
+                            cmd.addClass('command-highlight', 400, 'easeInBounce', 
+                                function() {
+                                    $(this).removeClass('command-highlight', 2000, 'swing')
+                                }
+                            );   
+                        }
+                    }
+                };
+            }
+        }
     }
+    
     var command, i=0;
     for (var c in root._commands) {
         command = root._commands[c];
@@ -619,6 +686,10 @@ dialog_login = function() {
     }
     #console {
         overflow: auto;
+    }
+    .command-highlight {
+        background-color: yellow !important;
+        color: red;
     }
     .console-item {
         clear: left;

@@ -409,5 +409,10 @@ function plotD3(target_id, data, options) {
              
     }
     
-    return svg;
+    this.svg = svg;
+    this.xAxis = xAxis;
+    this.yAxis = yAxis;
+    this.x = x;
+    this.y = y;
+    return this;
 }

@@ -64,7 +64,7 @@
     <script type="text/javascript">
         var Promise = Ice.Promise;
         var RouterPrx = Glacier2.RouterPrx;
-        
+        var PHI_STEP = 2.0;
         var router = "Glacier2/router:ws -p 4064 -h h123062.ncnr.nist.gov";
                 
         var logging_in = false;
@@ -389,7 +389,14 @@
                     var phisum = multiplySumArc(p0.source_data, p0.dims, slice_annulus.c.coords.x, slice_annulus.c.coords.y, r1, r2);
                     plottableX.data = [phisum.xy];
                     $("#xplot_plot").empty();
-                    xplot = plotD3("xplot_plot", plottableX, {log_y: zislog, showline: true, show_points: false, vcursor: true, ylabel: intensity_label, xlabel: 'Phi (deg)'});
+                    xplot = plotD3("xplot_plot", plottableX, {
+                        log_y: zislog, 
+                        showline: true, 
+                        show_points: false, 
+                        vcursor: true, 
+                        ylabel: intensity_label, 
+                        xlabel: 'Phi (deg)',
+                        position_cursor: true});
                     xplot.svg.select('.x.axis').call(xplot.xAxis.tickValues([0,45,90,135,180,225,270,315,360]));
                 }
                 return this;  
@@ -436,8 +443,8 @@
          var cw = maskCanvas.width;
          var maskCtx = maskCanvas.getContext('2d');
          var angle_start = radians(-10.5);
-         var steps = 360;
-         var stepsize = radians(1.0);
+         var stepsize = radians(PHI_STEP);
+         var steps = Math.PI * 2.0 / stepsize + 1;
          var width = Math.abs(r2 - r1);
          var r = (r1 + r2) / 2.0;
          var angle=angle_start, maskData, sum, normalize, data;
