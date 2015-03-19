@@ -115,6 +115,7 @@ function command_to_node(command) {
     var out = {};
     out.parent = command.parentUUID || "#";
     out.id = command.UUID;
+    out.li_attr = {'class': ''};
     if ('status' in command) {
         var status = command.status;
         
@@ -131,8 +132,8 @@ function command_to_node(command) {
             }
             if (v != null) {
                 out.text += ": " + CommandStatusEnum[v];
-                //out.data = {"attributes": {"class": "queue-" + CommandStatusEnum[v]}};
-                out.attributes =  {"class": "queue-" + CommandStatusEnum[v]};
+                out.li_attr.class += " queue-" + CommandStatusEnum[v];
+                //out.attributes = {"class": "queue-" + CommandStatusEnum[v]};
             }
             if (v == 1 || v == 2) {
                 out.icon = "css/running.gif"; // running!
@@ -159,6 +160,11 @@ function command_to_node(command) {
             }
                 
         }
+        if(status.isBreakPoint) {
+            out.icon = "css/stopsign.gif";
+            out.li_attr.class += " queue-breakpoint";
+        }
+        
     }
     return out
 }
@@ -182,6 +188,20 @@ function q2jstree(root){
                         "action": function (obj) { 
                             $node = tree.create_node($node);
                             tree.edit($node);
+                        }
+                    },
+                    "SetUserBreak": {
+                        "separator_before": false,
+                        "separator_after": false,
+                        "label": "set/clear breakpoint",
+                        "action": function (obj) { 
+                            var uuid = $node.id;
+                            
+                            console.log(uuid);
+                            if (uuid) {
+                                var isBreakPoint = queueMonitor._commands[uuid].status.isBreakPoint;
+                                api.setUserBreak(uuid, !isBreakPoint);
+                            }
                         }
                     },
                     /*
@@ -227,7 +247,7 @@ function q2jstree(root){
                                 scrollLeft: offset.left
                             });
                             */
-                            cmd.addClass('command-highlight', 400, 'easeInBounce', 
+                            cmd.addClass('command-highlight', 400, 'swing', 
                                 function() {
                                     $(this).removeClass('command-highlight', 2000, 'swing')
                                 }
@@ -599,6 +619,21 @@ dialog_login = function() {
 
     });
     
+    $(document)
+        .on('mouseenter.console2queue', '#console .console-item', function(ev) {
+            var uuid = this.getAttribute('command_uuid');
+            $('#queue_panel ul li[id='+uuid+'] a').addClass('queue-highlight', 0) })
+        .on('mouseleave.console2queue', '#console .console-item', function(ev) {
+            var uuid = this.getAttribute('command_uuid');
+            $('#queue_panel ul li[id='+uuid+'] a').removeClass('queue-highlight', 0) });
+            
+    $(document)
+        .on('mouseenter.queue2console', '#queue_panel ul li', function(ev) {
+            var uuid = this.id; //getAttribute('command_uuid');
+            $('#console .console-item[command_uuid="'+uuid+'"] .console-message').addClass('command-highlight', 0) })
+        .on('mouseleave.queue2console', '#queue_panel ul li', function(ev) {
+            var uuid = this.id; //getAttribute('command_uuid');
+            $('#console .console-item[command_uuid="'+uuid+'"] .console-message').removeClass('command-highlight', 0) });
     
     document.body.onkeydown = function(ev) {
         var keyCode = ev.keyCode || ev.which;
@@ -687,7 +722,7 @@ dialog_login = function() {
     #console {
         overflow: auto;
     }
-    .command-highlight {
+    .command-highlight, .queue-highlight {
         background-color: yellow !important;
         color: red;
     }
