@@ -176,10 +176,12 @@ function q2jstree(root){
             'animation': 0,
             'check_callback': true
         },
-        'plugins': ['contextmenu', 'dnd_nice'], //, 'dnd' , 'search'] // 'state', 'types', 'wholerow']
+        'plugins': ['contextmenu'], // 'dnd_nice'], 'search'] // 'state', 'types', 'wholerow']
         'contextmenu': {
             "items": function($node) {
                 var tree = $("#tree").jstree(true);
+                var isBreakPoint = queueMonitor._commands[$node.id].status.isBreakPoint;
+                var uuid = $node.id;
                 return {
                     "Create": {
                         "separator_before": false,
@@ -193,15 +195,9 @@ function q2jstree(root){
                     "SetUserBreak": {
                         "separator_before": false,
                         "separator_after": false,
-                        "label": "set/clear breakpoint",
+                        "label": (isBreakPoint) ? "Clear breakpoint" : "Set breakpoint",
                         "action": function (obj) { 
-                            var uuid = $node.id;
-                            
-                            console.log(uuid);
-                            if (uuid) {
-                                var isBreakPoint = queueMonitor._commands[uuid].status.isBreakPoint;
-                                api.setUserBreak(uuid, !isBreakPoint);
-                            }
+                            api.setUserBreak(uuid, !isBreakPoint); 
                         }
                     },
                     /*
@@ -217,12 +213,12 @@ function q2jstree(root){
                     "Delete": {
                         "separator_before": false,
                         "separator_after": false,
-                        "label": "Remove",
-                        "action": function (obj) { 
+                        "label": "delete",
+                        "action": function (obj) {
                             tree.delete_node($node);
                         }
                     },
-                    "copy": {
+                    "Copy": {
                         "separator_before": true,
                         "separator_after": false,
                         "label": "copy",
@@ -441,7 +437,14 @@ var SystemMonitorI = Ice.Class(nice.api.system.SystemMonitor, {
         this._state = state;
     },
     serverShutdown: function( __current) {
-        alert("Server has shut down!");
+        link.monitor_adapter.deactivate().then(
+            function() {
+                link.monitor_adapter.destroy();
+                link.communicator.shutdown();
+            }
+        );
+        $('#top_panel').removeClass('connected', 4000)
+            .find('.instrument-name').text('Server shut down: Not connected');
     }
 });
 
@@ -569,7 +572,20 @@ dialog_login = function() {
     logging_in = false;
 
 }
-
+ 
+  window.addEventListener("beforeunload", function (event) {
+    // disconnect and remove the adapter before leaving page
+    if (link.monitor_adapter && link.communicator) {
+        link.monitor_adapter.deactivate().then(
+            function() {
+                link.monitor_adapter.destroy();
+                link.communicator.shutdown();
+                return "leaving page";
+            }
+        );
+    }
+  });
+  
   window.onload = function() {
     var dialog = document.getElementById("login");
     if (!dialog.show) {
@@ -622,10 +638,10 @@ dialog_login = function() {
     $(document)
         .on('mouseenter.console2queue', '#console .console-item', function(ev) {
             var uuid = this.getAttribute('command_uuid');
-            $('#queue_panel ul li[id='+uuid+'] a').addClass('queue-highlight', 0) })
+            $('#queue_panel ul li[id='+uuid+'] a').addClass('queue-highlight') })
         .on('mouseleave.console2queue', '#console .console-item', function(ev) {
             var uuid = this.getAttribute('command_uuid');
-            $('#queue_panel ul li[id='+uuid+'] a').removeClass('queue-highlight', 0) });
+            $('#queue_panel ul li[id='+uuid+'] a').removeClass('queue-highlight') });
             
     $(document)
         .on('mouseenter.queue2console', '#queue_panel ul li', function(ev) {

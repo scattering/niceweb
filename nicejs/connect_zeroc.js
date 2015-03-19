@@ -59,6 +59,10 @@
             function(timeout) {
                 var refreshSession = function()
                 {
+                    if (communicator.isShutdown()) {
+                        // we're done...
+                        return 
+                    }
                     router.refreshSession().exception(
                         function(ex) 
                         {
