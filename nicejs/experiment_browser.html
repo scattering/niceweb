@@ -1,0 +1,250 @@
+<html>
+<head>
+  <link rel="icon" type="image/png" href="css/appicon.png" />
+  <link rel="stylesheet" href="../../niceclient/static/css/layout-default-latest.css" />
+  <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
+  <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
+            type="text/css" rel="Stylesheet" />
+  <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
+  <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+  <script src="../../niceclient/static/jquery.layout-latest.js"></script>
+  
+  <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="http://ncnr.nist.gov/instruments/magik/jstree/dist/themes/default/style.min.css"/>
+  <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jstree/dist/jstree.js"></script>
+  <script type="text/javascript" src="jstree_dnd_nice.js"></script>
+
+  <!-- dialog support -->
+  <link rel="stylesheet" href="../static/dialog-polyfill.css" />
+  <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
+
+  <script src="icejs/Ice.js"></script>
+  <script src="icejs/Glacier2.js"></script>
+  <script src="icejs/IceStorm.js"></script>
+  <script src="icejs/IceGrid.js"></script>
+
+  <script src="generated/data.js"></script>
+  <script src="generated/file.js"></script>
+  <script src="generated/system.js"></script>
+  <script src="generated/devices.js"></script>
+  <script src="generated/console.js"></script>
+  <script src="generated/dryrun.js"></script>
+  <script src="generated/exceptions.js"></script>
+  <script src="generated/nice.js"></script>
+  <script src="generated/events.js"></script>
+  <script src="generated/experiment.js"></script>
+  <script src="generated/queue.js"></script>
+  <script src="generated/sampleAlignment.js"></script>
+  <script src="generated/clientapi.js"></script>
+  <script src="connect_zeroc.js"></script>
+  <script type="text/javascript">
+    var Promise = Ice.Promise;
+    var RouterPrx = Glacier2.RouterPrx;
+    var logging_in = false;
+    var link = {};
+    
+    var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+    if (localStorage && localStorage.nice_hostname) {
+        hostname = localStorage.nice_hostname
+    }
+    
+    function getEnumValues(ice_enum) {
+        var enumVals = [];
+        for (var i=0; i<=ice_enum.maxValue; i++) {
+            enumVals[i] = ice_enum.valueOf(i)._name;
+        }
+        return enumVals;
+    }
+   
+
+    var SystemMonitorI = Ice.Class(nice.api.system.SystemMonitor, {
+        onSubscribe: function(state, __current) {
+            this._state = state;
+        },
+        stateChanged: function(state, __current) {
+            this._state = state;
+        },
+        serverShutdown: function( __current) {
+            link.monitor_adapter.deactivate().then(
+                function() {
+                    link.monitor_adapter.destroy();
+                    link.communicator.shutdown();
+                }
+            );
+            $('#north_panel').removeClass('connected', 4000)
+                .find('.instrument-name').text('Server shut down: Not connected');
+        }
+    });
+
+    var ExperimentMonitorI = Ice.Class(nice.api.experiment.ExperimentMonitor, {
+        onSubscribe: function(all_experiments, current_experiment, __current) {
+            this.all_experiments = all_experiments;
+            this.current_experiment = current_experiment;
+        },
+        switchedCurrentExperiment: function(current_experiment, __current) {
+            this.current_experiment = current_experiment;
+        },
+        modifiedCurrentExperiment: function(data,  __current) {
+            this._last_modified = data;
+        },
+        createdExperiment: function(data,  __current) {
+            this._last_created = data;
+        },
+        HashMapToObject: function(m) {
+            var obj={}; 
+            m.forEach( function(dn) { 
+                obj[dn]=m.get(dn);
+            }); 
+            return obj
+        } 
+    });
+    
+    
+    function instrument_stop() {
+        return api.stop();
+    }
+
+
+
+    dialog_login = function() {
+        var hostname = document.getElementById("instrument_ip").value;
+        var username = document.getElementById("username").value;
+        var password = document.getElementById("password").value;
+        
+        signin("NiceGlacier2/router:ws -p 9999 -h " + hostname, "1.0", true, username, password).then(
+            function(communicator, router, session, adapter) {
+                // globals:
+                link.communicator = communicator
+                link.router = router
+                link.session = session
+                link.monitor_adapter = adapter
+                var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
+                return mgr.getAPI('client').then(
+                    function(ca) {
+                        return nice.api.ClientApiPrx.checkedCast(ca).then(
+                            function(cam) {
+                                api = cam;
+                                experimentMonitor = new ExperimentMonitorI();
+                                systemMonitor = new SystemMonitorI();
+                                return Promise.all(
+                                    subscribe(api, router, adapter, experimentMonitor, 'experiment'),
+                                    subscribe(api, router, adapter, systemMonitor, 'system')
+                                )
+                        });
+                });
+        });
+        if (localStorage) {
+            localStorage.nice_hostname = hostname;
+        }
+        document.getElementById("login").close();
+        document.getElementById("north_panel").getElementsByClassName("instrument-name")[0].innerHTML="Instrument connected: " + hostname;
+        document.getElementById("north_panel").classList.add("connected");
+        logging_in = false;
+
+    }
+ 
+    window.addEventListener("beforeunload", function (event) {
+        // disconnect and remove the adapter before leaving page
+        if (link.monitor_adapter && link.communicator) {
+            link.monitor_adapter.deactivate().then(
+                function() {
+                    link.monitor_adapter.destroy();
+                    link.communicator.shutdown();
+                    return "leaving page";
+                }
+            );
+        }
+    });
+  
+    window.onload = function() {
+        var dialog = document.getElementById("login");
+        if (!dialog.show) {
+            dialogPolyfill.registerDialog(dialog);
+        }
+        document.getElementById("instrument_ip").value = hostname;
+        dialog.show();
+        logging_in = true;
+    
+        myLayout = $('body').layout({
+		    east__size:			300
+	    ,	west__size:			300
+	    ,   south__size:        "auto"
+	    ,   north_size:         "auto"
+		    // RESIZE Accordion widget when panes resize
+	    ,	west__onresize:		$.layout.callbacks.resizePaneAccordions
+	    ,	east__onresize:		$.layout.callbacks.resizePaneAccordions
+	    ,	south__onresize:    $.layout.callbacks.resizePaneAccordions
+	    ,	north__onresize:    $.layout.callbacks.resizePaneAccordions
+	    });
+    
+    }
+  </script>
+  <style type="text/css">
+    body {
+        font-family: 'Open Sans' !important;
+    }
+    #login {
+        top: 28%;
+        position: absolute;
+        z-index: 10;
+    }
+    #north_panel {
+        background-color: LightYellow;
+        height: 30px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-weight: normal;
+        /* font-family: 'Open Sans'; */
+        /* font-variant: small-caps; */
+    }
+    #north_panel.connected {
+        background-color: LightGreen;
+    }
+    #north_panel h3 {
+        display: inline-block;
+    }
+    
+    .control-buttons {
+        float: right;
+        font-size: 14pt;
+        font-weight: bold;
+    }
+    .control-buttons .stop-button {
+        background-color: red;
+        color: white;
+    }
+  </style>
+  <link rel="stylesheet" type="text/css" href="css/main.css">
+  <title>NICE console</title>
+</head>
+<body>
+<dialog id="login">
+  <h2>Login</h2>
+  <label for="instrument_ip">Instrument address</label>
+  <input type="text" id="instrument_ip" value="happy.home">
+  <br>
+  <label for="username">Username:</label>
+  <input type="text" id="username" value="" placeholder="username">
+  <br>
+  <label for="password">Password:</label>
+  <input type="password" id="password" placeholder="password">
+  <br>
+  <input type="button" onclick="dialog_login()" value="Go">
+</dialog>
+
+<div id="north_panel" class="ui-layout-north">
+    <h3 class="instrument-name">Instrument: </h3>
+    <div id="control_buttons" class="control-buttons">
+    <span id="queue_state"></span>
+    <input type="button" onclick="api.suspend();" value="Pause" class="pause-button" id="pause_button">
+    <input type="button" onclick="api.resume();" value="Resume" class="resume-button" id="resume_button">
+    <input type="button" onclick="api.stop();" value="Stop" class="stop-button">
+    </div>
+</div>
+<div id="east_panel" class="ui-layout-east">
+</div>
+<div id="center_panel" class="ui-layout-wrapper ui-layout-center"></div>
+<div id="south_panel" class="ui-layout-south">
+</div>
+</body>
+</html>

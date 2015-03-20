@@ -104,6 +104,10 @@
         return signinPromise; 
     }
     
+    function capitalize(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+
     subscribe = function(api, router, adapter, servant, stream) {
         //
         // Get the session timeout and the router client category, and
