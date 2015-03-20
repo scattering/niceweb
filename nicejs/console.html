@@ -179,17 +179,27 @@ function q2jstree(root){
         'plugins': ['contextmenu'], // 'dnd_nice'], 'search'] // 'state', 'types', 'wholerow']
         'contextmenu': {
             "items": function($node) {
-                var tree = $("#tree").jstree(true);
+                var tree = queueMonitor.jstree;
                 var isBreakPoint = queueMonitor._commands[$node.id].status.isBreakPoint;
                 var uuid = $node.id;
+                var selection = tree.get_selected();
                 return {
-                    "Create": {
+                    
+                    "scrollConsoleTo": {
                         "separator_before": false,
                         "separator_after": false,
-                        "label": "Create",
-                        "action": function (obj) { 
-                            $node = tree.create_node($node);
-                            tree.edit($node);
+                        "label": "show in console",
+                        "action": function(obj) {
+                            var uuid = obj.reference.parent().attr('id');
+                            var cmd = $('#console [command_uuid='+uuid+'] .console-message')
+                            if (cmd[0] && cmd[0].scrollIntoView) {
+                                cmd[0].scrollIntoView();
+                            }
+                            cmd.addClass('command-highlight', 400, 'swing', 
+                                function() {
+                                    $(this).removeClass('command-highlight', 2000, 'swing')
+                                }
+                            );   
                         }
                     },
                     "SetUserBreak": {
@@ -201,6 +211,48 @@ function q2jstree(root){
                         }
                     },
                     /*
+                    
+                    */                         
+                    "Delete": {
+                        "separator_before": false,
+                        "separator_after": false,
+                        "label": "delete",
+                        "action": function (obj) {
+                            tree.get_selected().forEach(function(uuid) { api.deleteQueueCommand(uuid) })
+                        }
+                    },
+                    "Copy": {
+                        "separator_before": true,
+                        "separator_after": false,
+                        "label": "copy",
+                        "action": function() {
+                            var copy_buffer = [];
+                            tree.get_selected().forEach(function(uuid) {copy_buffer.push(queueMonitor._commands[uuid].status.commandStr)});
+                            queueMonitor._copy_buffer = copy_buffer;
+                        }
+                    },
+                    "Paste": {
+                        "separator_before": false,
+                        "separator_after": false,
+                        "label": "paste after",
+                        "_disabled": (queueMonitor._copy_buffer == null),
+                        "action": function() {
+                            if (queueMonitor._copy_buffer) {
+                                var target_uuid = selection[selection.length - 1];
+                                api.insertQueueCommand(target_uuid, queueMonitor._copy_buffer);
+                            }
+                        }
+                    }
+                    /*
+                    "Create": {
+                        "separator_before": false,
+                        "separator_after": false,
+                        "label": "Create",
+                        "action": function (obj) { 
+                            $node = tree.create_node($node);
+                            tree.edit($node);
+                        }
+                    },
                     "Rename": {
                         "separator_before": false,
                         "separator_after": false,
@@ -209,47 +261,7 @@ function q2jstree(root){
                             tree.edit($node);
                         }
                     },
-                    */                         
-                    "Delete": {
-                        "separator_before": false,
-                        "separator_after": false,
-                        "label": "delete",
-                        "action": function (obj) {
-                            tree.delete_node($node);
-                        }
-                    },
-                    "Copy": {
-                        "separator_before": true,
-                        "separator_after": false,
-                        "label": "copy",
-                        "action": function(a,b,c) {
-                            console.log('copy: ', a,b,c, this);
-                        }
-                    },
-                    "scrollConsoleTo": {
-                        "separator_before": false,
-                        "separator_after": false,
-                        "label": "show in console",
-                        "action": function(obj) {
-                            var uuid = obj.reference.parent().attr('id');
-                            var cmd = $('#console [command_uuid='+uuid+'] .console-message')
-                            cmd[0].scrollIntoView();
-                            //var offset = cmd.offset(); // Contains .top and .left
-
-                            //$('#console').scrollTop(offset.top - 20);
-                            /*
-                            $('#console').animate({
-                                scrollTop: offset.top,
-                                scrollLeft: offset.left
-                            });
-                            */
-                            cmd.addClass('command-highlight', 400, 'swing', 
-                                function() {
-                                    $(this).removeClass('command-highlight', 2000, 'swing')
-                                }
-                            );   
-                        }
-                    }
+                    */
                 };
             }
         }
@@ -274,6 +286,7 @@ var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
     __init__: function(jstree_target) {
         this.jstree_target = jstree_target;
         var target = $(jstree_target);
+        this._copy_buffer = null; // for copy/paste operations.
         target.on('ready.jstree', function(e, data) { e.currentTarget.scrollTop = e.currentTarget.scrollHeight });
         target.bind("select_node.jstree", function (e, data) { return data.instance.toggle_node(data.node); });
     },
