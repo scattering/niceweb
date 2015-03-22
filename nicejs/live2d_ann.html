@@ -65,13 +65,16 @@
         var Promise = Ice.Promise;
         var RouterPrx = Glacier2.RouterPrx;
         var PHI_STEP = 2.0;
-        var router = "Glacier2/router:ws -p 4064 -h h123062.ncnr.nist.gov";
+        
+        var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
+        var ice_protocol_version = "1.0";
                 
         var logging_in = false;
-        var link = {};
-        var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+
+        var last_hostname = "h123062.ncnr.nist.gov"; // default NICE host
+        var port = '9999';
         if (localStorage && localStorage.nice_hostname) {
-            hostname = localStorage.nice_hostname
+            last_hostname = localStorage.nice_hostname
         }
         
         var detectors = {areaDetector: {dims: null, data: null, beamCenterX: null, beamCenterY: null}};
@@ -607,59 +610,49 @@
         return this;
     }
     
+    var handleNodesChanged = function(nodes) {
+        if ('areaDetector.dimension' in nodes) {
+            detectors.areaDetector.dims = nodes['areaDetector.dimension'].currentValue.userVal.val;
+        }
+        if ('areaDetector.counts' in nodes) {
+            detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;
+           
+            window.refreshRequested = true;
+        }
+        if ('beamStop.beamCenterX' in nodes) {
+            detectors.areaDetector.beamCenterX = nodes['beamStop.beamCenterX'].currentValue.userVal.val;
+        }
+        if ('beamStop.beamCenterY' in nodes) {
+            detectors.areaDetector.beamCenterY = nodes['beamStop.beamCenterY'].currentValue.userVal.val;
+        }
+        
+    }
     
     dialog_login = function() {
         var hostname = document.getElementById("instrument_ip").value;
         var username = document.getElementById("username").value;
         var password = document.getElementById("password").value;
         
-        signin_result = signin("NiceGlacier2/router:ws -p 9999 -h " + hostname, "1.0", true, username, password).then(
-            function(communicator, router, session, adapter) {
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+            function(api_object) {
                 // globals:
-                link.communicator = communicator
-                link.router = router
-                link.session = session
-                link.monitor_adapter = adapter
-                var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
-                return mgr.getAPI('client').then(
-                    function(ca) {
-                        return nice.api.ClientApiPrx.checkedCast(ca).then(
-                            function(cam) {
-                                api = cam;
-                                devicesMonitor = new DevicesMonitorI();
-                                devicesMonitor.postChangedHooks = [
-                                    function(nodes) {
-                                        if ('areaDetector.dimension' in nodes) {
-                                            detectors.areaDetector.dims = nodes['areaDetector.dimension'].currentValue.userVal.val;
-                                        }
-                                        if ('areaDetector.counts' in nodes) {
-                                            detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;
-                                           
-                                            window.refreshRequested = true;
-                                        }
-                                        if ('beamStop.beamCenterX' in nodes) {
-                                            detectors.areaDetector.beamCenterX = nodes['beamStop.beamCenterX'].currentValue.userVal.val;
-                                        }
-                                        if ('beamStop.beamCenterY' in nodes) {
-                                            detectors.areaDetector.beamCenterY = nodes['beamStop.beamCenterY'].currentValue.userVal.val;
-                                        }
-                                        
-                                    }
-                                ];
-                                return subscribe(api, router, adapter, devicesMonitor, 'devices');
-                        });
-                });
+                logging_in = false;
+                api = api_object;
+                devicesMonitor = new DevicesMonitorI();
+                devicesMonitor.postChangedHooks = [handleNodesChanged];
+                return Promise.all(
+                    subscribe(devicesMonitor, 'devices')
+                )
         }).exception(
             function(ex) {console.log(ex)}
         );
+        
         if (localStorage) {
             localStorage.nice_hostname = hostname;
         }
         document.getElementById("login").close();
         document.getElementById("top_panel").getElementsByClassName("instrument-name")[0].innerHTML="Instrument connected: " + hostname;
         document.getElementById("top_panel").classList.add("connected");
-        logging_in = false;
-
     }
     
     var fitPlots = function() {
@@ -684,10 +677,15 @@
         if (!dialog.show) {
             dialogPolyfill.registerDialog(dialog);
         }
-        document.getElementById("instrument_ip").value = hostname;
+        document.getElementById("instrument_ip").value = last_hostname;
         dialog.show();
         logging_in = true;
-    
+        
+        $(window).on('niceServerShutdown', function(ev) {
+            $('#top_panel').removeClass('connected', 4000)
+                .find('.instrument-name').text('Server shut down: Not connected');
+        });
+        
         var layout = $('body').layout({
 		    east__size:			500
 	    ,	west__size:			0

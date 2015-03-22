@@ -1,4 +1,13 @@
 (function(Ice, Glacier2, nice){
+    // provides new global objects:
+    // 
+    // signin function (returns api from Promise);
+    // subscribe function;
+    // disconnect function;
+    // 
+    // and a new event 'niceServerShutdown' that is 
+    // triggered on the window when the nice server shuts down.
+    
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
         
@@ -12,6 +21,8 @@
     var hasError = false;
     active = false;
     var api, communicator, router, session, adapter;
+    var systemMonitor; // watch for shutdown
+    var shutdown_event = new Event("niceServerShutdown");
 
     signin = function(routerEndpoint, encoding, disableACM, username, password)
     {
@@ -83,15 +94,7 @@
                 adapter = a;
                 
                 // disconnect on page unload
-                window.addEventListener("beforeunload", function (event) {
-                    // disconnect and remove the adapter before leaving page
-                    adapter.deactivate().then(
-                        function() {
-                            adapter.destroy();
-                            communicator.shutdown();
-                        }
-                    );
-                });
+                window.addEventListener("beforeunload", disconnect);
                 
                 // get the client api
                 var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
@@ -103,8 +106,13 @@
             }
         ).then(
             function(cam) {
-                api = cam;
+                api = cam;                
                 active = true;
+                systemMonitor = new SystemMonitorI();
+                return subscribe(systemMonitor, 'system')
+            }
+        ).then(
+            function() {
                 signinPromise.succeed(api);
             }
         ).exception(
@@ -124,7 +132,16 @@
         );
         return signinPromise; 
     }
-    
+
+    disconnect = function(event) {
+        adapter.deactivate().then(
+            function() {
+                adapter.destroy();
+                communicator.shutdown();
+            }
+        );
+    }
+        
     function capitalize(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
@@ -156,4 +173,14 @@
             }
         );
     }
+    
+    // basic system monitor to watch for server shutdowns
+    var SystemMonitorI = Ice.Class(nice.api.system.SystemMonitor, {
+        onSubscribe: function(state, __current) {},
+        stateChanged: function(state, __current) {},
+        serverShutdown: function( __current) {
+            disconnect();
+            window.dispatchEvent(shutdown_event);
+        }
+    });
 })(Ice, Glacier2, nice);
