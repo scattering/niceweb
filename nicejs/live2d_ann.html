@@ -377,7 +377,7 @@
                 }
                 this.update_actual = function() {
                     var zislog = document.getElementById('ztransform').checked;
-                    var intensity_label = (zislog) ? "Log counts" : "counts";
+                    var intensity_label = (zislog) ? "(Log counts)/pixel" : "counts/pixel";
                     
                     var xdata = [], ydata = [];
                     
@@ -440,7 +440,6 @@
          var center_y = (center_y_coord - dims.ymin) / dypos;
          var r1 = r1_coord / dxpos; // square pixels only!
          var r2 = r2_coord / dxpos; // square pixels only!
-         //console.log(center_x, center_y, r1, r2);
          
          var ch = maskCanvas.height;
          var cw = maskCanvas.width;
@@ -505,7 +504,7 @@
             angle_list[s] = angle;
             sum_list[s] = sum;
             normalize_list[s] = normalize;
-            xy_list[s] = [degrees(angle), (normalize == 0)? 0 : sum/normalize];
+            xy_list[s] = [degrees(angle), (normalize == 0)? NaN : sum/normalize];
             angle += stepsize;
             maskCtx.fillRect(min_x,min_y,dx,dy);
          }

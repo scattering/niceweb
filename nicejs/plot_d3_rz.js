@@ -265,11 +265,13 @@ function plotD3(target_id, data, options) {
     // Create D3 line object and draw data on our SVG object
     //************************************************************
     if (options.show_line) {
+        
         var line = d3.svg.line()
-            .defined(function(d) { return (d && isFinite(d.y)); })
-            .interpolate("linear")	
+            .defined(function(d) { return (d && isFinite(y(d.y))); })
+            //.interpolate("linear")	
             .x(function(d) { return x(d.x); })
-            .y(function(d) { return y(d.y); });		
+            .y(function(d) { return y(d.y); });
+        
 
         svg.selectAll('.line')
             .data(data)
@@ -293,7 +295,7 @@ function plotD3(target_id, data, options) {
     //************************************************************
     if (options.show_points) {
         var points = svg.selectAll('.dots')
-            //.defined(function(d) { return isFinite(d.y); })
+            .defined(function(d) { return (d && isFinite(y(d.y))); })
 	        .data(data)
 	        .enter()
 	        .append("g")
