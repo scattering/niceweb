@@ -651,8 +651,6 @@
             localStorage.nice_hostname = hostname;
         }
         document.getElementById("login").close();
-        document.getElementById("top_panel").getElementsByClassName("instrument-name")[0].innerHTML="Instrument connected: " + hostname;
-        document.getElementById("top_panel").classList.add("connected");
     }
     
     var fitPlots = function() {
@@ -678,13 +676,17 @@
             dialogPolyfill.registerDialog(dialog);
         }
         document.getElementById("instrument_ip").value = last_hostname;
-        dialog.show();
-        logging_in = true;
-        
+
         $(window).on('niceServerShutdown', function(ev) {
             $('#top_panel').removeClass('connected', 4000)
                 .find('.instrument-name').text('Server shut down: Not connected');
+        }).on('niceServerConnected', function(ev) {
+            $('#top_panel').addClass('connected')
+                .find('.instrument-name').text("Instrument connected: " + last_hostname);
         });
+        
+        dialog.show();
+        logging_in = true;
         
         var layout = $('body').layout({
 		    east__size:			500

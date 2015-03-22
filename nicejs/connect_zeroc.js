@@ -23,6 +23,7 @@
     var api, communicator, router, session, adapter;
     var systemMonitor; // watch for shutdown
     var shutdown_event = new Event("niceServerShutdown");
+    var connection_event = new Event("niceServerConnected");
 
     signin = function(routerEndpoint, encoding, disableACM, username, password)
     {
@@ -108,6 +109,9 @@
             function(cam) {
                 api = cam;                
                 active = true;
+                // say we're connected now
+                window.dispatchEvent(connection_event);
+                
                 systemMonitor = new SystemMonitorI();
                 return subscribe(systemMonitor, 'system')
             }
@@ -147,13 +151,6 @@
     }
 
     subscribe = function(servant, stream) {
-        //
-        // Get the session timeout and the router client category, and
-        // create the client object adapter.
-        //
-        // Use Ice.Promise.all to wait for the completion of all the
-        // calls.
-        //
         return Promise.all(
             router.getSessionTimeout(),
             router.getCategoryForClient()
