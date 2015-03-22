@@ -586,7 +586,6 @@
         var keyCode = ev.keyCode || ev.which;
         var command_line = document.getElementById('command_line');
         // block backspace when not in command line
-        //if ((document.activeElement != command_line) && (keyCode == 8)) { ev.preventDefault(); }
         if ((document.activeElement.type != "text") && (keyCode == 8)) { ev.preventDefault(); }
         // put focus in command line if not there for number or a-z keys
         if (!logging_in && keyCode > 47 && keyCode < 91) {
@@ -622,7 +621,17 @@
         'disabled': true,
         // disable the autocomplete after every selection... we want to 
         // trigger it with 'tab' instead of a delay.
-        'close': function(ev, ui) { $(this).autocomplete("disable"); }
+        'close': function(ev, ui) { $(this).autocomplete("disable"); },
+        'response': function( ev, ui ) {
+            if (ui.content.length <= 1) {
+                // if no responses or if 1 response, quit autocomplete.
+                $(this).autocomplete("disable");
+            }
+            if (ui.content.length == 1) {
+                // if one response, use it!
+                $(this).val(ui.content[0].value);
+            }
+        }
     });
     
     var bump = {38: -1, 40: 1};
