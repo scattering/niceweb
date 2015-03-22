@@ -1,4 +1,4 @@
-(function(Ice, Glacier2){
+(function(Ice, Glacier2, nice){
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
         
@@ -11,14 +11,12 @@
     var state = State.Disconnected;
     var hasError = false;
     active = false;
+    var api, communicator, router, session, adapter;
 
     signin = function(routerEndpoint, encoding, disableACM, username, password)
     {
         var signinPromise = new Promise();
-        var communicator;
-        var router;
-        var session;
-        var adapter;
+        
         var username = (username == null) ? "" : username;
         var password = (password == null) ? "" : password;
         Promise.try (
@@ -83,8 +81,31 @@
         ).then(
             function(a) {
                 adapter = a;
+                
+                // disconnect on page unload
+                window.addEventListener("beforeunload", function (event) {
+                    // disconnect and remove the adapter before leaving page
+                    adapter.deactivate().then(
+                        function() {
+                            adapter.destroy();
+                            communicator.shutdown();
+                        }
+                    );
+                });
+                
+                // get the client api
+                var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
+                return mgr.getAPI('client')
+            }
+        ).then(
+            function(ca) {
+                return nice.api.ClientApiPrx.checkedCast(ca)
+            }
+        ).then(
+            function(cam) {
+                api = cam;
                 active = true;
-                signinPromise.succeed(communicator, router, session, adapter);
+                signinPromise.succeed(api);
             }
         ).exception(
             function(ex)
@@ -108,7 +129,7 @@
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
 
-    subscribe = function(api, router, adapter, servant, stream) {
+    subscribe = function(servant, stream) {
         //
         // Get the session timeout and the router client category, and
         // create the client object adapter.
@@ -135,4 +156,4 @@
             }
         );
     }
-})(Ice, Glacier2);
+})(Ice, Glacier2, nice);
