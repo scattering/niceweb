@@ -59,6 +59,8 @@
     };
     SORT_KEYS = true;
     
+    var command_history = [];
+    
     var hostname = "h123062.ncnr.nist.gov"; // default NICE host
     if (localStorage && localStorage.nice_hostname) {
         hostname = localStorage.nice_hostname
@@ -308,11 +310,13 @@
             this._root = root;
             this._commands = {};
             this._addToNodeTable(this, root);
+            this._addToCommandHistory(this, root);
             this.jstree = $(this.jstree_target).jstree(q2jstree(this)).jstree(true);
         },
         nodesAdded: function(path, node, __current) {
             // Called when a command node is added to the queue
             this._addToNodeTable(this, node);
+            this._addToCommandHistory(this, node);
             var childIndex = path[path.length - 1];
             this.jstree.create_node(node.parentUUID, command_to_node(node), childIndex, function() {});
             var newNode = document.getElementById(node.UUID);
@@ -379,7 +383,21 @@
                 ctx._addToNodeTable(ctx, child);
             }
             
+        },
+        _addToCommandHistory: function(ctx, node) {
+            /*
+            Adds a command string to the history list. This is done recursively for all the node's
+            children.
+            */
+            if (node.status && node.status.commandStr) {
+                command_history.push(node.status.commandStr);
+            }
+            for (var i=0; i<node.children.length; i++) {
+                var child = node.children[i];
+                ctx._addToCommandHistory(ctx, child);
+            }
         }
+        
     });
 
     var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
@@ -452,6 +470,7 @@
     function submitCommand() {
         var command_line = document.getElementById('command_line');
         var command = command_line.value.trim('\n');
+        command_history.push(command);
         command_offset = 0;
         command_line.value = "";
         return api.console(command);
@@ -538,7 +557,8 @@
             ev.preventDefault();
             var cursor_pos = cl.selectionStart;
             command_match = new RegExp("^"+cl.value.slice(0, cursor_pos), "i"); // ignore case            
-            var matching_commands = queueMonitor._root.children.filter(function(item) { return command_match.test(item.status.commandStr) });
+            //var matching_commands = queueMonitor._root.children.filter(function(item) { return command_match.test(item.status.commandStr) });
+            var matching_commands = command_history.filter(function(item) { return command_match.test(item) });
             if (matching_commands.length == 0) { 
                 return 
             }
@@ -548,7 +568,8 @@
             if (index < 0) {
                 index += matching_commands.length;
             }
-            cl.value = matching_commands[index].status.commandStr;
+            //cl.value = matching_commands[index].status.commandStr;
+            cl.value = matching_commands[index];
             cl.setSelectionRange(cursor_pos, cursor_pos);
         }
         else if (keyCode == 13 || keyCode == 10) {
@@ -556,6 +577,7 @@
                 // if the autocomplete menu is up, don't submit!
                 return false;
             }
+            $(this).autocomplete("disable");
             ev.preventDefault();
             ev.stopPropagation();
             submitCommand();
@@ -564,6 +586,10 @@
             $(this).autocomplete("enable")
                 .autocomplete("search", this.value);
             ev.preventDefault();
+        }
+        else if (keyCode == 27) {
+            // escape!
+            $(this).autocomplete("disable");
         }
 
     });

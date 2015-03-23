@@ -93,6 +93,8 @@
                 logging_in = false;
                 api = api_object;
                 experimentMonitor = new ExperimentMonitorI();
+                // the subscribe function won't work until the connection is 
+                // complete, which is why it's in the "then" block here
                 return Promise.all(
                     subscribe(experimentMonitor, 'experiment')
                 )

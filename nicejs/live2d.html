@@ -108,10 +108,10 @@
                 this.postChangedHooks.forEach( function(callback) { callback(changed); });
             },
             dynamicDevicesAdded: function(addRemoveID, childDeviceIDs, __current) {
-                alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
+                //alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
             },
             dynamicDevicesRemoved: function(addRemoveID, __current) {
-                alert('device removed: ' + addRemoveID);
+                //alert('device removed: ' + addRemoveID);
             },
             removed: function(devices, nodes, __current) {
                 this._lastDevicesRemoved = this.HashMapToObject(devices);

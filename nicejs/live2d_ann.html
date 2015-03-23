@@ -80,9 +80,11 @@
         var detectors = {areaDetector: {dims: null, data: null, beamCenterX: null, beamCenterY: null}};
         currently_drawing = false;
         draw_again = false;
+        var doIvsQ = true; // automatically calculate I vs Q and plot
         var refreshRequested = false;
         var phisumRequested = false;
-        var sl; // slice listener.
+        var rsumRequested = false;
+        var sl_phi, sl_r; // slice listeners.
         var maskCanvas; // for integrations
 
         var hasError = false;
@@ -109,10 +111,10 @@
                 this.postChangedHooks.forEach( function(callback) { callback(changed); });
             },
             dynamicDevicesAdded: function(addRemoveID, childDeviceIDs, __current) {
-                alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
+                //alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
             },
             dynamicDevicesRemoved: function(addRemoveID, __current) {
-                alert('device removed: ' + addRemoveID);
+                //alert('device removed: ' + addRemoveID);
             },
             removed: function(devices, nodes, __current) {
                 this._lastDevicesRemoved = this.HashMapToObject(devices);
@@ -136,6 +138,18 @@
                 }); 
                 return obj
             } 
+        });
+
+        var DataMonitorI = Ice.Class(nice.api.data.DataMonitor, {
+            onSubscribe: function(recordList, fits,  __current) {
+                this.recordList = recordList;
+                this.fits = fits;
+                this._emits = [];
+            },
+            emit: function(record, __current) {
+                this._emits.push(record);
+            },
+            peakFit: function(peak, __current) {}
         });
 
         var plottableX = {
@@ -248,8 +262,14 @@
         }
         if (phisumRequested) {
             phisumRequested = false;
-            if (sl && sl.update_actual) {
-                sl.update_actual();
+            if (sl_phi && sl_phi.update_actual) {
+                sl_phi.update_actual();
+            }
+        }
+        if (rsumRequested) {
+            rsumRequested = false;
+            if (sl_r && sl_r.update_actual) {
+                sl_r.update_actual();
             }
         }
         requestAnimationFrame(updateLoop);
@@ -273,7 +293,8 @@
             var transform = logselected? 'log' : 'lin';
             plots.plotwrap.series[0].set_transform(transform);
             colorbars.plotwrap.plugins._interactor.zoomMax();
-            sl.update();
+            sl_phi.update();
+            sl_r.update()
         }
     }
     
@@ -350,10 +371,6 @@
                     centeryctl.update({y: y});
                     centeryctl.update_external();
                     
-                    //slice_annulus.c.coords.x = x;
-                    //slice_annulus.c.coords.y = y;
-                    //plot.redraw();
-                    //if (sl.update) sl.update();
                 } else {
                     alert('beam center is not defined');
                 }
@@ -366,27 +383,18 @@
             //roiDisplay.innerHTML = JSON.stringify(shape);
             //document.getElementById('slicecontrols').appendChild(roiDisplay);
             
-            slice_listener = function(series) {
+            slice_listener_phi = function(series) {
                 slice_annulus.p1.listeners.push(this);
                 slice_annulus.p2.listeners.push(this);
                 slice_annulus.c.listeners.push(this);
                 var p0 = series;
                 this.update = function(pos) {
                     phisumRequested = true;
-                    //this.update_actual();
                 }
                 this.update_actual = function() {
                     var zislog = document.getElementById('ztransform').checked;
                     var intensity_label = (zislog) ? "(Log counts)/pixel" : "counts/pixel";
                     
-                    var xdata = [], ydata = [];
-                    
-                    /*
-                    var xi=0, yi=0;
-                    for (var c=i_min; c <=i_max-1; c++) {
-                        xdata[xi++] = ([p0.dims.xmin + c*p0.dims.dx, p0.cumsum_x[c][j_max] - p0.cumsum_x[c][j_min]]);
-                    }
-                    */
                     var r1 = dist(slice_annulus.p1.coords, slice_annulus.c.coords);
                     var r2 = dist(slice_annulus.p2.coords, slice_annulus.c.coords);
                     var phisum = multiplySumArc(p0.source_data, p0.dims, slice_annulus.c.coords.x, slice_annulus.c.coords.y, r1, r2);
@@ -402,12 +410,41 @@
                         position_cursor: true});
                     xplot.svg.select('.x.axis').call(xplot.xAxis.tickValues([0,45,90,135,180,225,270,315,360]));
                 }
+                return this;
+            }
+            slice_listener_r = function(series) {
+                slice_annulus.c.listeners.push(this);
+                var p0 = series;
+                this.update = function(pos) {
+                    if (doIvsQ) {
+                        rsumRequested = true;
+                    }
+                }
+                this.update_actual = function() {
+                    var zislog = document.getElementById('ztransform').checked;
+                    var intensity_label = (zislog) ? "(Log counts)/pixel" : "counts/pixel";
+
+                    var rsum = multiplySumRadial(p0.source_data, p0.dims, slice_annulus.c.coords.x, slice_annulus.c.coords.y);
+                    plottableY.data = [rsum.xy];
+                    $("#yplot_plot").empty();
+                    yplot = plotD3("yplot_plot", plottableY, {
+                        log_y: zislog, 
+                        log_x: zislog, 
+                        showline: true, 
+                        show_points: false, 
+                        vcursor: true, 
+                        ylabel: intensity_label, 
+                        xlabel: 'pixels from center',
+                        position_cursor: true});
+                }
                 return this;  
             };
-            sl = slice_listener(plot.series[0]);
+            sl_phi = new slice_listener_phi(plot.series[0]);
+            sl_r = new slice_listener_r(plot.series[0]);
             maskCanvas.width = data.dims.xdim;
             maskCanvas.height = data.dims.ydim;
-            sl.update();
+            sl_phi.update();
+            sl_r.update();
             
         } else {
             var plot = plots[next_target];
@@ -420,7 +457,8 @@
             colorbar.replot();
             maskCanvas.width = data.dims.xdim;
             maskCanvas.height = data.dims.ydim;
-            sl.update();
+            sl_phi.update();
+            sl_r.update();
         }
         
     }
@@ -509,6 +547,79 @@
             maskCtx.fillRect(min_x,min_y,dx,dy);
          }
          return {xy: xy_list, angle: angle_list, sum: sum_list, normalize: normalize_list}
+    }
+    
+    function multiplySumRadial(data, dims, center_x_coord, center_y_coord) {
+         var dxpos = (dims.xmax - dims.xmin) / (dims.xdim);
+         var dypos = (dims.ymax - dims.ymin) / (dims.ydim);
+         var center_x = (center_x_coord - dims.xmin) / dxpos;
+         var center_y = (center_y_coord - dims.ymin) / dypos;
+         
+         var ch = maskCanvas.height;
+         var cw = maskCanvas.width;
+         var maskCtx = maskCanvas.getContext('2d');
+         var r_min = 1;
+         var r_max = Math.sqrt(Math.max(
+            Math.pow((center_x - 0), 2) + Math.pow((center_y - 0), 2),
+            Math.pow((center_x - 0), 2) + Math.pow((center_y - dims.ymax), 2),
+            Math.pow((center_x - dims.xmax), 2) + Math.pow((center_y - dims.ymax), 2),
+            Math.pow((center_x - dims.xmax), 2) + Math.pow((center_y - 0), 2)
+         ));
+         var stepsize = 1;
+         var steps = (r_max - r_min)/ stepsize + 1;
+         var width = 1.0; // integration step for radial
+         maskCtx.fillStyle='#000000'; // for erasing
+         maskCtx.strokeStyle = '#ffffff'; // for drawing
+         maskCtx.lineWidth = width;
+         var radius_list=[], sum_list=[], normalize_list=[], xy_list=[];
+         var r, max_x, max_y, min_x, min_y, x1, x2, y1, y2, dx, dy;
+         var tau = Math.PI * 2.0;
+         var buffer_pixels = 3; // border around selection rectangle
+         maskCtx.fillRect(0,0,cw,ch);
+         for (var s=0; s<steps; s++) {            
+            maskCtx.beginPath();
+            r = r_min + s*stepsize;
+            maskCtx.arc(center_x, center_y, r, 0, tau);
+            maskCtx.stroke();
+            // assuming small steps: linear!
+            x1 = center_x + r; 
+            y1 = center_y - r; // plus is down
+            x2 = center_x - r;
+            y2 = center_y + r;
+            x1 = Math.round(x1);
+            x2 = Math.round(x2);
+            y1 = Math.round(y1);
+            y2 = Math.round(y2);
+            max_x = Math.min(cw, Math.max(x1, x2) + buffer_pixels);
+            min_x = Math.max(0, Math.min(x1, x2) - buffer_pixels);
+            max_y = Math.min(ch, Math.max(y1, y2) + buffer_pixels);
+            min_y = Math.max(0, Math.min(y1, y2) - buffer_pixels);
+            dx = max_x - min_x;
+            dy = max_y - min_y;
+            //console.log(min_x, max_x, min_y, max_y, dx, dy);
+            
+            sum = 0;
+            normalize = 0;
+            
+            if (dx > 0 && dy > 0) {                
+                maskData = maskCtx.getImageData(min_x,min_y,dx,dy).data;
+                //data = imgCtx.getImageData(min_x,min_y,dx,dy).data;
+                
+                for (var i=0; i<dx; i++) {
+                    for (var j=0; j<dy; j++) {
+                        var mi = (i*dy + j) * 4;
+                        normalize += maskData[mi];
+                        sum += maskData[mi] * data[min_x + i][min_y + j];
+                    }
+                }
+            }
+            radius_list[s] = r;
+            sum_list[s] = sum;
+            normalize_list[s] = normalize;
+            xy_list[s] = [r, (normalize == 0)? NaN : sum/normalize];
+            maskCtx.fillRect(min_x,min_y,dx,dy);
+         }
+         return {xy: xy_list, radius: radius_list, sum: sum_list, normalize: normalize_list}
     }
     
     pointTextControl = function(p, coord, label, precision) {
@@ -639,8 +750,10 @@
                 api = api_object;
                 devicesMonitor = new DevicesMonitorI();
                 devicesMonitor.postChangedHooks = [handleNodesChanged];
+                dataMonitor = new DataMonitorI();
                 return Promise.all(
-                    subscribe(devicesMonitor, 'devices')
+                    subscribe(devicesMonitor, 'devices'),
+                    subscribe(dataMonitor, 'data')
                 )
         }).exception(
             function(ex) {console.log(ex)}
@@ -663,7 +776,8 @@
         var xplot_width = $('#plotwrap').width() || 100;
         $('#xplot_plot').width(xplot_width);
         $('#slicecontrols').width($('.ui-layout-south').width() - xplot_width - 25); 
-        if (sl && sl.update) sl.update();
+        if (sl_phi && sl_phi.update) sl_phi.update();
+        if (sl_r && sl_r.update) sl_r.update();
     }
     
     window.onload = function() {
@@ -681,7 +795,7 @@
                 .find('.instrument-name').text('Server shut down: Not connected');
         }).on('niceServerConnected', function(ev) {
             $('#top_panel').addClass('connected')
-                .find('.instrument-name').text("Instrument connected: " + last_hostname);
+                .find('.instrument-name').text("Instrument connected: " + $('#instrument_ip').val());
         });
         
         dialog.show();
