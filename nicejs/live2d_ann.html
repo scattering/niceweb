@@ -68,13 +68,12 @@
         
         var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
         var ice_protocol_version = "1.0";
-                
         var logging_in = false;
 
-        var last_hostname = "h123062.ncnr.nist.gov"; // default NICE host
+        var hostname = "h123062.ncnr.nist.gov"; // default NICE host
         var port = '9999';
         if (localStorage && localStorage.nice_hostname) {
-            last_hostname = localStorage.nice_hostname
+            hostname = localStorage.nice_hostname
         }
         
         var detectors = {areaDetector: {dims: null, data: null, beamCenterX: null, beamCenterY: null}};
@@ -86,9 +85,6 @@
         var rsumRequested = false;
         var sl_phi, sl_r; // slice listeners.
         var maskCanvas; // for integrations
-
-        var hasError = false;
-        active = false;
 
         function capitalize(string) {
             return string.charAt(0).toUpperCase() + string.slice(1);
@@ -138,18 +134,6 @@
                 }); 
                 return obj
             } 
-        });
-
-        var DataMonitorI = Ice.Class(nice.api.data.DataMonitor, {
-            onSubscribe: function(recordList, fits,  __current) {
-                this.recordList = recordList;
-                this.fits = fits;
-                this._emits = [];
-            },
-            emit: function(record, __current) {
-                this._emits.push(record);
-            },
-            peakFit: function(peak, __current) {}
         });
 
         var plottableX = {
@@ -739,7 +723,8 @@
     }
     
     dialog_login = function() {
-        var hostname = document.getElementById("instrument_ip").value;
+        // set the global hostname
+        hostname = document.getElementById("instrument_ip").value;
         var username = document.getElementById("username").value;
         var password = document.getElementById("password").value;
         
@@ -750,10 +735,8 @@
                 api = api_object;
                 devicesMonitor = new DevicesMonitorI();
                 devicesMonitor.postChangedHooks = [handleNodesChanged];
-                dataMonitor = new DataMonitorI();
                 return Promise.all(
-                    subscribe(devicesMonitor, 'devices'),
-                    subscribe(dataMonitor, 'data')
+                    subscribe(devicesMonitor, 'devices')
                 )
         }).exception(
             function(ex) {console.log(ex)}
@@ -788,14 +771,14 @@
         if (!dialog.show) {
             dialogPolyfill.registerDialog(dialog);
         }
-        document.getElementById("instrument_ip").value = last_hostname;
+        document.getElementById("instrument_ip").value = hostname;
 
         $(window).on('niceServerShutdown', function(ev) {
             $('#top_panel').removeClass('connected', 4000)
                 .find('.instrument-name').text('Server shut down: Not connected');
         }).on('niceServerConnected', function(ev) {
             $('#top_panel').addClass('connected')
-                .find('.instrument-name').text("Instrument connected: " + $('#instrument_ip').val());
+                .find('.instrument-name').text("Instrument connected: " + hostname);
         });
         
         dialog.show();

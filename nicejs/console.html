@@ -43,29 +43,16 @@
     
     var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
     var ice_protocol_version = "1.0";
-            
     var logging_in = false;
 
-    var last_hostname = "h123062.ncnr.nist.gov"; // default NICE host
-    var port = '9999';
-    if (localStorage && localStorage.nice_hostname) {
-        last_hostname = localStorage.nice_hostname
-    }
-    
-    var State = {
-        Disconnected: 0,
-        Connecting: 1,
-        Connected:2
-    };
-    SORT_KEYS = true;
-    
-    var command_history = [];
-    
     var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+    var port = '9999';
     if (localStorage && localStorage.nice_hostname) {
         hostname = localStorage.nice_hostname
     }
     
+    var command_history = [];
+  
     function getEnumValues(ice_enum) {
         var enumVals = [];
         for (var i=0; i<=ice_enum.maxValue; i++) {
@@ -76,11 +63,7 @@
     // preread the CommandState enum:
     CommandStatusEnum = getEnumValues(nice.api.queue.CommandState);
     //CommandStatusEnum =  [ 'QUEUED', 'RUNNING', 'CHILDREN', 'FINISHED', 'SKIPPED' ];
-    
 
-    var state = State.Disconnected;
-    var hasError = false;
-    active = false;
 
     ////////////////////////////////////////////////////////////////////////////
     // JSTREE
@@ -511,7 +494,8 @@
     }
 
     dialog_login = function() {
-        var hostname = document.getElementById("instrument_ip").value;
+        // set the global hostname
+        hostname = document.getElementById("instrument_ip").value;
         var username = document.getElementById("username").value;
         var password = document.getElementById("password").value;
         
@@ -538,14 +522,14 @@
     if (!dialog.show) {
         dialogPolyfill.registerDialog(dialog);
     }
-    document.getElementById("instrument_ip").value = last_hostname;
+    document.getElementById("instrument_ip").value = hostname;
     
     $(window).on('niceServerShutdown', function(ev) {
         $('#top_panel').removeClass('connected', 4000)
             .find('.instrument-name').text('Server shut down: Not connected');
     }).on('niceServerConnected', function(ev) {
         $('#top_panel').addClass('connected')
-            .find('.instrument-name').text("Instrument connected: " + last_hostname);
+            .find('.instrument-name').text("Instrument connected: " + hostname);
     });
     
     dialog.show();

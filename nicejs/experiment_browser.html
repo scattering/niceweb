@@ -45,10 +45,10 @@
             
     var logging_in = false;
 
-    var last_hostname = "h123062.ncnr.nist.gov"; // default NICE host
+    var hostname = "h123062.ncnr.nist.gov"; // default NICE host
     var port = '9999';
     if (localStorage && localStorage.nice_hostname) {
-        last_hostname = localStorage.nice_hostname
+        hostname = localStorage.nice_hostname
     }
     
     function getEnumValues(ice_enum) {
@@ -83,7 +83,8 @@
     });
     
     dialog_login = function() {
-        var hostname = document.getElementById("instrument_ip").value;
+        // set the global hostname
+        hostname = document.getElementById("instrument_ip").value;
         var username = document.getElementById("username").value;
         var password = document.getElementById("password").value;
         
@@ -110,14 +111,14 @@
         if (!dialog.show) {
             dialogPolyfill.registerDialog(dialog);
         }
-        document.getElementById("instrument_ip").value = last_hostname;
+        document.getElementById("instrument_ip").value = hostname;
         
         $(window).on('niceServerShutdown', function(ev) {
             $('#north_panel').removeClass('connected', 4000)
                 .find('.instrument-name').text('Server shut down: Not connected');
         }).on('niceServerConnected', function(ev) {
             $('#north_panel').addClass('connected')
-                .find('.instrument-name').text("Instrument connected: " + last_hostname);
+                .find('.instrument-name').text("Instrument connected: " + hostname);
         });
     
         dialog.show();
