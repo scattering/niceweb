@@ -1,4 +1,13 @@
-(function(Ice, Glacier2){
+(function(Ice, Glacier2, nice){
+    // provides new global objects:
+    // 
+    // signin function (returns api from Promise);
+    // subscribe function;
+    // disconnect function;
+    // 
+    // and a new event 'niceServerShutdown' that is 
+    // triggered on the window when the nice server shuts down.
+    
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
         
@@ -11,14 +20,15 @@
     var state = State.Disconnected;
     var hasError = false;
     active = false;
+    var api, communicator, router, session, adapter;
+    var systemMonitor; // watch for shutdown
+    var shutdown_event = new Event("niceServerShutdown");
+    var connection_event = new Event("niceServerConnected");
 
     signin = function(routerEndpoint, encoding, disableACM, username, password)
     {
         var signinPromise = new Promise();
-        var communicator;
-        var router;
-        var session;
-        var adapter;
+        
         var username = (username == null) ? "" : username;
         var password = (password == null) ? "" : password;
         Promise.try (
@@ -83,8 +93,31 @@
         ).then(
             function(a) {
                 adapter = a;
+                
+                // disconnect on page unload
+                window.addEventListener("beforeunload", disconnect);
+                
+                // get the client api
+                var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
+                return mgr.getAPI('client')
+            }
+        ).then(
+            function(ca) {
+                return nice.api.ClientApiPrx.checkedCast(ca)
+            }
+        ).then(
+            function(cam) {
+                api = cam;                
                 active = true;
-                signinPromise.succeed(communicator, router, session, adapter);
+                // say we're connected now
+                window.dispatchEvent(connection_event);
+                
+                systemMonitor = new SystemMonitorI();
+                return subscribe(systemMonitor, 'system')
+            }
+        ).then(
+            function() {
+                signinPromise.succeed(api);
             }
         ).exception(
             function(ex)
@@ -103,19 +136,21 @@
         );
         return signinPromise; 
     }
-    
+
+    disconnect = function(event) {
+        adapter.deactivate().then(
+            function() {
+                adapter.destroy();
+                communicator.shutdown();
+            }
+        );
+    }
+        
     function capitalize(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
 
-    subscribe = function(api, router, adapter, servant, stream) {
-        //
-        // Get the session timeout and the router client category, and
-        // create the client object adapter.
-        //
-        // Use Ice.Promise.all to wait for the completion of all the
-        // calls.
-        //
+    subscribe = function(servant, stream) {
         return Promise.all(
             router.getSessionTimeout(),
             router.getCategoryForClient()
@@ -135,4 +170,14 @@
             }
         );
     }
-})(Ice, Glacier2);
+    
+    // basic system monitor to watch for server shutdowns
+    var SystemMonitorI = Ice.Class(nice.api.system.SystemMonitor, {
+        onSubscribe: function(state, __current) {},
+        stateChanged: function(state, __current) {},
+        serverShutdown: function( __current) {
+            disconnect();
+            window.dispatchEvent(shutdown_event);
+        }
+    });
+})(Ice, Glacier2, nice);

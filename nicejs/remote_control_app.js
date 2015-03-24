@@ -254,62 +254,15 @@
                 } 
             });
             
-            var setupDevicesMonitor = function(api, router, adapter) {
-                //var setup = new Promise();
-
-                //
-                // Get the session timeout and the router client category, and
-                // create the client object adapter.
-                //
-                // Use Ice.Promise.all to wait for the completion of all the
-                // calls.
-                //
-                return Promise.all(
-                    router.getSessionTimeout(),
-                    router.getCategoryForClient()
-                ).then(
-                    function(timeoutArgs, categoryArgs, adapterArgs)
-                    {
-                        var timeout = timeoutArgs[0];
-                        var category = categoryArgs[0];
-                        //var adapter = adapterArgs[0];
-
-                        //
-                        // Create the ChatCallback servant and add it to the
-                        // ObjectAdapter.
-                        //
-                        var dvmI = new DevicesMonitorI();
-                        /*
-                        dvmI.postSubscribeHooks = [
-                            function(devices, nodes, groups) { 
-                                $('#device_tree').jstree(devices_to_jstree(devices, true));
-                                $('#device_tree').on("ready.jstree", function (e, data) { update_jstree(nodes) });
-                             }
-                        ]
-                        */
-                        dvmI.postChangedHooks = [update_nodes];
-                        var dvmPrx = nice.api.devices.DevicesMonitorPrx.uncheckedCast(adapter.add(dvmI, new Ice.Identity("devicesMonitor", category)));
-                        var p = api.subscribeToDevices(dvmPrx);
-                        //
-                        devicesMonitor = dvmI;
-                        return p;
-                    }
-                );
-            }
             
             remote_control = function(hostname, port, username, password) {
                 var port = (port == null) ? 9999 : port;
                 return signin("NiceGlacier2/router:ws -p " + port.toFixed() + " -h " + hostname, "1.0", true, username, password).then(
-                    function(communicator, router, session, adapter) {
-                        var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
-                        return mgr.getAPI('client').then(
-                            function(ca) {
-                                return nice.api.ClientApiPrx.checkedCast(ca).then(
-                                    function(cam) {
-                                        api = cam;
-                                        return setupDevicesMonitor(cam, router, adapter)
-                                });
-                        });
+                    function(api_object) {
+                    api = api_object;
+                    devicesMonitor = new DevicesMonitorI();
+                    devicesMonitor.postChangedHooks = [update_nodes];
+                    return subscribe(devicesMonitor, 'devices')
                 }).then(
                     function() {
                         return api.getDeviceHierarchy().then(

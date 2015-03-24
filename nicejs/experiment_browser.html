@@ -40,10 +40,13 @@
   <script type="text/javascript">
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
+    var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
+    var ice_protocol_version = "1.0";
+            
     var logging_in = false;
-    var link = {};
-    
+
     var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+    var port = '9999';
     if (localStorage && localStorage.nice_hostname) {
         hostname = localStorage.nice_hostname
     }
@@ -55,26 +58,6 @@
         }
         return enumVals;
     }
-   
-
-    var SystemMonitorI = Ice.Class(nice.api.system.SystemMonitor, {
-        onSubscribe: function(state, __current) {
-            this._state = state;
-        },
-        stateChanged: function(state, __current) {
-            this._state = state;
-        },
-        serverShutdown: function( __current) {
-            link.monitor_adapter.deactivate().then(
-                function() {
-                    link.monitor_adapter.destroy();
-                    link.communicator.shutdown();
-                }
-            );
-            $('#north_panel').removeClass('connected', 4000)
-                .find('.instrument-name').text('Server shut down: Not connected');
-        }
-    });
 
     var ExperimentMonitorI = Ice.Class(nice.api.experiment.ExperimentMonitor, {
         onSubscribe: function(all_experiments, current_experiment, __current) {
@@ -99,69 +82,45 @@
         } 
     });
     
-    
-    function instrument_stop() {
-        return api.stop();
-    }
-
-
-
     dialog_login = function() {
-        var hostname = document.getElementById("instrument_ip").value;
+        // set the global hostname
+        hostname = document.getElementById("instrument_ip").value;
         var username = document.getElementById("username").value;
         var password = document.getElementById("password").value;
         
-        signin("NiceGlacier2/router:ws -p 9999 -h " + hostname, "1.0", true, username, password).then(
-            function(communicator, router, session, adapter) {
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+            function(api_object) {
                 // globals:
-                link.communicator = communicator
-                link.router = router
-                link.session = session
-                link.monitor_adapter = adapter
-                var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
-                return mgr.getAPI('client').then(
-                    function(ca) {
-                        return nice.api.ClientApiPrx.checkedCast(ca).then(
-                            function(cam) {
-                                api = cam;
-                                experimentMonitor = new ExperimentMonitorI();
-                                systemMonitor = new SystemMonitorI();
-                                return Promise.all(
-                                    subscribe(api, router, adapter, experimentMonitor, 'experiment'),
-                                    subscribe(api, router, adapter, systemMonitor, 'system')
-                                )
-                        });
-                });
+                logging_in = false;
+                api = api_object;
+                experimentMonitor = new ExperimentMonitorI();
+                // the subscribe function won't work until the connection is 
+                // complete, which is why it's in the "then" block here
+                return Promise.all(
+                    subscribe(experimentMonitor, 'experiment')
+                )
         });
         if (localStorage) {
             localStorage.nice_hostname = hostname;
         }
         document.getElementById("login").close();
-        document.getElementById("north_panel").getElementsByClassName("instrument-name")[0].innerHTML="Instrument connected: " + hostname;
-        document.getElementById("north_panel").classList.add("connected");
-        logging_in = false;
-
     }
- 
-    window.addEventListener("beforeunload", function (event) {
-        // disconnect and remove the adapter before leaving page
-        if (link.monitor_adapter && link.communicator) {
-            link.monitor_adapter.deactivate().then(
-                function() {
-                    link.monitor_adapter.destroy();
-                    link.communicator.shutdown();
-                    return "leaving page";
-                }
-            );
-        }
-    });
-  
+    
     window.onload = function() {
         var dialog = document.getElementById("login");
         if (!dialog.show) {
             dialogPolyfill.registerDialog(dialog);
         }
         document.getElementById("instrument_ip").value = hostname;
+        
+        $(window).on('niceServerShutdown', function(ev) {
+            $('#north_panel').removeClass('connected', 4000)
+                .find('.instrument-name').text('Server shut down: Not connected');
+        }).on('niceServerConnected', function(ev) {
+            $('#north_panel').addClass('connected')
+                .find('.instrument-name').text("Instrument connected: " + hostname);
+        });
+    
         dialog.show();
         logging_in = true;
     
@@ -215,7 +174,7 @@
     }
   </style>
   <link rel="stylesheet" type="text/css" href="css/main.css">
-  <title>NICE console</title>
+  <title>Experiments</title>
 </head>
 <body>
 <dialog id="login">

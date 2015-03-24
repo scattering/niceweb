@@ -25,8 +25,10 @@ function plotD3(target_id, data, options) {
     var linf = function(x) { return x }
     var logf = function(x) { return Math.log(x) / Math.LN10 }
     
-    var tx = options.log_x ? logf : linf;
-    var ty = options.log_y ? logf : linf;
+    //var tx = options.log_x ? logf : linf;
+    //var ty = options.log_y ? logf : linf;
+    var tx = linf;
+    var ty = linf;
     
     var newy, newx;
     var labels = data.options.series.map(function(d) { return d.label });
@@ -51,7 +53,7 @@ function plotD3(target_id, data, options) {
                 }
             }
         );
-        transformed_data.push(newSet);
+        transformed_data[i] = newSet;
     }
     
     data = transformed_data;
@@ -92,11 +94,11 @@ function plotD3(target_id, data, options) {
         width = container.clientWidth - margin.left - margin.right,
         height = container.clientHeight - margin.top - margin.bottom;
 	
-	var x = d3.scale.linear()
+	var x = (options.log_x ? d3.scale.log : d3.scale.linear)()
         .domain([min_x, max_x])
         .range([0, width]);
      
-    var y = d3.scale.linear()
+    var y = (options.log_y ? d3.scale.log : d3.scale.linear)()
         .domain([min_y, max_y])
         .range([height, 0]);
 	
@@ -263,11 +265,13 @@ function plotD3(target_id, data, options) {
     // Create D3 line object and draw data on our SVG object
     //************************************************************
     if (options.show_line) {
+        
         var line = d3.svg.line()
-            .defined(function(d) { return (d && isFinite(d.y)); })
-            .interpolate("linear")	
+            .defined(function(d) { return (d && isFinite(y(d.y))); })
+            //.interpolate("linear")	
             .x(function(d) { return x(d.x); })
-            .y(function(d) { return y(d.y); });		
+            .y(function(d) { return y(d.y); });
+        
 
         svg.selectAll('.line')
             .data(data)
@@ -291,7 +295,7 @@ function plotD3(target_id, data, options) {
     //************************************************************
     if (options.show_points) {
         var points = svg.selectAll('.dots')
-            //.defined(function(d) { return isFinite(d.y); })
+            .defined(function(d) { return (d && isFinite(y(d.y))); })
 	        .data(data)
 	        .enter()
 	        .append("g")

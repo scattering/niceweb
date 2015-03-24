@@ -66,11 +66,13 @@
         var Promise = Ice.Promise;
         var RouterPrx = Glacier2.RouterPrx;
         
-        var router = "Glacier2/router:ws -p 4064 -h h123062.ncnr.nist.gov";
+        var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
+        var ice_protocol_version = "1.0";
                 
         var logging_in = false;
-        var link = {};
+
         var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+        var port = '9999';
         if (localStorage && localStorage.nice_hostname) {
             hostname = localStorage.nice_hostname
         }
@@ -106,10 +108,10 @@
                 this.postChangedHooks.forEach( function(callback) { callback(changed); });
             },
             dynamicDevicesAdded: function(addRemoveID, childDeviceIDs, __current) {
-                alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
+                //alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
             },
             dynamicDevicesRemoved: function(addRemoveID, __current) {
-                alert('device removed: ' + addRemoveID);
+                //alert('device removed: ' + addRemoveID);
             },
             removed: function(devices, nodes, __current) {
                 this._lastDevicesRemoved = this.HashMapToObject(devices);
@@ -516,83 +518,49 @@
         return this;
     }
     
-    var updateRoiRectangle = function(nodes) {
+    var handleNodesChanged = function(nodes) {
+        if ('areaDetector.dimension' in nodes) {
+            detectors.areaDetector.dims = nodes['areaDetector.dimension'].currentValue.userVal.val;
+        }
+        if ('areaDetector.counts' in nodes) {
+            detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;            
+            window.refreshRequested = true;
+        }
         if ('areaDetector.roiShape' in nodes) {
             var shape = devicesMonitor.HashMapToObject(nodes['areaDetector.roiShape'].currentValue.userVal.val);
-            var roi_rectangle = (((plots.plotwrap || {}).plugins || {}).interactors || {}).roi_rectangle;
-            var roi_rect_opts = plottable2d.options.interactors[1];
-            if (roi_rectangle) {
-                if (shape.name == "rect") {
-                    roi_rectangle.p1.coords.y = roi_rectangle.p2.coords.y = parseFloat(shape.y1);
-                    roi_rectangle.p3.coords.y = roi_rectangle.p4.coords.y = parseFloat(shape.y2);
-                    roi_rectangle.p1.coords.x = roi_rectangle.p4.coords.x = parseFloat(shape.x1);
-                    roi_rectangle.p2.coords.x = roi_rectangle.p3.coords.x = parseFloat(shape.x2);
-                    roi_rectangle.show = true;
-                } else {
-                    roi_rectangle.show = false;
-                } 
-                plots.plotwrap.redraw();
+            if (shape.name == 'rect') {
+                detectors.areaDetector.roi = shape;
+            } else {
+                detectors.areaDetector.roi = null;
             }
+                window.refreshRequested = true;
         }
     }
     
     dialog_login = function() {
-        var hostname = document.getElementById("instrument_ip").value;
+        // set the global hostname
+        hostname = document.getElementById("instrument_ip").value;
         var username = document.getElementById("username").value;
         var password = document.getElementById("password").value;
         
-        signin_result = signin("NiceGlacier2/router:ws -p 9999 -h " + hostname, "1.0", true, username, password).then(
-            function(communicator, router, session, adapter) {
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+            function(api_object) {
                 // globals:
-                link.communicator = communicator
-                link.router = router
-                link.session = session
-                link.monitor_adapter = adapter
-                var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
-                return mgr.getAPI('client').then(
-                    function(ca) {
-                        return nice.api.ClientApiPrx.checkedCast(ca).then(
-                            function(cam) {
-                                api = cam;
-                                devicesMonitor = new DevicesMonitorI();
-                                devicesMonitor.postChangedHooks = [
-                                    function(nodes) {
-                                        if ('areaDetector.dimension' in nodes) {
-                                            detectors.areaDetector.dims = nodes['areaDetector.dimension'].currentValue.userVal.val;
-                                        }
-                                        if ('areaDetector.counts' in nodes) {
-                                            detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;
-                                            
-                                            //console.log('trigger: ', new Date(), window.refreshRequested);
-                                            window.refreshRequested = true;
-                                        }
-                                        if ('areaDetector.roiShape' in nodes) {
-                                            var shape = devicesMonitor.HashMapToObject(nodes['areaDetector.roiShape'].currentValue.userVal.val);
-                                            if (shape.name == 'rect') {
-                                                //console.log(shape);
-                                                detectors.areaDetector.roi = shape;
-                                            } else {
-                                                detectors.areaDetector.roi = null;
-                                            }
-                                                window.refreshRequested = true;
-                                            //updateRoiRectangle(nodes);
-                                        }
-                                    }
-                                ];
-                                return subscribe(api, router, adapter, devicesMonitor, 'devices');
-                        });
-                });
+                logging_in = false;
+                api = api_object;
+                devicesMonitor = new DevicesMonitorI();
+                devicesMonitor.postChangedHooks = [handleNodesChanged];
+                return Promise.all(
+                    subscribe(devicesMonitor, 'devices')
+                )
         }).exception(
             function(ex) {console.log(ex)}
         );
+        
         if (localStorage) {
             localStorage.nice_hostname = hostname;
         }
         document.getElementById("login").close();
-        document.getElementById("top_panel").getElementsByClassName("instrument-name")[0].innerHTML="Instrument connected: " + hostname;
-        document.getElementById("top_panel").classList.add("connected");
-        logging_in = false;
-
     }
     
     var fitPlots = function() {
@@ -617,9 +585,18 @@
             dialogPolyfill.registerDialog(dialog);
         }
         document.getElementById("instrument_ip").value = hostname;
+
+        $(window).on('niceServerShutdown', function(ev) {
+            $('#top_panel').removeClass('connected', 4000)
+                .find('.instrument-name').text('Server shut down: Not connected');
+        }).on('niceServerConnected', function(ev) {
+            $('#top_panel').addClass('connected')
+                .find('.instrument-name').text("Instrument connected: " + hostname);
+        });
+        
         dialog.show();
         logging_in = true;
-    
+        
         var layout = $('body').layout({
 		    east__size:			500
 	    ,	west__size:			0
@@ -634,7 +611,6 @@
 	    });
 	    
 	    fitPlots();
-        //signin();
     }
   </script>
   <style type="text/css">
