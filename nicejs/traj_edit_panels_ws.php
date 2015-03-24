@@ -2,15 +2,21 @@
 <head>
   <meta charset="utf-8" />
   <title>NICE Trajectory Editor</title>
+  <link rel="icon" type="image/png" href="css/appicon.png" />
+    <link rel="stylesheet" type="text/css" href="../../niceclient/static/css/layout-default-latest.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Special+Elite" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Love+Ya+Like+A+Sister" />
+    <link href="http://code.jquery.com/ui/1.10.4/themes/start/jquery-ui.css"
+            type="text/css" rel="Stylesheet" />
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
+    <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
   <!--<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />-->
   <!--<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/smoothness/jquery-ui.css" />-->
   <!--<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/redmond/jquery-ui.css" />-->
   <!--<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>-->
   <!--<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>-->
-  <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css" />
-  <link rel="stylesheet" href="css/layout-default-latest.css" />
-  <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
-  <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
   
   <script type="text/javascript">
     if (typeof jQuery == 'undefined')
@@ -29,56 +35,29 @@
   <script src="sprintf.js"></script>
   <script src="webtraj_base_prototype.js"></script>
   <script src="webtraj_interactive.js"></script>
-  <script src="dryrun.js"></script>
-  <script src="jsonpatch.js"></script>
-  <script src="jsondiff.js"></script>
+  <script src="dryrun_client.js"></script>
+<!--  <script src="jsonpatch.js"></script> -->
+<!--  <script src="jsondiff.js"></script> -->
   
-  <script src="../../niceweb/nicejs/icejs/Ice.js"></script>
-  <script src="../../niceweb/nicejs/icejs/Glacier2.js"></script>
-  <script src="../../niceweb/nicejs/icejs/IceStorm.js"></script>
-  <script src="../../niceweb/nicejs/icejs/IceGrid.js"></script>
+  <script src="icejs/Ice.js"></script>
+  <script src="icejs/Glacier2.js"></script>
+  <script src="icejs/IceStorm.js"></script>
+  <script src="icejs/IceGrid.js"></script>
 
-  <script src="../../niceweb/nicejs/generated/data.js"></script>
-  <script src="../../niceweb/nicejs/generated/file.js"></script>
-  <script src="../../niceweb/nicejs/generated/devices.js"></script>
-  <script src="../../niceweb/nicejs/generated/console.js"></script>
-  <script src="../../niceweb/nicejs/generated/dryrun.js"></script>
-  <script src="../../niceweb/nicejs/generated/exceptions.js"></script>
-  <script src="../../niceweb/nicejs/generated/nice.js"></script>
-  <script src="../../niceweb/nicejs/generated/events.js"></script>
-  <script src="../../niceweb/nicejs/generated/experiment.js"></script>
-  <script src="../../niceweb/nicejs/generated/queue.js"></script>
-  <script src="../../niceweb/nicejs/generated/sampleAlignment.js"></script>
-  <script src="../../niceweb/nicejs/generated/clientapi.js"></script>
-  <script src="../../niceweb/nicejs/connect_zeroc.js"></script>
+    <script src="generated/data.js"></script>
+    <script src="generated/devices.js"></script>
+    <script src="generated/console.js"></script>
+    <script src="generated/system.js"></script>
+    <script src="generated/dryrun.js"></script>
+    <script src="generated/exceptions.js"></script>
+    <script src="generated/nice.js"></script>
+    <script src="generated/events.js"></script>
+    <script src="generated/experiment.js"></script>
+    <script src="generated/queue.js"></script>
+    <script src="generated/sampleAlignment.js"></script>
+    <script src="generated/clientapi.js"></script>
+    <script src="connect_zeroc.js"></script>
   <link rel="stylesheet" href="webtraj.css" />
-  <?php function get_client_ip() {
-    $ipaddress = '';
-    if (getenv('HTTP_CLIENT_IP'))
-        $ipaddress = getenv('HTTP_CLIENT_IP');
-    else if(getenv('HTTP_X_FORWARDED_FOR'))
-        $ipaddress = getenv('HTTP_X_FORWARDED_FOR');
-    else if(getenv('HTTP_X_FORWARDED'))
-        $ipaddress = getenv('HTTP_X_FORWARDED');
-    else if(getenv('HTTP_FORWARDED_FOR'))
-        $ipaddress = getenv('HTTP_FORWARDED_FOR');
-    else if(getenv('HTTP_FORWARDED'))
-        $ipaddress = getenv('HTTP_FORWARDED');
-    else if(getenv('REMOTE_ADDR'))
-        $ipaddress = getenv('REMOTE_ADDR');
-    else
-        $ipaddress = 'UNKNOWN';
-
-    return $ipaddress;
-    }
-  ?>
-  <script type="text/javascript">
-  <?php 
-    echo("REQUESTOR_IP = '");
-    echo(get_client_ip());
-    echo("';");
-  ?>
-  </script>
   <script type="text/javascript">
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
@@ -93,13 +72,6 @@
         '129.6.120.111': 'ng7refl.ncnr.nist.gov',
         '129.6.123.10': 'h123010.ncnr.nist.gov'
     }
-    NICE_HOST = REQUESTOR_IP;
-    if (NICE_HOST in instrument_canonical_ip) {
-        NICE_HOST = instrument_canonical_ip[NICE_HOST];
-    } else {
-        // for testing, punt to MAGIK VM
-        NICE_HOST = 'h123062.ncnr.nist.gov'; 
-    }
     
   </script>
   <script type="text/javascript" src="webtraj_page_websocket.js"></script>
@@ -111,6 +83,27 @@
   <script type="text/javascript">
     $(document).ready(function () {
 	    //$('body').layout({ applyDemoStyles: true });
+	    hostname = document.getElementById("instrument_ip").value;
+        var username = document.getElementById("username").value;
+        var password = document.getElementById("password").value;
+        
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+            function(api_object) {
+                // globals:
+                logging_in = false;
+                api = api_object;
+                devicesMonitor = new DevicesMonitorI();
+                devicesMonitor.postChangedHooks = [handleNodesChanged];
+                return Promise.all(
+                    subscribe(devicesMonitor, 'devices')
+                )
+        }).exception(
+            function(ex) {console.log(ex)}
+        );
+        
+        if (localStorage) {
+            localStorage.nice_hostname = hostname;
+        }
 	    var layout = $('body').layout({
 			west__size:			300
 		,	east__size:			0
@@ -155,6 +148,7 @@
 <div id="bottom_panel" class="ui-layout-south">
     <div id="buttons" ></div>
     <div id="bulk_edit_buttons"></div>
+    <input id="instrument_ip" type="text" value="h123062.ncnr.nist.gov" />
 </div>
 <div id="top_panel" class="ui-layout-north">
     <div id="statusline">Trajectory Editor</div>
