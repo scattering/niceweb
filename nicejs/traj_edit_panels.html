@@ -7,9 +7,8 @@
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Special+Elite" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Love+Ya+Like+A+Sister" />
-    <link href="http://code.jquery.com/ui/1.10.4/themes/start/jquery-ui.css"
-            type="text/css" rel="Stylesheet" />
-    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css" />
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script>
     <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
     <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
   <!--<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />-->
@@ -31,7 +30,6 @@
   </script>
 <!--  <script src="http://code.jquery.com/jquery-1.9.1.js"></script>-->
 <!-- <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>-->
-  <script src="jquery.layout-latest.js"></script>  
   <script src="sprintf.js"></script>
   <script src="webtraj_base_prototype.js"></script>
   <script src="webtraj_interactive.js"></script>
@@ -46,6 +44,7 @@
 
     <script src="generated/data.js"></script>
     <script src="generated/devices.js"></script>
+    <script src="generated/file.js"></script>
     <script src="generated/console.js"></script>
     <script src="generated/system.js"></script>
     <script src="generated/dryrun.js"></script>
@@ -56,11 +55,20 @@
     <script src="generated/queue.js"></script>
     <script src="generated/sampleAlignment.js"></script>
     <script src="generated/clientapi.js"></script>
+    
+    <script src="DevicesMonitorI.js"></script>
     <script src="connect_zeroc.js"></script>
-  <link rel="stylesheet" href="webtraj.css" />
+  <link rel="stylesheet" href="css/webtraj.css" />
   <script type="text/javascript">
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
+    var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
+    var ice_protocol_version = "1.0";
+            
+    var logging_in = false;
+
+    var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+    var port = '9999';
     var api;
     var instrument_canonical_ip = {
         '129.6.120.90': 'magik.ncnr.nist.gov',
@@ -72,6 +80,7 @@
         '129.6.120.111': 'ng7refl.ncnr.nist.gov',
         '129.6.123.10': 'h123010.ncnr.nist.gov'
     }
+    var experimentMonitor, fileMonitor, devicesMonitor;
     
   </script>
   <script type="text/javascript" src="webtraj_page_websocket.js"></script>
@@ -81,22 +90,69 @@
     }
   </style>
   <script type="text/javascript">
+    var FileMonitorI = Ice.Class(nice.api.file.FileMonitor, {
+        onSubscribe: function(root, __current) {
+            this._root = root;
+            this.added = [];
+            this.removed = [];
+            this.updated = [];
+            this.contents = [];
+        },
+        filesAdded: function(nodes, contents, __current) {
+            this.added.push([nodes, contents]);
+        },
+        filesRemoved: function(nodes, contents, __current) {
+            this.removed.push([nodes, contents]);
+        },
+        filesUpdated: function(nodes, contents, __current) {
+            this.updated.push([nodes, contents]);
+        },
+        filesContents: function(nodes, contents, __current) {
+            this.contents.push([nodes, contents]);
+        },
+    });
+    var ExperimentMonitorI = Ice.Class(nice.api.experiment.ExperimentMonitor, {
+        onSubscribe: function(all_experiments, current_experiment, __current) {
+            this.all_experiments = all_experiments;
+            this.current_experiment = current_experiment;
+        },
+        switchedCurrentExperiment: function(current_experiment, __current) {
+            this.current_experiment = current_experiment;
+        },
+        modifiedCurrentExperiment: function(data,  __current) {
+            this._last_modified = data;
+        },
+        createdExperiment: function(data,  __current) {
+            this._last_created = data;
+        },
+        HashMapToObject: function(m) {
+            var obj={}; 
+            m.forEach( function(dn) { 
+                obj[dn]=m.get(dn);
+            }); 
+            return obj
+        } 
+    });
     $(document).ready(function () {
 	    //$('body').layout({ applyDemoStyles: true });
 	    hostname = document.getElementById("instrument_ip").value;
-        var username = document.getElementById("username").value;
-        var password = document.getElementById("password").value;
-        
+        var username = "user";
+        var password = null;
+        console.log(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password);
         signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
             function(api_object) {
                 // globals:
                 logging_in = false;
                 api = api_object;
                 devicesMonitor = new DevicesMonitorI();
-                devicesMonitor.postChangedHooks = [handleNodesChanged];
+                fileMonitor = new FileMonitorI();
+                experimentMonitor = new ExperimentMonitorI();
+                //devicesMonitor.postChangedHooks = [handleNodesChanged];
                 return Promise.all(
-                    subscribe(devicesMonitor, 'devices')
-                )
+                    subscribe(devicesMonitor, 'devices'),
+                    subscribe(fileMonitor, 'file'),
+                    subscribe(experimentMonitor, 'experiment')
+                ).then(function() { refreshBoth(); })
         }).exception(
             function(ex) {console.log(ex)}
         );
@@ -132,7 +188,8 @@
         }
         
         var hostname = document.location.hostname || "127.0.0.1";
-        getDevices().then(refreshBoth);
+        //getDevices().then(refreshBoth);
+        //refreshBoth();
     
     });
   </script>
@@ -146,9 +203,9 @@
      </div>
 </div>
 <div id="bottom_panel" class="ui-layout-south">
-    <div id="buttons" ></div>
-    <div id="bulk_edit_buttons"></div>
-    <input id="instrument_ip" type="text" value="h123062.ncnr.nist.gov" />
+    <div id="buttons" style="display:inline-block;"></div>
+    <div id="bulk_edit_buttons" style="display: inline-block;"></div>
+    <label style="display: inline-block;">Instrument: <input id="instrument_ip" type="text" value="magik.ncnr.nist.gov" /></label>
 </div>
 <div id="top_panel" class="ui-layout-north">
     <div id="statusline">Trajectory Editor</div>

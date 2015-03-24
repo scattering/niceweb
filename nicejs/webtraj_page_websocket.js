@@ -2,7 +2,7 @@ $(function() {
     
     TRAJECTORY_PATH = "trajectories";
     COMMON_PATH = "../../common/trajectories";
-    //NICE_HOST = window.NICE_HOST ? window.NICE_HOST : "h123062.ncnr.nist.gov";
+    NICE_HOST = window.NICE_HOST ? window.NICE_HOST : "h123062.ncnr.nist.gov";
     
     var EMPTY_TRAJ = "{'init': {}, 'loops': [{'vary': []}]}";
     var device_list;
@@ -53,13 +53,14 @@ $(function() {
         'id':'interactive',
         'checked': false,
         'onchange': 'update_interactiveness()'}));
+    /*
     bd.append($('<label />', {'text': 'Instrument:', 'for': 'nice_host'}));
     buttons['nice_host'] = bd.append($('<input />', {
         'type': 'text',
         'id': 'nice_host',
         'value': NICE_HOST,
         'onchange': 'getDevices().then(refreshBoth());'}));
-    
+    */
         
     var bb = $('#bulk_edit_buttons');
     buttons['bulk_save'] = bb.append($('<button />', {
@@ -107,7 +108,7 @@ $(function() {
         var interactive = document.getElementById('interactive').checked;
         wt = interactive ? new webtraj_interactive() : new webtraj();
         editor = wt.mainList(parsed_data);
-        wt.variable_names['devices'] = device_list;
+        wt.variable_names['devices'] = (devicesMonitor && devicesMonitor.devices)? Object.keys(devicesMonitor.devices).sort() : [];
         wt.variable_names['init'] = init_keywords;
         wt.source_trajectory = parsed_data;
         wt.raw = raw;
@@ -228,6 +229,17 @@ $(function() {
         );
     }
     
+    getFastTimeEstimate = function(filename) {
+        if (filename == null || filename == '') {
+            var filename = wt.filename;
+        }
+        var live_state = get_live_state();
+        var path = wt.path;
+        var traj_obj = editor.getValue();
+        var timeEstimate = fastTimeEstimate(traj_obj, newContext(live_state));
+        alert(timeEstimate);
+    }
+    
     getFiles = function(path, sort_files, callback) {
         var wildcard = '*.json';
         var fullPath = false;
@@ -276,13 +288,31 @@ $(function() {
     refreshBoth = function() {
         var sort_files = document.getElementById('sort_files').checked;
         var show_common = document.getElementById('show_common').checked;
+        var current_path = experimentMonitor.current_experiment.clientPath;
+        var experiment_folder = fileMonitor._root.children.filter( function(x) {
+            var re = new RegExp(current_path);
+            return re.test(x.name)
+        });
+        var trajectories_folder = experiment_folder[0].children.filter( function(x) { return /trajectories/.test(x.name) });
+        if (trajectories_folder.length == 0) { return }
+        var trajectory_files = trajectories_folder[0].children.map(function(x) { return (x.name) });
+        
+        var trajectories_path = trajectories_folder[0].name;
+        var labels = trajectory_files.map(function(x) { var pel = x.split('/'); return pel[pel.length - 1]});
+        updateFileList(trajectories_path, labels, false, 'ui-widget-content local-trajectories');
+        //console.log('trajectories:', trajectory_files, trajectories_path, labels);
+        
+        /*
         var req_common;
+        
         if (show_common) {
             req_common = api.ls(COMMON_PATH, '*.json', false);
         } else {
             req_common = new Promise().succeed(); // bail
         }
+        
         var req_current = api.ls(TRAJECTORY_PATH, '*.json', false);
+        
 
         Promise.all(req_common, req_current).then( function( t_comm, t_curr ) {
             //console.log(t_comm[0], t_curr[0]);
@@ -298,7 +328,7 @@ $(function() {
                    function(path, filename) { return path + '/' + filename });
             }
             updateFileList(TRAJECTORY_PATH, t_curr[0], false, 'ui-widget-content local-trajectories');
-            /*
+            
             $('#filelist ol').selectable({
                 stop: function(event, ui) { 
                     var selected = $('#filelist ol .ui-selected');
@@ -320,13 +350,14 @@ $(function() {
                     
                 }
             });
-            */
+            
             $("#filelist ol li").click(function() {
                 $(this).addClass("ui-selected").siblings().removeClass("ui-selected");
                 var path = $(this)[0].getAttribute('path');
                 var fn = $(this)[0].getAttribute('filename');
                 loadFile(path, fn);
             });
+            
             if (wt.filename && wt.path) {
                 // auto re-select currently selected file after save or refresh.
                 // first, scroll the window to the desired item:
@@ -344,6 +375,7 @@ $(function() {
                     alert(ex.toString());
                 }
             );
+        */
     }
     
     /*
@@ -472,33 +504,7 @@ $(function() {
     } 
     
     getDevices = function() {
-        if (api == null) {
-            var hostname = $('#nice_host').val();
-            return signin("NiceGlacier2/router:ws -p 9999 -h " + hostname, "1.0", true, "user").then(
-                function(communicator, router, session, adapter) {
-                    var mgr = nice.api.Glacier2ClientApiSessionPrx.uncheckedCast(session);
-                    return mgr.getAPI('client').then(
-                        function(ca) {
-                            return nice.api.ClientApiPrx.checkedCast(ca)
-                    });
-            }).then(function(cam) {
-                api = cam; // global
-                return getDevices()
-            });
-        } else {            
-            return api.getAllDevices().then(
-                function (data) {
-                    var data = HashMapToObject(data);
-                    device_list = Object.keys(data).sort();
-                    wt.variable_names['devices'] = device_list;
-                }
-            ).exception(
-                function(ex)
-                {
-                    alert(ex.toString());
-                }
-            );
-        }
+        return
     }
     
     updateDeviceSelect = function(devices) {
@@ -526,6 +532,13 @@ $(function() {
       helper: "clone",
       cursor: "crosshair",
       cursorAt: { top: -5, left: -5 }
+    });
+    
+    $(document).on("click", "#filelist ol li", function() {
+        $(this).addClass("ui-selected").siblings().removeClass("ui-selected");
+        var path = $(this)[0].getAttribute('path');
+        var fn = $(this)[0].getAttribute('filename');
+        loadFile(path, fn);
     });
     
     $('#filelist ol').keydown(arrowKeyNav);

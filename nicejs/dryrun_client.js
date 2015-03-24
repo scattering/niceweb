@@ -14,27 +14,26 @@ function newContext(live_state) {
             try { with(Math) with(this.moving) with(this.inits) with(this.counters) with(live_state) { return eval('('+s+')')} }
             catch(e) { console.log('Error: ' + e.toString()); console.log('string to parse: ', s); }
         }
-        this.assign = function(k, v) {
+        this.assign = function(k, v, namespace) {
             var parts = k.split('.');
-            var obj = this.moving, newobj;
-            for (var i=0; i<parts.length-1; i++) {
-                var part = parts[i];
-                if (!(part in obj)) { 
-                    obj[part] = new Object();
+            var basename = parts[0];
+            if (parts.length > 1) {
+                var remaining = k.slice(basename.length+1);
+                if (!(basename in namespace)) {
+                    namespace[basename] = new Object();
                 }
-                obj = obj[part];
+                this.assign(remaining, v, namespace[basename]);
+            } else {
+                namespace[basename] = v;
             }
-            obj[parts[parts.length-1]] = v;
-            //var notdotted = dottedToObj(k,v);
-            //this.moving[notdotted.k] = notdotted.v;
         }
         this.update = function(d) { parent.jQuery.extend(this.moving, d, true); };
         this.keys = function() { return Object.keys(this.moving); };
         this.destroy = function() { parent.jQuery(window).empty(); parent.jQuery(window).remove();}
         this.getTimeEstimate = function() { 
             var countAgainst = this.eval('counter.countAgainst');
-            if (countAgainst == "'TIME'") { return 1.0 }
-            else if (countAgainst == "'MONITOR'") { return 2.0 }
+            if (countAgainst == "'TIME'") { return this.eval('counter.timePreset'); }
+            else if (countAgainst == "'MONITOR'") { return 1.0 / parseFloat(this.eval('counter.monitorPreset')); }
             else return null
         }
     }
@@ -46,6 +45,32 @@ function newContext(live_state) {
     //"var MSIE/*@cc_on =1@*/;"+ // sniff
     //"parent.sandbox=MSIE?this:{eval:function(s){return eval(s)}}"+
 }
+
+function type (object) {
+    if (object === null) {
+        return 'null';
+    }
+    if (object === undefined) {
+        return 'undefined';
+    }
+    if ((object instanceof Number) || (typeof object === 'number')) {
+        return 'number';
+    }
+    if ((object instanceof String) || (typeof object === 'string')) {
+        return 'string';
+    }
+    if ((object instanceof Boolean) || (typeof object === 'boolean')) {
+        return 'boolean';
+    }
+    if ((object instanceof RegExp) || (typeof object === 'regexp')) {
+        return 'regexp';
+    }
+    if (Array.isArray(object)) {
+        return 'array';
+    }
+
+    return 'object';
+};
 
 function dottedToObj(k,v) {
     var parts = k.split('.');
@@ -62,10 +87,65 @@ function dottedToObj(k,v) {
     return {k: k_out, v:obj}
 }
 
+function expandDevices(traj) {
+    // make sure bare device names are expanded to device.primaryNodeID before dry run
+    if (traj.init && traj.init.forEach) {
+        traj.init.forEach( function(item) { 
+            var lhs = item[0];
+            var val = item[1];
+            var dottednames = lhs.split('.');
+            if (dottednames.length == 1 && dottednames[0] in devicesMonitor.devices && type(val) != 'object') {
+                // detects when setting a bare devicename: substitute
+                // the primary node for the namespace
+                var basename = dottednames[0];
+                item[0] = devicesMonitor.devices[basename].primaryNodeID;
+            }
+        });
+    }
+    if (traj.loops && traj.loops.forEach) {
+        expandDevicesLoops(traj.loops);
+    }
+    return traj;
+}
+
+function expandDevicesLoops(loops){
+   loops.forEach( function(loop, index, array) {
+        if (loop.vary && loop.vary.length > 0) {               
+            loop.vary.forEach( function(item) { 
+                var lhs = item[0];
+                var val = item[1];
+                var dottednames = lhs.split('.');
+                // the check is a little harder, because we have to exclude 'range' and 'list' items:
+                if (dottednames.length == 1 && 
+                    dottednames[0] in devicesMonitor.devices && 
+                        (type(val) != 'object' ||
+                         (type(val) ==  'object' && (val.range || val.list)))) {
+                    // detects when setting a bare devicename: substitute
+                    // the primary node for the namespace
+                    var basename = dottednames[0];
+                    item[0] = devicesMonitor.devices[basename].primaryNodeID;
+                }
+            });
+        }
+        if (loop.loops) { 
+            expandDevicesLoops(loops);
+        }
+    });
+}
+
+
 function parseInitItem(item) {
     var expression_str='';
     var lhs = item[0];
     var val = item[1];
+    var dottednames = lhs.split('.');
+    if (dottednames.length == 1 && dottednames[0] in devicesMonitor.devices && type(val) != 'object') {
+        // detects when setting a bare devicename: substitute
+        // the primary node for the namespace
+        var basename = dottednames[0];
+        lhs = devicesMonitor.devices[basename].primaryNodeID;
+        
+    }
     return {lhs: lhs, expression: JSON.stringify(val)}
     //else if (Array.isArray(val)) {
     //    expression_str = '['+val.toString() + ']';
@@ -218,7 +298,8 @@ function dryRun(traj, context) {
     if (traj.init && traj.init.forEach) {
         traj.init.forEach( function(item) { 
             var parsed = parseInitItem(item);
-            context.inits[parsed.lhs] = context.eval(parsed.expression);
+            context.assign(parsed.lhs, context.eval(parsed.expression), context.inits);
+            //context.inits[parsed.lhs] = context.eval(parsed.expression);
         });
     }
     
@@ -255,19 +336,26 @@ function fastTimeEstimate(traj, context) {
         }        
     }
     // make sure there is at least the currently-defined count information in the context:
-    context.inits['counter.countAgainst'] = context.eval('live.counter.countAgainst');
-    context.inits['counter.timePreset'] = context.eval('live.counter.timePreset');
-    context.inits['counter.monitorPreset'] = context.eval('live.counter.monitorPreset');
+    context.inits['counter'] = {
+        "countAgainst": context.eval('live.counter.countAgainst'),
+        "timePreset": context.eval('live.counter.timePreset'),
+        "monitorPreset": context.eval('live.counter.monitorPreset')
+    }
     
     if (traj.init && traj.init.forEach) {
         traj.init.forEach( function(item) { 
             var parsed = parseInitItem(item);
-            context.inits[parsed.lhs] = context.eval(parsed.expression);
+            context.assign(parsed.lhs, context.eval(parsed.expression), context.inits);
+            //context.inits[parsed.lhs] = context.eval(parsed.expression);
         });
     }
     
-    result = loopsRunWithTimeEstimate(traj.loops, pointNum, context, counter_str, numpoints_str, targetlist, metadata.entryName);
-    return result
+    result = loopsRunWithTimeEstimate(traj.loops, pointNum, context, counter_str, numpoints_str, targetlist, metadata.entryName, timelist);
+    var totalTime = 0;
+    for (var i=0; i<timelist.length; i++) {
+        totalTime += timelist[i];
+    }
+    return totalTime
     
 }
 
@@ -284,7 +372,7 @@ function loopsRun(loops, depth, context, counterstring, npstring, targetlist, en
                 items.forEach( function(item) {
                     //context.moving[item.lhs] = context.eval(item.expression);
                     //console.log(item.lhs, context.eval(item.expression));
-                    context.assign(item.lhs, context.eval(item.expression));
+                    context.assign(item.lhs, context.eval(item.expression), context.moving);
                 });
                 if (loop.loops) { loopsRun(loop.loops, depth, context, cstr, nstr, targetlist, entry_expr); }
                 else {
@@ -316,7 +404,7 @@ function loopsRunWithTimeEstimate(loops, depth, context, counterstring, npstring
                 items.forEach( function(item) {
                     //context.moving[item.lhs] = context.eval(item.expression);
                     //console.log(item.lhs, context.eval(item.expression));
-                    context.assign(item.lhs, context.eval(item.expression));
+                    context.assign(item.lhs, context.eval(item.expression), context.moving);
                 });
                 if (loop.loops) { loopsRun(loop.loops, depth, context, cstr, nstr, targetlist, entry_expr, timelist); }
                 else {
@@ -334,7 +422,7 @@ function loopsRunWithTimeEstimate(loops, depth, context, counterstring, npstring
             } 
         }
     });
-    return {targetlist: targetlist, names: context.keys()};
+    return {targetlist: targetlist, names: context.keys(), timelist: timelist};
 }
 
 
@@ -359,8 +447,6 @@ function make_getter(value) {
     var f = function() { return output_value }
     return f
 }
-
-function make_getter(value) {
 
 get_live_state = function(php_bridge_host, instrument) {
     var live = {};
