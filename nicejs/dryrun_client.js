@@ -448,7 +448,23 @@ function make_getter(value) {
     return f
 }
 
-get_live_state = function(php_bridge_host, instrument) {
+function deice(value) {
+    var output_value;
+    if (typeof value != 'object') {
+        output_value = value;
+    }
+    else if (value instanceof Ice.EnumBase) {
+        output_value = "'" + value._name + "'";
+    }
+    else if (value.toNumber) {
+        // for Ice.Long type
+        output_value = value.toNumber();
+    }
+    return output_value;
+}
+
+get_live_state = function(strict) {
+    // if strict is true: don't allow bare device names.
     var live = {};
     var device_ids = Object.keys(devicesMonitor.devices);
     for (var i=0; i<device_ids.length; i++) {
@@ -456,7 +472,7 @@ get_live_state = function(php_bridge_host, instrument) {
         //console.log(device_id);
         var device_proxy = {};
         var device = devicesMonitor.devices[device_id];
-        if ('primaryNodeID' in device && device.primaryNodeID) {
+        if (!strict && 'primaryNodeID' in device && device.primaryNodeID) {
             //console.log(device.primaryNodeID, devicesMonitor.nodes[device.primaryNodeID]);
             var value = devicesMonitor.nodes[device.primaryNodeID].currentValue.userVal.val;
             device_proxy = {
@@ -471,10 +487,12 @@ get_live_state = function(php_bridge_host, instrument) {
                 var node = devicesMonitor.nodes[node_id];
                 if (node.currentValue && node.currentValue.userVal) {
                     var value = node.currentValue.userVal.val;
-                    Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
+                    //Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
+                    device_proxy[node_name] = deice(value);
                 } else if (node.desiredValue && node.desiredValue.userVal) {
                     var value = node.desiredValue.userVal.val;
-                    Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
+                    device_proxy[node_name] = deice(value);
+                    //Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
                 }
             }
         }
