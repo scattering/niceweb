@@ -16,6 +16,9 @@
   <!--<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/redmond/jquery-ui.css" />-->
   <!--<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>-->
   <!--<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>-->
+  <!-- dialog support -->
+    <link rel="stylesheet" href="../static/dialog-polyfill.css" />
+    <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
   
   <script type="text/javascript">
     if (typeof jQuery == 'undefined')
@@ -69,6 +72,9 @@
 
     var hostname = "h123062.ncnr.nist.gov"; // default NICE host
     var port = '9999';
+    if (localStorage && localStorage.nice_hostname) {
+        hostname = localStorage.nice_hostname
+    }
     var api;
     var instrument_canonical_ip = {
         '129.6.120.90': 'magik.ncnr.nist.gov',
@@ -133,11 +139,49 @@
             return obj
         } 
     });
+    dialog_login = function() {
+        
+        // set the global hostname
+        hostname = document.getElementById("instrument_ip").value;
+        var username = document.getElementById("username").value;
+        var password = document.getElementById("password").value;
+        
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+            function(api_object) {
+                // globals:
+                logging_in = false;
+                api = api_object;
+                devicesMonitor = new DevicesMonitorI();
+                fileMonitor = new FileMonitorI();
+                experimentMonitor = new ExperimentMonitorI();
+                //devicesMonitor.postChangedHooks = [handleNodesChanged];
+                return Promise.all(
+                    subscribe(devicesMonitor, 'devices'),
+                    subscribe(fileMonitor, 'file'),
+                    subscribe(experimentMonitor, 'experiment')
+                ).then(function() { refreshBoth(); })
+        }).exception(
+            function(ex) {console.log(ex)}
+        );
+        
+        if (localStorage) {
+            localStorage.nice_hostname = hostname;
+        }
+        document.getElementById("login").close();
+    }
     $(document).ready(function () {
 	    //$('body').layout({ applyDemoStyles: true });
-	    hostname = document.getElementById("instrument_ip").value;
-        var username = "user";
-        var password = null;
+	    var dialog = document.getElementById("login");
+        if (!dialog.show) {
+            dialogPolyfill.registerDialog(dialog);
+        }
+        document.getElementById("instrument_ip").value = hostname;
+	    //hostname = document.getElementById("instrument_ip").value;
+	    dialog.show();
+        logging_in = true;
+        //var username = "user";
+        //var password = null;
+        /*
         console.log(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password);
         signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
             function(api_object) {
@@ -160,6 +204,7 @@
         if (localStorage) {
             localStorage.nice_hostname = hostname;
         }
+        */
 	    var layout = $('body').layout({
 			west__size:			300
 		,	east__size:			0
@@ -193,9 +238,28 @@
     
     });
   </script>
+  <style type="text/css">
+    #login {
+        top: 28%;
+        position: absolute;
+        z-index: 10;
+    }
+  </style>
 </head>
 <body>
-
+<dialog id="login">
+  <h2>Login</h2>
+  <label for="instrument_ip">Instrument address</label>
+  <input type="text" id="instrument_ip" value="happy.home">
+  <br>
+  <label for="username">Username:</label>
+  <input type="text" id="username" value="" placeholder="username">
+  <br>
+  <label for="password">Password:</label>
+  <input type="password" id="password" placeholder="password">
+  <br>
+  <input type="button" onclick="dialog_login()" value="Go">
+</dialog>
 <div id="files" class="ui-layout-wrapper ui-layout-west">
      <h3 class="ui-widget-header" style="display:block;">Trajectories</h3>
      <div id="filelist" tabindex=1> 
@@ -205,7 +269,6 @@
 <div id="bottom_panel" class="ui-layout-south">
     <div id="buttons" style="display:inline-block;"></div>
     <div id="bulk_edit_buttons" style="display: inline-block;"></div>
-    <label style="display: inline-block;">Instrument: <input id="instrument_ip" type="text" value="magik.ncnr.nist.gov" /></label>
 </div>
 <div id="top_panel" class="ui-layout-north">
     <div id="statusline">Trajectory Editor</div>

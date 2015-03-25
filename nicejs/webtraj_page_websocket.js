@@ -229,15 +229,16 @@ $(function() {
         );
     }
     
-    getFastTimeEstimate = function(filename) {
+    getFastTimeEstimate = function(filename, live) {
         if (filename == null || filename == '') {
             var filename = wt.filename;
         }
-        var live_state = get_live_state();
+        var live_state = (live) ? get_live_state(true) : {};
         var path = wt.path;
-        var traj_obj = editor.getValue();
-        var timeEstimate = fastTimeEstimate(traj_obj, newContext(live_state));
-        alert(timeEstimate);
+        var traj_obj = expandDevices(editor.getValue());
+        myContext = newContext(live_state);
+        var timeEstimate = fastTimeEstimate(traj_obj, myContext);
+        return timeEstimate;
     }
     
     getFiles = function(path, sort_files, callback) {

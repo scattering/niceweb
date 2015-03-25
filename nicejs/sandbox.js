@@ -1,22 +1,31 @@
 //importScripts('jquery-1.11.1.min.js');
 
 sandbox = function(live_state) {
-    this.moving = {}; 
+    this.moving = {};
+    this.live_state = live_state;
     this.inits = {};
     this.counters = {};
     this.metadata = {};
-    this.eval = function(s) { 
+    this.eval = function(s) {
+        if (typeof s == 'function') {
+            return s(this);
+        } else {
         if (s.trim() == "") { return undefined } // catch the empty strings
-        try { with(Math) with(this.moving) with(this.inits) with(this.counters) with(live_state) { return eval('('+s+')')} }
+        try { with(Math) with(live_state) with(this.inits) with(this.moving) with(this.counters) { return eval('('+s+')')} }
         catch(e) { console.log('Error: ' + e.toString()); console.log('string to parse: ', s); }
+        }
     }
-    this.assign = function(k, v, namespace) {
+    this.assign = function(k, v, namespace, inheritFrom) {
         var parts = k.split('.');
         var basename = parts[0];
         if (parts.length > 1) {
             var remaining = k.slice(basename.length+1);
             if (!(basename in namespace)) {
-                namespace[basename] = new Object();
+                if (inheritFrom && inheritFrom[basename]) {
+                    namespace[basename] = $.extend(true, {}, inheritFrom[basename]);
+                } else {
+                    namespace[basename] = new Object();
+                }
             }
             this.assign(remaining, v, namespace[basename]);
         } else {
@@ -26,12 +35,29 @@ sandbox = function(live_state) {
     this.update = function(d) { parent.jQuery.extend(this.moving, d, true); };
     this.keys = function() { return Object.keys(this.moving); };
     this.destroy = function() { parent.jQuery(window).empty(); parent.jQuery(window).remove();}
-    this.getTimeEstimate = function() { 
-        var countAgainst = this.eval('counter.countAgainst');
-        if (countAgainst == "'TIME'") { return this.eval('counter.timePreset'); }
-        else if (countAgainst == "'MONITOR'") { return 1.0 / parseFloat(this.eval('counter.monitorPreset')); }
-        else return null
+    this.getTimeEstimate = function() {
+        with(Math) with(this.live_state) with(this.inits) with(this.moving) with(this.counters) {
+            var countAgainst = counter.countAgainst;
+            if (countAgainst == "'TIME'") { 
+                return counter.timePreset
+            } else if (countAgainst == "'MONITOR'") { 
+                return 1.0 / parseFloat(counter.monitorPreset); 
+            }
+            else { return null }
+        }
     }
+}
+
+var expression_to_function = function(expr) {
+    var eval_str = "var expression_func = function(namespace) {";
+    eval_str += "with(Math) ";
+    eval_str += "with(namespace.live_state) ";
+    eval_str += "with(namespace.inits) ";
+    eval_str += "with(namespace.moving) ";
+    eval_str += "with(namespace.counters) ";
+    eval_str += "{ return (" + expr + ") }}"
+    eval(eval_str);
+    return expression_func
 }
 
 var range_fill = function(params) {
@@ -136,13 +162,9 @@ function parseVaryItem(item, counter_str) {
             //console.log(lhs+'.'+k, val[k], parseVaryItem([lhs+'.'+k, val[k]], counter_str));
         }
         return output;
-        //expression_str = '';
-        //for (var k in val) {
-        //    expression_str += 
-        //}
-        //expression_str = JSON.stringify(val);
     }
-    return [{lhs: lhs, numPoints: numPoints, expression: expression_str}]
+    var expression_func = expression_to_function(expression_str);
+    return [{lhs: lhs, numPoints: numPoints, expression: expression_func}]
 }
 
 function calcNumPoints(start, step, stop, numPoints) {
@@ -196,7 +218,7 @@ function fastTimeEstimate(traj, context) {
     for (var i=0; i<timelist.length; i++) {
         totalTime += timelist[i];
     }
-    return totalTime
+    return {totalTime: totalTime, timelist: timelist}
     
 }
 
@@ -233,6 +255,7 @@ function loopsRun(loops, depth, context, counterstring, npstring, targetlist, en
 }
 
 function loopsRunWithTimeEstimate(loops, depth, context, counterstring, npstring, targetlist, entry_expr, timelist) {
+    var entry_func = expression_to_function(entry_expr);
     loops.forEach( function(loop, index, array) {
         if (loop.vary && loop.vary.length > 0) {               
             var cstr = counterstring + '_' + index.toString();
@@ -243,20 +266,16 @@ function loopsRunWithTimeEstimate(loops, depth, context, counterstring, npstring
             context.counters[nstr] = items[0].numPoints;
             for (context.counters[cstr] = 0; context.counters[cstr] < context.counters[nstr]; context.counters[cstr]++) {
                 items.forEach( function(item) {
-                    //context.moving[item.lhs] = context.eval(item.expression);
-                    //console.log(item.lhs, context.eval(item.expression));
-                    context.assign(item.lhs, context.eval(JSON.stringify(item.expression)), context.moving);
+                    context.assign(item.lhs, context.eval(item.expression), context.moving, context.inits);
                 });
-                if (loop.loops) { loopsRun(loop.loops, depth, context, cstr, nstr, targetlist, entry_expr, timelist); }
+                if (loop.loops) { loopsRunWithTimeEstimate(loop.loops, depth, context, cstr, nstr, targetlist, entry_expr, timelist); }
                 else {
-                    var entry_str = context.eval(entry_expr);
+                    var entry_str = context.eval(entry_func);
                     var time_estimate = context.getTimeEstimate();
                     timelist.push(time_estimate);
                     // make a copy:
                     var target_item = $.extend(true, {}, context.moving);
-                    // = JSON.parse(JSON.stringify(context.moving));
                     target_item['entry'] = entry_str;
-                    //targetlist.push(JSON.parse(JSON.stringify(context.moving)));
                     targetlist.push(target_item);
                     depth[0]++;
                 }
@@ -366,7 +385,7 @@ onmessage = function(event) {
     var traj = data.traj;
     var context = new sandbox(live_state);
     var t = fastTimeEstimate(traj, context);
-    postMessage({time: t});
+    postMessage({time: t.totalTime, times: t.timelist});
     delete context;
     return
 }

@@ -7,20 +7,29 @@ function newContext(live_state) {
     iframe.contentWindow.sandbox = function() {
         this.moving = {}; 
         this.inits = {};
+        this.live_state = live_state;
         this.counters = {};
         this.metadata = {};
-        this.eval = function(s) { 
+        this.eval = function(s) {
+            if (typeof s == 'function') {
+                return s(this); 
+            } else {
             if (s.trim() == "") { return undefined } // catch the empty strings
             try { with(Math) with(this.moving) with(this.inits) with(this.counters) with(live_state) { return eval('('+s+')')} }
             catch(e) { console.log('Error: ' + e.toString()); console.log('string to parse: ', s); }
+            }
         }
-        this.assign = function(k, v, namespace) {
+        this.assign = function(k, v, namespace, inheritFrom) {
             var parts = k.split('.');
             var basename = parts[0];
             if (parts.length > 1) {
                 var remaining = k.slice(basename.length+1);
                 if (!(basename in namespace)) {
-                    namespace[basename] = new Object();
+                    if (inheritFrom && inheritFrom[basename]) {
+                        namespace[basename] = $.extend(true, {}, inheritFrom[basename]);
+                    } else {
+                        namespace[basename] = new Object();
+                    }
                 }
                 this.assign(remaining, v, namespace[basename]);
             } else {
@@ -30,11 +39,21 @@ function newContext(live_state) {
         this.update = function(d) { parent.jQuery.extend(this.moving, d, true); };
         this.keys = function() { return Object.keys(this.moving); };
         this.destroy = function() { parent.jQuery(window).empty(); parent.jQuery(window).remove();}
-        this.getTimeEstimate = function() { 
+        this.getTimeEstimate = function() {
+            with(this.inits) with(this.moving) {
+                var countAgainst = counter.countAgainst;
+                if (countAgainst == "'TIME'") { 
+                    return counter.timePreset
+                } else if (countAgainst == "'MONITOR'") { 
+                    return 1.0 / parseFloat(counter.monitorPreset); 
+                }
+            else { return null }}
+            /*
             var countAgainst = this.eval('counter.countAgainst');
             if (countAgainst == "'TIME'") { return this.eval('counter.timePreset'); }
             else if (countAgainst == "'MONITOR'") { return 1.0 / parseFloat(this.eval('counter.monitorPreset')); }
             else return null
+            */
         }
     }
     var sandbox = new iframe.contentWindow.sandbox();
@@ -128,7 +147,7 @@ function expandDevicesLoops(loops){
             });
         }
         if (loop.loops) { 
-            expandDevicesLoops(loops);
+            expandDevicesLoops(loop.loops);
         }
     });
 }
@@ -266,6 +285,60 @@ function parseVaryItem(item, counter_str) {
     return [{lhs: lhs, numPoints: numPoints, expression: expression_str}]
 }
 
+function parseVaryItemF(item, counter_str) {
+    var numPoints=0, expression_str='';
+    var lhs = item[0];
+    var val = item[1];
+    if (val.hasOwnProperty('range')) {
+        var range = val.range;
+        var filled_range, range_start, range_step;
+        try {
+            filled_range = range_fill(range);
+            range_start = filled_range.start;
+            range_step = filled_range.step;
+            numPoints = filled_range.numPoints;
+            //expression_str = function(counters) { return range_start + (range_step * counters[counter_str]) }
+            expression_str = filled_range.start.toString() + " + " + filled_range.step.toString() + "*" + counter_str; 
+        } 
+        catch(err) {
+            alert(err);
+        }
+    }
+    else if (val.hasOwnProperty('list')) {
+        var list = val.list;
+        numPoints = list.value.length;
+        if (list.hasOwnProperty('cyclic') && list.cyclic == true) {
+            expression_str = '['+list.value.toString() + '][' + counter_str + ' % ' + numPoints + ']';
+        } else {
+            expression_str = '['+list.value.toString() + '][Math.min(' + counter_str + ', ' + numPoints + '-1)]';
+        }
+    }
+    else if (Array.isArray(val)) {
+        numPoints = val.length;
+        expression_str = '['+val.toString() + '][Math.min(' + counter_str + ', ' + numPoints + '-1)]';
+    }
+    else if (typeof val === 'string' || typeof val === 'number') {
+        numPoints = 0;
+        expression_str = val;
+    }
+    else if (typeof val === 'object') {
+        var output = [], k;
+        for (k in val) {
+            output = output.concat(parseVaryItemF([lhs+'.'+k, val[k]], counter_str));
+            //console.log(lhs+'.'+k, val[k], parseVaryItem([lhs+'.'+k, val[k]], counter_str));
+        }
+        return output;
+        //expression_str = '';
+        //for (var k in val) {
+        //    expression_str += 
+        //}
+        //expression_str = JSON.stringify(val);
+    }
+    eval('var expression_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.moving) with(namespace.inits) with(namespace.counters) return (' + expression_str + ')};');
+    return [{lhs: lhs, numPoints: numPoints, expression: expression_func}]
+}
+
+
 function calcNumPoints(start, step, stop, numPoints) {
     if (step == 0) {return 1}
     else { return Math.floor( (stop - start) / step ) + 1 }
@@ -392,23 +465,25 @@ function loopsRun(loops, depth, context, counterstring, npstring, targetlist, en
 }
 
 function loopsRunWithTimeEstimate(loops, depth, context, counterstring, npstring, targetlist, entry_expr, timelist) {
+    eval('var entry_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.moving) with(namespace.inits) with(namespace.counters) return (' + entry_expr + ')};');
+    //eval ('var entry_func = function(counters) { return ' + entry_expr + ' }');
     loops.forEach( function(loop, index, array) {
         if (loop.vary && loop.vary.length > 0) {               
             var cstr = counterstring + '_' + index.toString();
             var nstr = npstring + '_' + index.toString();
             var items = [];
-            loop.vary.forEach( function(item) { items = items.concat(parseVaryItem(item, cstr)); });
+            loop.vary.forEach( function(item) { items = items.concat(parseVaryItemF(item, cstr)); });
             //context.assign(nstr, items[0].numPoints)
             context.counters[nstr] = items[0].numPoints;
             for (context.counters[cstr] = 0; context.counters[cstr] < context.counters[nstr]; context.counters[cstr]++) {
                 items.forEach( function(item) {
                     //context.moving[item.lhs] = context.eval(item.expression);
                     //console.log(item.lhs, context.eval(item.expression));
-                    context.assign(item.lhs, context.eval(item.expression), context.moving);
+                    context.assign(item.lhs, context.eval(item.expression), context.moving, context.inits);
                 });
-                if (loop.loops) { loopsRun(loop.loops, depth, context, cstr, nstr, targetlist, entry_expr, timelist); }
+                if (loop.loops) { loopsRunWithTimeEstimate(loop.loops, depth, context, cstr, nstr, targetlist, entry_expr, timelist); }
                 else {
-                    var entry_str = context.eval(entry_expr);
+                    var entry_str = context.eval(entry_func);
                     var time_estimate = context.getTimeEstimate();
                     timelist.push(time_estimate);
                     // make a copy:
