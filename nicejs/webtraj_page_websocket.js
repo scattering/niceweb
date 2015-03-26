@@ -242,7 +242,8 @@ $(function() {
     }
     
     getFiles = function(path, sort_files, callback) {
-        var wildcard = '*.json';
+        //var wildcard = '*.json';
+        var wildcard = '*';
         var fullPath = false;
         return api.ls(path, wildcard, fullPath).then(
             function(filenames) {

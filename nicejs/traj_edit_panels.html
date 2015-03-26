@@ -70,11 +70,12 @@
             
     var logging_in = false;
 
-    var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+    var nice_hostname = "h123062.ncnr.nist.gov"; // default NICE host
     var port = '9999';
     if (localStorage && localStorage.nice_hostname) {
-        hostname = localStorage.nice_hostname
+        nice_hostname = localStorage.nice_hostname
     }
+    console.log(nice_hostname);
     var api;
     var instrument_canonical_ip = {
         '129.6.120.90': 'magik.ncnr.nist.gov',
@@ -96,7 +97,11 @@
     }
   </style>
   <script type="text/javascript">
+    
     var FileMonitorI = Ice.Class(nice.api.file.FileMonitor, {
+        __init__: function() {
+            this.pathseparator = '/';
+        },
         onSubscribe: function(root, __current) {
             this._root = root;
             this.added = [];
@@ -105,7 +110,10 @@
             this.contents = [];
         },
         filesAdded: function(nodes, contents, __current) {
-            this.added.push([nodes, contents]);
+            nodes.forEach(function(n) {
+                
+            });
+            //this.added.push([nodes, contents]);
         },
         filesRemoved: function(nodes, contents, __current) {
             this.removed.push([nodes, contents]);
@@ -116,6 +124,19 @@
         filesContents: function(nodes, contents, __current) {
             this.contents.push([nodes, contents]);
         },
+        // end overrides
+        _findInsertionPoint: function(nodename, target, level) {
+            console.log(nodename, target, level);
+            var pathtokens = nodename.split(this.pathseparator);
+            var nextpath = pathtokens.slice(0, level).join(this.pathseparator) + this.pathseparator;
+            console.log(nextpath);
+            var nexttarget = target.children.filter(function(c) { return new RegExp('\^' + nextpath).test( c.name ) })[0];
+            if (level == pathtokens.length) {
+                return nexttarget
+            } else {
+                return this._findInsertionPoint(nodename, nexttarget, (level+1))
+            }
+        }
     });
     var ExperimentMonitorI = Ice.Class(nice.api.experiment.ExperimentMonitor, {
         onSubscribe: function(all_experiments, current_experiment, __current) {
@@ -142,11 +163,11 @@
     dialog_login = function() {
         
         // set the global hostname
-        hostname = document.getElementById("instrument_ip").value;
+        var nice_hostname = document.getElementById("instrument_ip").value;
         var username = document.getElementById("username").value;
         var password = document.getElementById("password").value;
         
-        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+        signin(router_spec.replace(/<host>/, nice_hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
             function(api_object) {
                 // globals:
                 logging_in = false;
@@ -165,46 +186,21 @@
         );
         
         if (localStorage) {
-            localStorage.nice_hostname = hostname;
+            localStorage.nice_hostname = nice_hostname;
         }
         document.getElementById("login").close();
     }
-    $(document).ready(function () {
+    window.onload = function () { 
 	    //$('body').layout({ applyDemoStyles: true });
 	    var dialog = document.getElementById("login");
         if (!dialog.show) {
             dialogPolyfill.registerDialog(dialog);
         }
-        document.getElementById("instrument_ip").value = hostname;
+        document.getElementById("instrument_ip").value = nice_hostname;
 	    //hostname = document.getElementById("instrument_ip").value;
 	    dialog.show();
         logging_in = true;
-        //var username = "user";
-        //var password = null;
-        /*
-        console.log(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password);
-        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
-            function(api_object) {
-                // globals:
-                logging_in = false;
-                api = api_object;
-                devicesMonitor = new DevicesMonitorI();
-                fileMonitor = new FileMonitorI();
-                experimentMonitor = new ExperimentMonitorI();
-                //devicesMonitor.postChangedHooks = [handleNodesChanged];
-                return Promise.all(
-                    subscribe(devicesMonitor, 'devices'),
-                    subscribe(fileMonitor, 'file'),
-                    subscribe(experimentMonitor, 'experiment')
-                ).then(function() { refreshBoth(); })
-        }).exception(
-            function(ex) {console.log(ex)}
-        );
         
-        if (localStorage) {
-            localStorage.nice_hostname = hostname;
-        }
-        */
 	    var layout = $('body').layout({
 			west__size:			300
 		,	east__size:			0
@@ -231,12 +227,11 @@
             }
             layout.resizeAll();
         }
-        
-        var hostname = document.location.hostname || "127.0.0.1";
+       
         //getDevices().then(refreshBoth);
         //refreshBoth();
     
-    });
+    };
   </script>
   <style type="text/css">
     #login {

@@ -25,38 +25,38 @@ function plotD3(target_id, data, options) {
     var linf = function(x) { return x }
     var logf = function(x) { return Math.log(x) / Math.LN10 }
     
-    //var tx = options.log_x ? logf : linf;
-    //var ty = options.log_y ? logf : linf;
-    var tx = linf;
-    var ty = linf;
-    
-    var newy, newx;
     var labels = data.options.series.map(function(d) { return d.label });
-    var transformed_data = [];
-    
+
+    var x = (options.log_x ? d3.scale.log : d3.scale.linear)();
+    var y = (options.log_y ? d3.scale.log : d3.scale.linear)();
+
+    var transformed_data = [], origSet, p, ox, oy, finite_x, finite_y;
     for (var i=0; i<data.data.length; i++) {
-        var newSet = data.data[i].map(
-            function(p) {
-                newx = tx(p[0]);
-                newy = ty(p[1]);
-                if (isFinite(newx) && isFinite(newy)) {
-                    if (newx > max_x) max_x = tx(p[0]);
-                    if (newx < min_x) min_x = tx(p[0]);
-                //}
-                //if (isFinite(newy)) {
-                    if (newy > max_y) max_y = ty(p[1]);
-                    if (newy < min_y) min_y = ty(p[1]); 
-                //}
-                    return {'x': newx, 'y': newy} 
-                } else {
-                    return null;
-                }
+        origSet = data.data[i];
+        var newSet = [];
+        for (var j=0; j<origSet.length; j++) {
+            p = origSet[j];
+            ox = p[0];
+            oy = p[1];
+            finite_x = isFinite(x(ox));
+            finite_y = isFinite(y(oy));
+            
+            if (finite_x) {
+                if (ox > max_x) max_x = ox;
+                if (ox < min_x) min_x = ox;
             }
-        );
+            if (finite_y) {
+                if (oy > max_y) max_y = oy;
+                if (oy < min_y) min_y = oy; 
+            }
+            if (finite_x && finite_y) {    
+                newSet.push({'x': ox, 'y': oy}); 
+            }
+        }
         transformed_data[i] = newSet;
     }
     
-    data = transformed_data;
+    var data = transformed_data;
     
     var old_colors = [
 	    'steelblue',
