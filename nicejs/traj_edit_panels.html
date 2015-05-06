@@ -131,10 +131,10 @@
             var nextpath = pathtokens.slice(0, level).join(this.pathseparator) + this.pathseparator;
             console.log(nextpath);
             var nexttarget = target.children.filter(function(c) { return new RegExp('\^' + nextpath).test( c.name ) })[0];
-            if (level == pathtokens.length) {
-                return nexttarget
-            } else {
+            if (level < (pathtokens.length - 1)) {
                 return this._findInsertionPoint(nodename, nexttarget, (level+1))
+            } else {
+                return nexttarget
             }
         }
     });
