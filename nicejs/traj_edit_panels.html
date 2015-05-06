@@ -104,15 +104,25 @@
         },
         onSubscribe: function(root, __current) {
             this._root = root;
+            this.root_obj = this._map_to_obj(root);
             this.added = [];
             this.removed = [];
             this.updated = [];
             this.contents = [];
         },
         filesAdded: function(nodes, contents, __current) {
-            nodes.forEach(function(n) {
-                
-            });
+            if (nodes.length != contents.length) {
+                console.log('error! lengths of added nodes doesn\'t match contents');
+                return
+            }
+            var n, c, ip;
+            for (var i=0; i<nodes.length; i++) {
+                n = nodes[i];
+                c = contents[i];
+                ip = this._findInsertionPoint(n.name, this._root, 2);
+                ip.children.push(n)               
+            };
+            refreshBoth();
             this.added.push([nodes, contents]);
         },
         filesRemoved: function(nodes, contents, __current) {
@@ -126,10 +136,10 @@
         },
         // end overrides
         _findInsertionPoint: function(nodename, target, level) {
-            console.log(nodename, target, level);
+            //console.log(nodename, target, level);
             var pathtokens = nodename.split(this.pathseparator);
             var nextpath = pathtokens.slice(0, level).join(this.pathseparator) + this.pathseparator;
-            console.log(nextpath);
+            //console.log(nextpath);
             var nexttarget = target.children.filter(function(c) { return new RegExp('\^' + nextpath).test( c.name ) })[0];
             if (level < (pathtokens.length - 1)) {
                 return this._findInsertionPoint(nodename, nexttarget, (level+1))
