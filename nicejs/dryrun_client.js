@@ -1,4 +1,4 @@
-function newContext(live_state) {
+function newContext(live_state, monitorEstimateExpression) {
     // using the iframe trick
     // probably doesn't work under IE
     var iframe = document.createElement("iframe");
@@ -45,7 +45,9 @@ function newContext(live_state) {
                 if (countAgainst == "'TIME'") { 
                     return counter.timePreset
                 } else if (countAgainst == "'MONITOR'") { 
-                    return 1.0 / parseFloat(counter.monitorPreset); 
+                    var monitorRate = monitorEstimateExpression(this);
+                    return parseFloat(counter.monitorPreset) / monitorRate;
+                    //return 1.0 / parseFloat(counter.monitorPreset); 
                 }
             else { return null }}
             /*
@@ -383,7 +385,13 @@ function dryRun(traj, context) {
 
 function fastTimeEstimate(traj, context) {
     // can only work if counter.countAgainst is 'MONITOR' or 'TIME', 
-    // and if 'MONITOR' requires the monitorRateEstimation formula.
+    // and if 'MONITOR' requires the monitorEstimateExpression formula.
+    //
+    // an example for reflectometers is this:
+    // monitorEstimateExpression = '(slitAperture1.softPosition / 1000.0) / 198000'
+    // where 198000 is the persistent_config value 'estimatedMonitorRate', and is 
+    // in units of monitorRate / slitAperture1 (in meters), while slitAperture1 is in mm
+    // in user units (hence the factor of 1000.0 in the formula)
     var context = context == null? newContext() : context;
     var pointNum = [0];
     var metadata = {
@@ -414,6 +422,8 @@ function fastTimeEstimate(traj, context) {
         "timePreset": context.eval('live.counter.timePreset'),
         "monitorPreset": context.eval('live.counter.monitorPreset')
     }
+    
+    // eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.inits) with(namespace.counters) return (' + expression_str + ')};');
     
     if (traj.init && traj.init.forEach) {
         traj.init.forEach( function(item) { 

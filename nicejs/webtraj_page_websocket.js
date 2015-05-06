@@ -5,6 +5,7 @@ $(function() {
     NICE_HOST = window.NICE_HOST ? window.NICE_HOST : "h123062.ncnr.nist.gov";
     
     var EMPTY_TRAJ = "{'init': {}, 'loops': [{'vary': []}]}";
+    var MONITOR_RATE_ESTIMATE_EXPRESSION = 'slitAperture1 / 1000.0 * <cached_monitor>';
     var device_list;
     
     // add buttons for functionality
@@ -238,9 +239,13 @@ $(function() {
         var live_state = (live) ? get_live_state(true) : {};
         var path = wt.path;
         var traj_obj = expandDevices(editor.getValue());
-        myContext = newContext(live_state);
-        var timeEstimate = fastTimeEstimate(traj_obj, myContext);
-        return timeEstimate;
+        return api.getPersistentValue('estimatedMonitorRate').then( function(cached_monitor) {
+            var expression_str = MONITOR_RATE_ESTIMATE_EXPRESSION.replace('<cached_monitor>', cached_monitor.toString());
+            eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.inits) with(namespace.counters) return (' + expression_str + ')};');
+            myContext = newContext(live_state, monitorEstimateExpressionFunc);
+            var timeEstimate = fastTimeEstimate(traj_obj, myContext);
+            return timeEstimate;
+        });
     }
     
     getFiles = function(path, sort_files, callback) {
