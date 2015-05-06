@@ -181,11 +181,12 @@ $(function() {
             var filename = wt.filename;
         }
         wt.filename = filename;
-        wt.path = TRAJECTORY_PATH;
+        var trajectories_path = getTrajectoriesPath();
+        wt.path = trajectories_path;
         $('#statusline').html('<b>Editing: ' + filename + '</b>');
         var traj_obj = editor.getValue();
         var filecontents = JSON.stringify(traj_obj, null, "  ");
-        var path = TRAJECTORY_PATH + '/' + filename;
+        var path = trajectories_path + filename;
         var ov = true; // overWrite
         var ap = false; // append
         return api.writeFileFromText(path, filecontents, ov, ap);   
@@ -197,7 +198,8 @@ $(function() {
             if (wt && wt.filename) { prompt_file = wt.filename }; 
             var filename = prompt("Save file as:", prompt_file);
         }
-        getFiles(TRAJECTORY_PATH, true, function(filenames) {
+        var trajectories_path = getTrajectoriesPath();
+        getFiles(trajectories_path, true, function(filenames) {
             if (checkExisting && filenames.indexOf(filename) > -1) {
                 var yn = confirm("Filename: " + filename + " exists.  Overwrite?");
                 if (yn == true) { saveFile(filename, true); }
@@ -287,6 +289,17 @@ $(function() {
         e.preventDefault();
     };
     
+    getTrajectoriesPath = function() {
+        var current_path = experimentMonitor.current_experiment.clientPath;
+        var experiment_folder = fileMonitor._root.children.filter( function(x) {
+            var re = new RegExp(current_path);
+            return re.test(x.name)
+        });
+        var trajectories_folder = experiment_folder[0].children.filter( function(x) { return /trajectories/.test(x.name) });
+        var trajectories_path = trajectories_folder[0].name;
+        return trajectories_path;
+    }
+    
     refreshBoth = function() {
         var sort_files = document.getElementById('sort_files').checked;
         var show_common = document.getElementById('show_common').checked;
@@ -302,6 +315,20 @@ $(function() {
         var trajectories_path = trajectories_folder[0].name;
         var labels = trajectory_files.map(function(x) { var pel = x.split('/'); return pel[pel.length - 1]});
         updateFileList(trajectories_path, labels, true, 'ui-widget-content local-trajectories');
+        
+        if (wt.filename && wt.path) {
+            // auto re-select currently selected file after save or refresh.
+            // first, scroll the window to the desired item:
+            var selection = $('#filelist ol [filename="' + wt.filename + '"][path="' + wt.path + '"]');
+            if (selection && selection.parent && selection.position) {
+                var parent_offset = selection.parent().position().top;
+                var curr_position = selection.position().top;
+                var grandparentdiv = selection.parent().parent();
+                selection.parent().parent().scrollTop(curr_position - parent_offset);
+                // do the selection
+                selection.trigger('click');
+            }  
+        }
         //console.log('trajectories:', trajectory_files, trajectories_path, labels);
         
         /*
