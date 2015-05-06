@@ -165,7 +165,7 @@ $(function() {
                 wt = set_data(data);
                 wt.filename = filename;
                 wt.path = path;
-                $('#statusline').html('<b>Editing: ' + path + '/' + filename + '</b>');
+                $('#statusline').html('<b>Editing: ' + path + filename + '</b>');
                 $('.lockrange').prop('checked', true).trigger('change');;
                 //document.getElementById('result').innerHTML = result.val.me;
                 msg = null;
