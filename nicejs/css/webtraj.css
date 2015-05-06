@@ -1,0 +1,53 @@
+.loop-section, .loops-section { 
+    list-style-type: none; 
+    margin: 5; 
+    padding-left: 10; 
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0; 
+    border-style: dashed; 
+    border-width: 1px; 
+    border-color: gray;}
+.vary-section { list-style-type: none; margin: 0; padding-left: 10; padding-right: 0; padding-top: 0; padding-bottom: 0; }
+ol { list-style-type: none; margin: 0; padding: 10; }
+.main-list { margin: 0; padding: 0 }
+.itemkey { padding: 0.4em; padding-left: 1.5em; font-size: 1em; font-weight: bold}
+.text-entry { padding-left: 5px; }
+/*.text-entry input { width: 300px; }*/
+.text-entry input { size: 10; font-family: 'Courier New', monospace;}
+.item-range .text-entry input { size: 10; }
+.text-entry.numpoints input { width: 50px; }
+.boolean-entry { padding-left: 10px; padding-right: 10px; }
+/*select { margin: 0px 3px 3px 3px; padding: 0.2em; font-size: 0.8em; height: 1.8em; }*/
+.section-header { display: inline-block; font:italic 12px/30px Georgia, serif; padding: 0.2em; font-size: 1.1em; height: 1.2em; }
+.subsection-header { display: inline-block; font:italic 12px/30px Georgia, serif; padding-right: 1em; margin: 0; font-size: 1.1em; }
+.remove-button { float: right; margin: 0px; padding: 0px; font-size: 0.3em;}
+#catalog { margin: 10px; padding: 10px; border-style: solid; border-width: 1px; border-color: gray; }
+.catalog-item { margin: 8px; padding: 5px; }
+.ui-dialog .ui-state-error { padding: .3em; }
+fieldset { padding:0; border:0; margin-top:25px; }
+.device-name { display: inline-block; padding-left: 1em; padding-right: 1em; font-weight: bold; font-size: 0.9em; font-family: sans-serif; }
+.custom-devicename { display: none; size: 10; text-align: center; font-size: 1em;}
+.dependent-item input:enabled { background-color: yellow }
+#files { height: 150px; padding: 5px; }
+#files h3 { text-align: center; margin: 0; }
+.files { height: 150px; padding: 5px; }
+.files h3 { text-align: center; margin: 0; }
+.filelist { overflow-y: scroll; overflow-x: hidden; }
+.filelist ol .ui-selecting { background: #FECA40; }
+.filelist ol .ui-selected { background: #F39814; color: white; }
+.filelist ol li {border: none;}
+.sequence-editor { padding: 5px; }
+.sequence-editor h3 { text-align: center; margin: 0; }
+li .sorting-handle { display: inline-block; background: #f8f8f8; left: 0; top: 0; bottom: 0; padding:2px; }
+.ui-selecting { background: #eee; }
+.ui-selecting .handle { background: #ddd; }
+.ui-selected { background: #def; }
+.ui-selected .handle { background: #cde; }
+#filelist { overflow-y: scroll; overflow-x: hidden; }
+#filelist ol .ui-selecting { background: #FECA40; }
+#filelist ol .ui-selected { background: #F39814; color: white; }
+#filelist ol li {border: none;}
+.common-trajectories { font-style: italic }
+/*#filelist ol { list-style-type: none; margin: 0; padding: 0; width: 60%; }*/
+/*#filelist ol li { margin: 3px; padding: 0.4em; font-size: 1.4em; height: 18px; }*/
