@@ -10,6 +10,7 @@ function newContext(live_state, monitorEstimateExpression) {
         this.live_state = live_state;
         this.counters = {};
         this.metadata = {};
+        this.monitorEstimateExpression = monitorEstimateExpression;
         this.eval = function(s) {
             if (typeof s == 'function') {
                 return s(this); 
@@ -45,7 +46,7 @@ function newContext(live_state, monitorEstimateExpression) {
                 if (countAgainst == "'TIME'") { 
                     return counter.timePreset
                 } else if (countAgainst == "'MONITOR'") { 
-                    var monitorRate = monitorEstimateExpression(this);
+                    var monitorRate = this.monitorEstimateExpression(this);
                     return parseFloat(counter.monitorPreset) / monitorRate;
                     //return 1.0 / parseFloat(counter.monitorPreset); 
                 }
