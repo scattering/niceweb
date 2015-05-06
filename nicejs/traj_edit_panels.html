@@ -142,6 +142,8 @@
         onSubscribe: function(all_experiments, current_experiment, __current) {
             this.all_experiments = all_experiments;
             this.current_experiment = current_experiment;
+            this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
+            this.postChangedHooks.forEach( function(callback) { callback(current_experiment); });
         },
         switchedCurrentExperiment: function(current_experiment, __current) {
             this.current_experiment = current_experiment;
@@ -176,11 +178,12 @@
                 fileMonitor = new FileMonitorI();
                 experimentMonitor = new ExperimentMonitorI();
                 //devicesMonitor.postChangedHooks = [handleNodesChanged];
+                experimentMonitor.postChangedHooks = [refreshBoth];
                 return Promise.all(
                     subscribe(devicesMonitor, 'devices'),
                     subscribe(fileMonitor, 'file'),
                     subscribe(experimentMonitor, 'experiment')
-                ).then(function() { refreshBoth(); })
+                )//.then(function() { refreshBoth(); })
         }).exception(
             function(ex) {console.log(ex)}
         );
