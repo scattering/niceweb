@@ -301,7 +301,7 @@ $(function() {
         
         var trajectories_path = trajectories_folder[0].name;
         var labels = trajectory_files.map(function(x) { var pel = x.split('/'); return pel[pel.length - 1]});
-        updateFileList(trajectories_path, labels, false, 'ui-widget-content local-trajectories');
+        updateFileList(trajectories_path, labels, true, 'ui-widget-content local-trajectories');
         //console.log('trajectories:', trajectory_files, trajectories_path, labels);
         
         /*
