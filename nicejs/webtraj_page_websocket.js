@@ -513,7 +513,10 @@ $(function() {
     updateFileList = function(path, filenames, emptyFirst, listclass, contentGenerator) {
         var filelist = $('#filelist');
         var ol = $('#filelist ol');
-        var contentGenerator = (contentGenerator==null) ? function(path, filename) { return filename; } : contentGenerator;
+        var defaultContentGenerator = function(path, filename) {
+            return filename + '<span class="estimated-time">1:02:36</span>';
+        }
+        var contentGenerator = (contentGenerator==null) ? defaultContentGenerator : contentGenerator;
         if (emptyFirst == true) { 
             ol.empty();
         }
