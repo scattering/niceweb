@@ -15,7 +15,7 @@ function newContext(live_state, monitorEstimateExpression) {
             if (typeof s == 'function') {
                 return s(this); 
             } else {
-            if (s.trim() == "") { return undefined } // catch the empty strings
+            if (s.trim && s.trim() == "") { return undefined } // catch the empty strings
             try { with(Math) with(this.moving) with(this.inits) with(this.counters) with(live_state) { return eval('('+s+')')} }
             catch(e) { console.log('Error: ' + e.toString()); console.log('string to parse: ', s); }
             }
@@ -47,7 +47,8 @@ function newContext(live_state, monitorEstimateExpression) {
                     return counter.timePreset
                 } else if (countAgainst == "'MONITOR'") { 
                     var monitorRate = this.monitorEstimateExpression(this);
-                    return parseFloat(counter.monitorPreset) / monitorRate;
+                    var preset = this.eval(counter.monitorPreset);
+                    return parseFloat(preset) / monitorRate;
                     //return 1.0 / parseFloat(counter.monitorPreset); 
                 }
             else { return null }}

@@ -232,13 +232,33 @@ $(function() {
         );
     }
     
-    getFastTimeEstimate = function(filename, live) {
+    getFastTimeEstimate = function(path, filename, live_state, callback) {
         if (filename == null || filename == '') {
             var filename = wt.filename;
         }
-        var live_state = (live) ? get_live_state(true) : {};
-        var path = wt.path;
-        var traj_obj = expandDevices(editor.getValue());
+        //var live_state = (live) ? get_live_state(true) : {};
+        var path = (path == null) ? wt.path : path;
+        var traj_obj, cached_monitor;
+        return api.readFileAsText(path + '/' + filename).then(
+            function (data) {
+                var parsed_data = eval('(function(){ var result =' + data + '; return result})();')
+                traj_obj = expandDevices(parsed_data);                
+                my_traj_obj = traj_obj;
+                return api.getPersistentValue('estimatedMonitorRate')
+            }
+        ).then(
+            function(c) {
+                cached_monitor = c;
+                var expression_str = MONITOR_RATE_ESTIMATE_EXPRESSION.replace('<cached_monitor>', cached_monitor.toString());
+                eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.inits) with(namespace.counters) return (' + expression_str + ')};');
+                myEF = monitorEstimateExpressionFunc;
+                var ctx = newContext(live_state, monitorEstimateExpressionFunc);
+                myContext = ctx;
+                var timeEstimate = fastTimeEstimate(traj_obj, ctx);
+                callback(timeEstimate, path, filename);
+            }
+        );
+        /*
         return api.getPersistentValue('estimatedMonitorRate').then( function(cached_monitor) {
             var expression_str = MONITOR_RATE_ESTIMATE_EXPRESSION.replace('<cached_monitor>', cached_monitor.toString());
             eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.inits) with(namespace.counters) return (' + expression_str + ')};');
@@ -246,6 +266,7 @@ $(function() {
             var timeEstimate = fastTimeEstimate(traj_obj, myContext);
             return timeEstimate;
         });
+        */
     }
     
     getFiles = function(path, sort_files, callback) {
@@ -510,24 +531,36 @@ $(function() {
         
     }
     */
+    
+    updateTimeEstimate = function(t, path, filename) {
+        var hours = Math.floor(t/3600.0);
+        var minutes = Math.round((t % 3600.0) / 60.0);
+        $('li[path="' + path + '"][filename="' + filename + '"]')
+          .children('.estimated-time')
+          .html(((hours > 0) ? (hours + 'h') : '') + minutes + 'm');
+    }
+    
     updateFileList = function(path, filenames, emptyFirst, listclass, contentGenerator) {
         var filelist = $('#filelist');
         var ol = $('#filelist ol');
         var defaultContentGenerator = function(path, filename) {
-            return filename + '<span class="estimated-time">1:02:36</span>';
+            return filename + '<span class="estimated-time"></span>';
         }
         var contentGenerator = (contentGenerator==null) ? defaultContentGenerator : contentGenerator;
         if (emptyFirst == true) { 
             ol.empty();
         }
         
+        var live_state = get_live_state(true);
         for (var i=0; i<filenames.length; i++) {
             var li = $('<li/>');
+            var filename = filenames[i];
             li.addClass(listclass);
             li.attr('path', path);
-            li.attr('filename', filenames[i]);
-            li.html(contentGenerator(path, filenames[i]));
+            li.attr('filename', filename);
+            li.html(contentGenerator(path, filename));
             ol.append(li);
+            getFastTimeEstimate(path, filename, live_state, updateTimeEstimate);
         }
         filelist.height( $('#files').innerHeight() - $('#files h3').outerHeight() - 10 ); // padding is 5
     }
