@@ -11,6 +11,8 @@
     <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script>
     <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
     <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
+    <script type="text/javascript" src="tv4.js"></script>
+    <script type="text/javascript" src="tv4.async-jquery.js"></script>
   <!--<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />-->
   <!--<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/smoothness/jquery-ui.css" />-->
   <!--<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/redmond/jquery-ui.css" />-->
@@ -79,6 +81,10 @@
     var api;
     var experimentMonitor, fileMonitor, devicesMonitor;
     
+    /* Example validation:
+    tv4.validate(editor.getValue(), 'trajectory_schemas/trajectory-schema.json', function(s) {console.log(s)});
+    */
+    
   </script>
   <script type="text/javascript" src="webtraj_page_websocket.js"></script>
   <style type="text/css">
@@ -114,8 +120,30 @@
             refreshBoth();
             this.added.push([nodes, contents]);
         },
-        filesRemoved: function(nodes, contents, __current) {
-            this.removed.push([nodes, contents]);
+        filesRemoved: function(nodes,  __current) {
+            //if (nodes.length != contents.length) {
+            //    console.log('error! lengths of added nodes doesn\'t match contents');
+            //    return
+            //}
+            var n, ip;
+            for (var i=0; i<nodes.length; i++) {
+                n = nodes[i];
+                ip = this._findInsertionPoint(n.name, this._root, 2);
+                var nn, found = false;
+                for (var j=0; j<ip.children.length; j++) {
+                    nn = ip.children[j];
+                    if (nn.name == n.name) {
+                        ip.children.pop(j);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    alert("can't delete " + n.name + ": file not found");
+                } 
+            };
+            refreshBoth();
+            this.removed.push([nodes]);
         },
         filesUpdated: function(nodes, contents, __current) {
             this.updated.push([nodes, contents]);
@@ -243,6 +271,11 @@
     }
     .estimated-time {
         float: right;
+        color: red;
+    }
+    .numPoints {
+        float: right;
+        color: green;
     }
   </style>
 </head>

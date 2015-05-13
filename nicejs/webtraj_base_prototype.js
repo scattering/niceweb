@@ -25,7 +25,7 @@
         
     var ENUMS = {
         "counter.countAgainst": ["'TIME'", "'MONITOR'", "'ROI'", "'TIME_MONITOR'", "'TIME_ROI'", "'MONITOR_ROI'", "'TIME_MONITOR_ROI'"], 
-        "counter.roiAgainst": ["'areaDetector'", "'pointDetector'"]
+        "counter.roiAgainst": ["'areaDetector'", "'pointDetector'", "'linearDetector'"]
     };
 
     var EMPTY_TRAJ = "{'init': {}, 'loops': [{'vary': []}]}";
@@ -623,17 +623,22 @@
             var item = items[i];
             var key = item[0];
             var value = item[1];
-            if (key == "counter") {
-                var newctr = this.counterListItem(key, value);
-                ul.appendChild(newctr);
-            }
-            else if (value.hasOwnProperty('range')) {
+            //if (key == "counter") {
+            //    var newctr = this.counterListItem(key, value);
+            //    ul.appendChild(newctr);
+            //}
+            //else if (value.hasOwnProperty('range')) {
+            if (value.hasOwnProperty('range')) {
                 var newrange = this.rangeListItem(key, value.range);
                 ul.appendChild(newrange);
             }
             else if (value.hasOwnProperty('list')) {
                 var newlist = this.listObjListItem(key, value.list);
                 ul.appendChild(newlist);
+            }
+            else if (isObject(value)) {
+                var newobj = this.objListItem(key, value);
+                ul.appendChild(newobj);
             }
             else if (typeof value === 'string' || typeof value === 'number') {
                 if (key in ENUMS) {
@@ -657,7 +662,7 @@
         
         function getValue() {
             var output = [];
-            $('li', this).each( function(index, el) {
+            $('>li', this).each( function(index, el) {
                 output.push([el.getLabel(), el.getValue()]);
             });
             return output;

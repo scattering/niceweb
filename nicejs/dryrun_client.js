@@ -1,10 +1,12 @@
-function newContext(live_state, monitorEstimateExpression) {
+function newContext(live_state, monitorEstimateExpression, primaryNodesMap) {
     // using the iframe trick
     // probably doesn't work under IE
     var iframe = document.createElement("iframe");
+    var primaryNodesMap = (primaryNodesMap == null) ? {} : primaryNodesMap;
     iframe.style.display = "none";
     document.body.appendChild(iframe);
     iframe.contentWindow.sandbox = function() {
+        this.primaryNodesMap = primaryNodesMap;
         this.moving = {}; 
         this.inits = {};
         this.live_state = live_state;
@@ -16,25 +18,34 @@ function newContext(live_state, monitorEstimateExpression) {
                 return s(this); 
             } else {
             if (s.trim && s.trim() == "") { return undefined } // catch the empty strings
-            try { with(Math) with(this.moving) with(this.inits) with(this.counters) with(live_state) { return eval('('+s+')')} }
+            try { with(Math) with(live_state) with(this.counters) with(this.inits) with(this.moving) { return eval('('+s+')')} }
             catch(e) { console.log('Error: ' + e.toString()); console.log('string to parse: ', s); }
             }
         }
-        this.assign = function(k, v, namespace, inheritFrom) {
+        this.assign = function(k, v, namespace, skipLookupPrimaryID) {
             var parts = k.split('.');
             var basename = parts[0];
+            if (!(basename in namespace)) {
+                namespace[basename] = new Object();
+                if (!skipLookupPrimaryID && (basename in this.primaryNodesMap)) {
+                    var primaryNodeID = this.primaryNodesMap[basename];
+                    namespace[basename].valueOf = function() { return this[primaryNodeID] }
+                }
+            }
             if (parts.length > 1) {
                 var remaining = k.slice(basename.length+1);
-                if (!(basename in namespace)) {
-                    if (inheritFrom && inheritFrom[basename]) {
-                        namespace[basename] = $.extend(true, {}, inheritFrom[basename]);
-                    } else {
-                        namespace[basename] = new Object();
-                    }
-                }
-                this.assign(remaining, v, namespace[basename]);
+                // only do the special binding of name to primaryID for the first level.
+                this.assign(remaining, v, namespace[basename], true);
             } else {
-                namespace[basename] = v;
+                // just a single name: if it is a device make sure to set the primary node
+                // instead of the bare name.
+                if (!skipLookupPrimaryID && (basename in this.primaryNodesMap)) {
+                    var primaryNodeID = this.primaryNodesMap[basename];
+                    namespace[basename][primaryNodeID] = v;
+                } else {
+                    // if it gets here, it's not a device with a primary node... just set the name.
+                    namespace[basename] = v;
+                }
             }
         }
         this.update = function(d) { parent.jQuery.extend(this.moving, d, true); };
@@ -43,9 +54,9 @@ function newContext(live_state, monitorEstimateExpression) {
         this.getTimeEstimate = function() {
             with(this.inits) with(this.moving) {
                 var countAgainst = counter.countAgainst;
-                if (countAgainst == "'TIME'") { 
+                if (countAgainst == "'TIME'" || countAgainst == "TIME") { 
                     return counter.timePreset
-                } else if (countAgainst == "'MONITOR'") { 
+                } else if (countAgainst == "'MONITOR'" || countAgainst == "MONITOR") { 
                     var monitorRate = this.monitorEstimateExpression(this);
                     var preset = this.eval(counter.monitorPreset);
                     return parseFloat(preset) / monitorRate;
@@ -108,6 +119,17 @@ function dottedToObj(k,v) {
         obj = newobj;
     }
     return {k: k_out, v:obj}
+}
+
+function getPrimaryNodeIDMap() {
+    var output = {};
+    var devices = devicesMonitor.getAllDeviceNames();
+    devices.forEach(function (item, i) {
+        if ('primaryNodeID' in devicesMonitor.devices[item]) {
+            output[item] = devicesMonitor.devices[item]['primaryNodeID'].split('.')[1];
+        }
+    });
+    return output;
 }
 
 function expandDevices(traj) {
@@ -338,7 +360,7 @@ function parseVaryItemF(item, counter_str) {
         //}
         //expression_str = JSON.stringify(val);
     }
-    eval('var expression_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.moving) with(namespace.inits) with(namespace.counters) return (' + expression_str + ')};');
+    eval('var expression_func = function(namespace) { with(Math) with(namespace.live_state)  with(namespace.inits) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
     return [{lhs: lhs, numPoints: numPoints, expression: expression_func}]
 }
 
@@ -440,7 +462,8 @@ function fastTimeEstimate(traj, context) {
     for (var i=0; i<timelist.length; i++) {
         totalTime += timelist[i];
     }
-    return totalTime
+
+    return {totalTime: totalTime, numPoints: pointNum[0]}
     
 }
 
@@ -477,7 +500,7 @@ function loopsRun(loops, depth, context, counterstring, npstring, targetlist, en
 }
 
 function loopsRunWithTimeEstimate(loops, depth, context, counterstring, npstring, targetlist, entry_expr, timelist) {
-    eval('var entry_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.moving) with(namespace.inits) with(namespace.counters) return (' + entry_expr + ')};');
+    eval('var entry_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.counters) with(namespace.inits) with(namespace.moving) return (' + entry_expr + ')};');
     //eval ('var entry_func = function(counters) { return ' + entry_expr + ' }');
     loops.forEach( function(loop, index, array) {
         if (loop.vary && loop.vary.length > 0) {               
@@ -491,7 +514,7 @@ function loopsRunWithTimeEstimate(loops, depth, context, counterstring, npstring
                 items.forEach( function(item) {
                     //context.moving[item.lhs] = context.eval(item.expression);
                     //console.log(item.lhs, context.eval(item.expression));
-                    context.assign(item.lhs, context.eval(item.expression), context.moving, context.inits);
+                    context.assign(item.lhs, context.eval(item.expression), context.moving); //, context.inits);
                 });
                 if (loop.loops) { loopsRunWithTimeEstimate(loop.loops, depth, context, cstr, nstr, targetlist, entry_expr, timelist); }
                 else {

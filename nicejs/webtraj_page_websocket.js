@@ -39,15 +39,18 @@ $(function() {
     buttons['save'] = bd.append($('<button />', {
         'text': 'Save',
         'onclick': 'save();'}));
+    buttons['delete'] = bd.append($('<button />', {
+        'text': 'Delete',
+        'onclick': 'deleteFile();'}));
     buttons['dryrun'] = bd.append($('<button />', {
         'text': 'Save as',
         'onclick': 'saveAs(true);'}));
-    bd.append($('<label />', {'text': 'Show common', 'for': 'show_common'}));
-    buttons['show_common'] = bd.append($('<input />', {
-        'type': 'checkbox', 
-        'id':'show_common',
-        'checked': false,
-        'onchange': 'refreshBoth()'}));
+    //bd.append($('<label />', {'text': 'Show common', 'for': 'show_common'}));
+    //buttons['show_common'] = bd.append($('<input />', {
+    //    'type': 'checkbox', 
+    //    'id':'show_common',
+    //    'checked': false,
+    //    'onchange': 'refreshBoth()'}));
     bd.append($('<label />', {'text': 'Edit structure', 'for': 'interactive'}));
     buttons['interactive'] = bd.append($('<input />', {
         'type': 'checkbox', 
@@ -218,6 +221,32 @@ $(function() {
         saveAs(false, wt.filename);
     }
     
+    deleteFilesConfirm = function(filenames) {
+        var yn = confirm("Delete: " + filenames.join(',') + ";  Are you sure?");
+        if (yn == true) { deleteFiles(filenames); }
+        else {} // do nothing
+    }
+    
+    deleteFiles = function(filenames) {
+        return api.deleteFiles(filenames).then(
+            function() {
+                refreshBoth();
+            }
+        ).exception(
+            function(data) {
+                alert("ERROR: " + JSON.stringify(data));
+            }
+        );
+    }
+    
+    deleteFile = function(filename) {
+        if (filename == null || filename == '') {
+            var filename = wt.filename;
+            var path = TRAJECTORY_PATH + '/' + filename;
+        }
+        deleteFilesConfirm([path]);
+    }
+    
     enqueue = function() {
         var filename = wt.filename;
         return api.runJsonTrajectoryFile(filename);
@@ -232,7 +261,7 @@ $(function() {
         );
     }
     
-    getFastTimeEstimate = function(path, filename, live_state, callback) {
+    getFastTimeEstimate = function(path, filename, live_state, primaryNodeIDMap, callback) {
         if (filename == null || filename == '') {
             var filename = wt.filename;
         }
@@ -242,7 +271,8 @@ $(function() {
         return api.readFileAsText(path + '/' + filename).then(
             function (data) {
                 var parsed_data = eval('(function(){ var result =' + data + '; return result})();')
-                traj_obj = expandDevices(parsed_data);                
+                traj_obj = parsed_data;
+                //traj_obj = expandDevices(parsed_data);
                 my_traj_obj = traj_obj;
                 return api.getPersistentValue('estimatedMonitorRate')
             }
@@ -250,9 +280,9 @@ $(function() {
             function(c) {
                 cached_monitor = c;
                 var expression_str = MONITOR_RATE_ESTIMATE_EXPRESSION.replace('<cached_monitor>', cached_monitor.toString());
-                eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.inits) with(namespace.counters) return (' + expression_str + ')};');
+                eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.inits) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
                 myEF = monitorEstimateExpressionFunc;
-                var ctx = newContext(live_state, monitorEstimateExpressionFunc);
+                var ctx = newContext(live_state, monitorEstimateExpressionFunc, primaryNodeIDMap);
                 myContext = ctx;
                 var timeEstimate = fastTimeEstimate(traj_obj, ctx);
                 callback(timeEstimate, path, filename);
@@ -328,7 +358,7 @@ $(function() {
     
     refreshBoth = function() {
         var sort_files = document.getElementById('sort_files').checked;
-        var show_common = document.getElementById('show_common').checked;
+        //var show_common = document.getElementById('show_common');
         var current_path = experimentMonitor.current_experiment.clientPath;
         var experiment_folder = fileMonitor._root.children.filter( function(x) {
             var re = new RegExp(current_path);
@@ -533,18 +563,21 @@ $(function() {
     */
     
     updateTimeEstimate = function(t, path, filename) {
-        var hours = Math.floor(t/3600.0);
-        var minutes = Math.round((t % 3600.0) / 60.0);
-        $('li[path="' + path + '"][filename="' + filename + '"]')
-          .children('.estimated-time')
+        var totalTime = t.totalTime;
+        var hours = Math.floor(totalTime/3600.0);
+        var minutes = Math.round((totalTime % 3600.0) / 60.0);
+        var targetItem = $('li[path="' + path + '"][filename="' + filename + '"]');
+        targetItem.children('.estimated-time')
           .html(((hours > 0) ? (hours + 'h') : '') + minutes + 'm');
+        targetItem.children('.numPoints')
+          .html('#' + t.numPoints.toFixed(0));
     }
     
     updateFileList = function(path, filenames, emptyFirst, listclass, contentGenerator) {
         var filelist = $('#filelist');
         var ol = $('#filelist ol');
         var defaultContentGenerator = function(path, filename) {
-            return filename + '<span class="estimated-time"></span>';
+            return filename + '<span class="numPoints"></span><span class="estimated-time"></span>';
         }
         var contentGenerator = (contentGenerator==null) ? defaultContentGenerator : contentGenerator;
         if (emptyFirst == true) { 
@@ -552,6 +585,7 @@ $(function() {
         }
         
         var live_state = get_live_state(true);
+        var primaryNodeIDMap = getPrimaryNodeIDMap();
         for (var i=0; i<filenames.length; i++) {
             var li = $('<li/>');
             var filename = filenames[i];
@@ -560,7 +594,7 @@ $(function() {
             li.attr('filename', filename);
             li.html(contentGenerator(path, filename));
             ol.append(li);
-            getFastTimeEstimate(path, filename, live_state, updateTimeEstimate);
+            getFastTimeEstimate(path, filename, live_state, primaryNodeIDMap, updateTimeEstimate);
         }
         filelist.height( $('#files').innerHeight() - $('#files h3').outerHeight() - 10 ); // padding is 5
     }
