@@ -18,37 +18,58 @@ function newContext(live_state, monitorEstimateExpression, primaryNodesMap) {
                 return s(this); 
             } else {
             if (s.trim && s.trim() == "") { return undefined } // catch the empty strings
-            try { with(Math) with(live_state) with(this.counters) with(this.inits) with(this.moving) { return eval('('+s+')')} }
+            try { with(Math) with(live_state) with(this.counters) with(this.moving) { return eval('('+s+')')} }
             catch(e) { console.log('Error: ' + e.toString()); console.log('string to parse: ', s); }
             }
         }
-        this.assign = function(k, v, namespace, skipLookupPrimaryID) {
+        // making only one namespace: moving
+        this.assignFuncs = {};
+        this.assign = function(k, v) {
+            // make a cached function to assign values for each key
+            // the first time the key is encountered...
+            if (!(k in this.assignFuncs)){
+                this.assignFuncs[k] = this.makeAssignFunc(k);
+            }
+            this.assignFuncs[k](v);
+        };
+        this.makeAssignFunc = function(k, namespace) {
+            var namespace = (namespace == null) ? this.moving : namespace;
             var parts = k.split('.');
             var basename = parts[0];
+            var target_key = basename;
+            var target_obj = namespace;
             if (!(basename in namespace)) {
                 namespace[basename] = new Object();
-                if (!skipLookupPrimaryID && (basename in this.primaryNodesMap)) {
+                if (basename in this.primaryNodesMap) {
+                    // if the name is a device name with a primary node, then make it 
+                    // automatically access the underlying primary node whenever it is get 
+                    // or set
                     var primaryNodeID = this.primaryNodesMap[basename];
                     namespace[basename].valueOf = function() { return this[primaryNodeID] }
+                    if (parts.length == 1) {
+                        // then it's a bare device name: the assign function should set the primary node;
+                        var assignFunc = function(v) {
+                            namespace[basename][primaryNodeID] = v;
+                        }
+                        return assignFunc;
+                    }
                 }
             }
             if (parts.length > 1) {
-                var remaining = k.slice(basename.length+1);
-                // only do the special binding of name to primaryID for the first level.
-                this.assign(remaining, v, namespace[basename], true);
-            } else {
-                // just a single name: if it is a device make sure to set the primary node
-                // instead of the bare name.
-                if (!skipLookupPrimaryID && (basename in this.primaryNodesMap)) {
-                    var primaryNodeID = this.primaryNodesMap[basename];
-                    namespace[basename][primaryNodeID] = v;
-                } else {
-                    // if it gets here, it's not a device with a primary node... just set the name.
-                    namespace[basename] = v;
+                target_obj = namespace[basename];
+                var i=1;
+                for (i=1; i<parts.length-1; i++) {
+                    var next_part = parts[i];
+                    target_obj[next_part] = {};
+                    target_obj = target_obj[next_part];
                 }
+                target_key = parts[i];
             }
+            var assignFunc = function(v) { 
+                target_obj[target_key] = v;
+            }
+            return assignFunc;
         }
-        this.update = function(d) { parent.jQuery.extend(this.moving, d, true); };
         this.keys = function() { return Object.keys(this.moving); };
         this.destroy = function() { parent.jQuery(window).empty(); parent.jQuery(window).remove();}
         this.getTimeEstimate = function() {
@@ -63,12 +84,6 @@ function newContext(live_state, monitorEstimateExpression, primaryNodesMap) {
                     //return 1.0 / parseFloat(counter.monitorPreset); 
                 }
             else { return null }}
-            /*
-            var countAgainst = this.eval('counter.countAgainst');
-            if (countAgainst == "'TIME'") { return this.eval('counter.timePreset'); }
-            else if (countAgainst == "'MONITOR'") { return 1.0 / parseFloat(this.eval('counter.monitorPreset')); }
-            else return null
-            */
         }
     }
     var sandbox = new iframe.contentWindow.sandbox();
@@ -121,76 +136,11 @@ function dottedToObj(k,v) {
     return {k: k_out, v:obj}
 }
 
-function getPrimaryNodeIDMap() {
-    var output = {};
-    var devices = devicesMonitor.getAllDeviceNames();
-    devices.forEach(function (item, i) {
-        if ('primaryNodeID' in devicesMonitor.devices[item]) {
-            output[item] = devicesMonitor.devices[item]['primaryNodeID'].split('.')[1];
-        }
-    });
-    return output;
-}
-
-function expandDevices(traj) {
-    // make sure bare device names are expanded to device.primaryNodeID before dry run
-    if (traj.init && traj.init.forEach) {
-        traj.init.forEach( function(item) { 
-            var lhs = item[0];
-            var val = item[1];
-            var dottednames = lhs.split('.');
-            if (dottednames.length == 1 && dottednames[0] in devicesMonitor.devices && type(val) != 'object') {
-                // detects when setting a bare devicename: substitute
-                // the primary node for the namespace
-                var basename = dottednames[0];
-                item[0] = devicesMonitor.devices[basename].primaryNodeID;
-            }
-        });
-    }
-    if (traj.loops && traj.loops.forEach) {
-        expandDevicesLoops(traj.loops);
-    }
-    return traj;
-}
-
-function expandDevicesLoops(loops){
-   loops.forEach( function(loop, index, array) {
-        if (loop.vary && loop.vary.length > 0) {               
-            loop.vary.forEach( function(item) { 
-                var lhs = item[0];
-                var val = item[1];
-                var dottednames = lhs.split('.');
-                // the check is a little harder, because we have to exclude 'range' and 'list' items:
-                if (dottednames.length == 1 && 
-                    dottednames[0] in devicesMonitor.devices && 
-                        (type(val) != 'object' ||
-                         (type(val) ==  'object' && (val.range || val.list)))) {
-                    // detects when setting a bare devicename: substitute
-                    // the primary node for the namespace
-                    var basename = dottednames[0];
-                    item[0] = devicesMonitor.devices[basename].primaryNodeID;
-                }
-            });
-        }
-        if (loop.loops) { 
-            expandDevicesLoops(loop.loops);
-        }
-    });
-}
-
-
 function parseInitItem(item) {
     var expression_str='';
     var lhs = item[0];
     var val = item[1];
     var dottednames = lhs.split('.');
-    if (dottednames.length == 1 && dottednames[0] in devicesMonitor.devices && type(val) != 'object') {
-        // detects when setting a bare devicename: substitute
-        // the primary node for the namespace
-        var basename = dottednames[0];
-        lhs = devicesMonitor.devices[basename].primaryNodeID;
-        
-    }
     return {lhs: lhs, expression: JSON.stringify(val)}
     //else if (Array.isArray(val)) {
     //    expression_str = '['+val.toString() + ']';
@@ -354,13 +304,8 @@ function parseVaryItemF(item, counter_str) {
             //console.log(lhs+'.'+k, val[k], parseVaryItem([lhs+'.'+k, val[k]], counter_str));
         }
         return output;
-        //expression_str = '';
-        //for (var k in val) {
-        //    expression_str += 
-        //}
-        //expression_str = JSON.stringify(val);
     }
-    eval('var expression_func = function(namespace) { with(Math) with(namespace.live_state)  with(namespace.inits) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
+    eval('var expression_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
     return [{lhs: lhs, numPoints: numPoints, expression: expression_func}]
 }
 
@@ -397,7 +342,7 @@ function dryRun(traj, context) {
     if (traj.init && traj.init.forEach) {
         traj.init.forEach( function(item) { 
             var parsed = parseInitItem(item);
-            context.assign(parsed.lhs, context.eval(parsed.expression), context.inits);
+            context.assign(parsed.lhs, context.eval(parsed.expression), context.moving);
             //context.inits[parsed.lhs] = context.eval(parsed.expression);
         });
     }
@@ -441,18 +386,16 @@ function fastTimeEstimate(traj, context) {
         }        
     }
     // make sure there is at least the currently-defined count information in the context:
-    context.inits['counter'] = {
-        "countAgainst": context.eval('live.counter.countAgainst'),
-        "timePreset": context.eval('live.counter.timePreset'),
-        "monitorPreset": context.eval('live.counter.monitorPreset')
-    }
+    context.assign('counter.countAgainst', context.eval('live.counter.countAgainst'), context.moving);
+    context.assign('counter.timePreset', context.eval('live.counter.timePreset'), context.moving);
+    context.assign('counter.monitorPreset', context.eval('live.counter.monitorPreset'), context.moving);
     
-    // eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.inits) with(namespace.counters) return (' + expression_str + ')};');
+    // eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
     
     if (traj.init && traj.init.forEach) {
         traj.init.forEach( function(item) { 
             var parsed = parseInitItem(item);
-            context.assign(parsed.lhs, context.eval(parsed.expression), context.inits);
+            context.assign(parsed.lhs, context.eval(parsed.expression), context.moving);
             //context.inits[parsed.lhs] = context.eval(parsed.expression);
         });
     }
@@ -500,7 +443,7 @@ function loopsRun(loops, depth, context, counterstring, npstring, targetlist, en
 }
 
 function loopsRunWithTimeEstimate(loops, depth, context, counterstring, npstring, targetlist, entry_expr, timelist) {
-    eval('var entry_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.counters) with(namespace.inits) with(namespace.moving) return (' + entry_expr + ')};');
+    eval('var entry_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.counters) with(namespace.moving) return (' + entry_expr + ')};');
     //eval ('var entry_func = function(counters) { return ' + entry_expr + ' }');
     loops.forEach( function(loop, index, array) {
         if (loop.vary && loop.vary.length > 0) {               
@@ -573,43 +516,6 @@ function deice(value) {
     return output_value;
 }
 
-get_live_state = function(strict) {
-    // if strict is true: don't allow bare device names.
-    var live = {};
-    var device_ids = Object.keys(devicesMonitor.devices);
-    for (var i=0; i<device_ids.length; i++) {
-        var device_id = device_ids[i];
-        //console.log(device_id);
-        var device_proxy = {};
-        var device = devicesMonitor.devices[device_id];
-        if (!strict && 'primaryNodeID' in device && device.primaryNodeID) {
-            //console.log(device.primaryNodeID, devicesMonitor.nodes[device.primaryNodeID]);
-            var value = devicesMonitor.nodes[device.primaryNodeID].currentValue.userVal.val;
-            device_proxy = {
-                valueOf: make_getter(value)
-            }
-        }
-        if ('visibleNodeIDs' in device) {
-            for (var j=0; j<device.visibleNodeIDs.length; j++) {
-                var node_id = device.visibleNodeIDs[j];
-                var node_name = node_id.split('.')[1];
-                //console.log(node_name);
-                var node = devicesMonitor.nodes[node_id];
-                if (node.currentValue && node.currentValue.userVal) {
-                    var value = node.currentValue.userVal.val;
-                    //Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
-                    device_proxy[node_name] = deice(value);
-                } else if (node.desiredValue && node.desiredValue.userVal) {
-                    var value = node.desiredValue.userVal.val;
-                    device_proxy[node_name] = deice(value);
-                    //Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
-                }
-            }
-        }
-        live[device_id] = device_proxy;
-    }
-    return {live: live}
-}
 
 display_dry_run = function(dry) {
     //var traj_obj = editor.getValue();

@@ -261,13 +261,64 @@ $(function() {
         );
     }
     
+    getPrimaryNodeIDMap = function() {
+        var output = {};
+        var devices = devicesMonitor.getAllDeviceNames();
+        devices.forEach(function (item, i) {
+            if ('primaryNodeID' in devicesMonitor.devices[item]) {
+                output[item] = devicesMonitor.devices[item]['primaryNodeID'].split('.')[1];
+            }
+        });
+        return output;
+    }
+    
+    getLiveState = function(strict) {
+    // if strict is true: don't allow bare device names.
+    var live = {};
+    var device_ids = Object.keys(devicesMonitor.devices);
+    for (var i=0; i<device_ids.length; i++) {
+        var device_id = device_ids[i];
+        //console.log(device_id);
+        var device_proxy = {};
+        var device = devicesMonitor.devices[device_id];
+        if (!strict && 'primaryNodeID' in device && device.primaryNodeID) {
+            //console.log(device.primaryNodeID, devicesMonitor.nodes[device.primaryNodeID]);
+            var value = devicesMonitor.nodes[device.primaryNodeID].currentValue.userVal.val;
+            device_proxy = {
+                valueOf: make_getter(value)
+            }
+        }
+        if ('visibleNodeIDs' in device) {
+            for (var j=0; j<device.visibleNodeIDs.length; j++) {
+                var node_id = device.visibleNodeIDs[j];
+                var node_name = node_id.split('.')[1];
+                //console.log(node_name);
+                var node = devicesMonitor.nodes[node_id];
+                if (node.currentValue && node.currentValue.userVal) {
+                    var value = node.currentValue.userVal.val;
+                    //Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
+                    device_proxy[node_name] = deice(value);
+                } else if (node.desiredValue && node.desiredValue.userVal) {
+                    var value = node.desiredValue.userVal.val;
+                    device_proxy[node_name] = deice(value);
+                    //Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
+                }
+            }
+        }
+        live[device_id] = device_proxy;
+    }
+    return {live: live}
+}
+
+    
     getFastTimeEstimate = function(path, filename, live_state, primaryNodeIDMap, callback) {
         if (filename == null || filename == '') {
             var filename = wt.filename;
         }
         //var live_state = (live) ? get_live_state(true) : {};
         var path = (path == null) ? wt.path : path;
-        var traj_obj, cached_monitor;
+        var traj_obj;
+        var cached_monitor;
         return api.readFileAsText(path + '/' + filename).then(
             function (data) {
                 var parsed_data = eval('(function(){ var result =' + data + '; return result})();')
@@ -562,6 +613,59 @@ $(function() {
     }
     */
     
+    /*
+    // DEPRECATED:  Not using expanded device names by default now, since it causes a problem on eval 
+    // (if the assigned name (left-hand-side) is expanded, but then the rhs is an expression that depends
+    // on the unexpanded lhs, you have a problem.
+    // This has been addressed by making the getter (valueOf) and setter (assignFunc)
+    //  for the bare device name point to the primaryNodeID
+    function expandDevices(traj) {
+        // make sure bare device names are expanded to device.primaryNodeID before dry run
+        if (traj.init && traj.init.forEach) {
+            traj.init.forEach( function(item) { 
+                var lhs = item[0];
+                var val = item[1];
+                var dottednames = lhs.split('.');
+                if (dottednames.length == 1 && dottednames[0] in devicesMonitor.devices && type(val) != 'object') {
+                    // detects when setting a bare devicename: substitute
+                    // the primary node for the namespace
+                    var basename = dottednames[0];
+                    item[0] = devicesMonitor.devices[basename].primaryNodeID;
+                }
+            });
+        }
+        if (traj.loops && traj.loops.forEach) {
+            expandDevicesLoops(traj.loops);
+        }
+        return traj;
+    }
+
+    function expandDevicesLoops(loops){
+       loops.forEach( function(loop, index, array) {
+            if (loop.vary && loop.vary.length > 0) {               
+                loop.vary.forEach( function(item) { 
+                    var lhs = item[0];
+                    var val = item[1];
+                    var dottednames = lhs.split('.');
+                    // the check is a little harder, because we have to exclude 'range' and 'list' items:
+                    if (dottednames.length == 1 && 
+                        dottednames[0] in devicesMonitor.devices && 
+                            (type(val) != 'object' ||
+                             (type(val) ==  'object' && (val.range || val.list)))) {
+                        // detects when setting a bare devicename: substitute
+                        // the primary node for the namespace
+                        var basename = dottednames[0];
+                        item[0] = devicesMonitor.devices[basename].primaryNodeID;
+                    }
+                });
+            }
+            if (loop.loops) { 
+                expandDevicesLoops(loop.loops);
+            }
+        });
+    }
+    */
+    
     updateTimeEstimate = function(t, path, filename) {
         var totalTime = t.totalTime;
         var hours = Math.floor(totalTime/3600.0);
@@ -584,7 +688,7 @@ $(function() {
             ol.empty();
         }
         
-        var live_state = get_live_state(true);
+        var live_state = getLiveState(true);
         var primaryNodeIDMap = getPrimaryNodeIDMap();
         for (var i=0; i<filenames.length; i++) {
             var li = $('<li/>');
