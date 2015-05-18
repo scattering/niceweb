@@ -272,46 +272,77 @@ $(function() {
         return output;
     }
     
-    getLiveState = function(strict) {
-    // if strict is true: don't allow bare device names.
-    var live = {};
-    var device_ids = Object.keys(devicesMonitor.devices);
-    for (var i=0; i<device_ids.length; i++) {
-        var device_id = device_ids[i];
-        //console.log(device_id);
-        var device_proxy = {};
-        var device = devicesMonitor.devices[device_id];
-        if (!strict && 'primaryNodeID' in device && device.primaryNodeID) {
-            //console.log(device.primaryNodeID, devicesMonitor.nodes[device.primaryNodeID]);
-            var value = devicesMonitor.nodes[device.primaryNodeID].currentValue.userVal.val;
-            device_proxy = {
-                valueOf: make_getter(value)
-            }
+    function make_getter(value) {
+        var output_value;
+        if (typeof value != 'object') {
+            output_value = value;
         }
-        if ('visibleNodeIDs' in device) {
-            for (var j=0; j<device.visibleNodeIDs.length; j++) {
-                var node_id = device.visibleNodeIDs[j];
-                var node_name = node_id.split('.')[1];
-                //console.log(node_name);
-                var node = devicesMonitor.nodes[node_id];
-                if (node.currentValue && node.currentValue.userVal) {
-                    var value = node.currentValue.userVal.val;
-                    //Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
-                    device_proxy[node_name] = deice(value);
-                } else if (node.desiredValue && node.desiredValue.userVal) {
-                    var value = node.desiredValue.userVal.val;
-                    device_proxy[node_name] = deice(value);
-                    //Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
+        else if (value instanceof Ice.EnumBase) {
+            output_value = "'" + value._name + "'";
+        }
+        else if (value.toNumber) {
+            // for Ice.Long type
+            output_value = value.toNumber();
+        }
+        var f = function() { return output_value }
+        return f
+    }
+
+    function deice(value) {
+        var output_value;
+        if (typeof value != 'object') {
+            output_value = value;
+        }
+        else if (value instanceof Ice.EnumBase) {
+            output_value = "'" + value._name + "'";
+        }
+        else if (value.toNumber) {
+            // for Ice.Long type
+            output_value = value.toNumber();
+        }
+        return output_value;
+    }
+    
+    getLiveState = function(strict) {
+        // if strict is true: don't allow bare device names.
+        var live = {};
+        var device_ids = Object.keys(devicesMonitor.devices);
+        for (var i=0; i<device_ids.length; i++) {
+            var device_id = device_ids[i];
+            //console.log(device_id);
+            var device_proxy = {};
+            var device = devicesMonitor.devices[device_id];
+            if (!strict && 'primaryNodeID' in device && device.primaryNodeID) {
+                //console.log(device.primaryNodeID, devicesMonitor.nodes[device.primaryNodeID]);
+                var value = devicesMonitor.nodes[device.primaryNodeID].currentValue.userVal.val;
+                device_proxy = {
+                    valueOf: make_getter(value)
                 }
             }
+            if ('visibleNodeIDs' in device) {
+                for (var j=0; j<device.visibleNodeIDs.length; j++) {
+                    var node_id = device.visibleNodeIDs[j];
+                    var node_name = node_id.split('.')[1];
+                    //console.log(node_name);
+                    var node = devicesMonitor.nodes[node_id];
+                    if (node.currentValue && node.currentValue.userVal) {
+                        var value = node.currentValue.userVal.val;
+                        //Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
+                        device_proxy[node_name] = deice(value);
+                    } else if (node.desiredValue && node.desiredValue.userVal) {
+                        var value = node.desiredValue.userVal.val;
+                        device_proxy[node_name] = deice(value);
+                        //Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
+                    }
+                }
+            }
+            live[device_id] = device_proxy;
         }
-        live[device_id] = device_proxy;
+        return {live: live}
     }
-    return {live: live}
-}
 
     
-    getFastTimeEstimate = function(path, filename, live_state, primaryNodeIDMap, callback) {
+    getFastTimeEstimate_old = function(path, filename, live_state, primaryNodeIDMap, callback) {
         if (filename == null || filename == '') {
             var filename = wt.filename;
         }
@@ -333,21 +364,57 @@ $(function() {
                 var expression_str = MONITOR_RATE_ESTIMATE_EXPRESSION.replace('<cached_monitor>', cached_monitor.toString());
                 eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.inits) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
                 myEF = monitorEstimateExpressionFunc;
-                var ctx = newContext(live_state, monitorEstimateExpressionFunc, primaryNodeIDMap);
+                //var ctx = newContext(live_state, monitorEstimateExpressionFunc, primaryNodeIDMap);
+                var ctx = new __sandbox(live_state, monitorEstimateExpressionFunc, primaryNodeIDMap);
                 myContext = ctx;
                 var timeEstimate = fastTimeEstimate(traj_obj, ctx);
                 callback(timeEstimate, path, filename);
             }
         );
-        /*
-        return api.getPersistentValue('estimatedMonitorRate').then( function(cached_monitor) {
-            var expression_str = MONITOR_RATE_ESTIMATE_EXPRESSION.replace('<cached_monitor>', cached_monitor.toString());
-            eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.inits) with(namespace.counters) return (' + expression_str + ')};');
-            myContext = newContext(live_state, monitorEstimateExpressionFunc);
-            var timeEstimate = fastTimeEstimate(traj_obj, myContext);
-            return timeEstimate;
-        });
-        */
+    }
+    
+    getFastTimeEstimate = function(path, filename, live_state, primaryNodeIDMap, callback) {
+        if (filename == null || filename == '') {
+            var filename = wt.filename;
+        }
+        //var live_state = (live) ? get_live_state(true) : {};
+        var path = (path == null) ? wt.path : path;
+        var traj_obj;
+        var cached_monitor;
+        return api.readFileAsText(path + '/' + filename).then(
+            function (data) {
+                var parsed_data = eval('(function(){ var result =' + data + '; return result})();')
+                traj_obj = parsed_data;
+                //traj_obj = expandDevices(parsed_data);
+                my_traj_obj = traj_obj;
+                return api.getPersistentValue('estimatedMonitorRate')
+            }
+        ).then(
+            function(c) {
+                cached_monitor = c;
+                var expression_str = MONITOR_RATE_ESTIMATE_EXPRESSION.replace('<cached_monitor>', cached_monitor.toString());
+                //eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.inits) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
+                //myEF = monitorEstimateExpressionFunc;
+                //var ctx = newContext(live_state, monitorEstimateExpressionFunc, primaryNodeIDMap);
+                if (!window.webworker) {
+                    window.webworker = new Worker('dryrun_client_worker.js');
+                    window.webworker.onerror = function(e) { console.log('error in fastTimeEstimate:', e) };
+                    window.webworker.onmessage = function(msg) { callback(msg.data.totalTime, msg.data.numPoints, msg.data.path, msg.data.filename); } 
+                }
+                window.webworker.postMessage({
+                    traj: traj_obj,
+                    live_state: live_state,
+                    monitorExpressionStr: expression_str,
+                    primaryNodeIDMap: primaryNodeIDMap,
+                    path: path,
+                    filename: filename
+                }); 
+                //var ctx = new __sandbox(live_state, monitorEstimateExpressionFunc, primaryNodeIDMap);
+                //myContext = ctx;
+                //var timeEstimate = fastTimeEstimate(traj_obj, ctx);
+                //callback(timeEstimate, path, filename);
+            }
+        );
     }
     
     getFiles = function(path, sort_files, callback) {
@@ -666,15 +733,16 @@ $(function() {
     }
     */
     
-    updateTimeEstimate = function(t, path, filename) {
-        var totalTime = t.totalTime;
+    updateTimeEstimate = function(t, n, path, filename) {
+        var totalTime = t; //.totalTime;
+        var numPoints = n;
         var hours = Math.floor(totalTime/3600.0);
         var minutes = Math.round((totalTime % 3600.0) / 60.0);
         var targetItem = $('li[path="' + path + '"][filename="' + filename + '"]');
         targetItem.children('.estimated-time')
           .html(((hours > 0) ? (hours + 'h') : '') + minutes + 'm');
         targetItem.children('.numPoints')
-          .html('#' + t.numPoints.toFixed(0));
+          .html('#' + numPoints.toFixed(0));
     }
     
     updateFileList = function(path, filenames, emptyFirst, listclass, contentGenerator) {

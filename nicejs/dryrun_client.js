@@ -79,7 +79,8 @@ function newContext(live_state, monitorEstimateExpression, primaryNodesMap) {
                     return counter.timePreset
                 } else if (countAgainst == "'MONITOR'" || countAgainst == "MONITOR") { 
                     var monitorRate = this.monitorEstimateExpression(this);
-                    var preset = this.eval(counter.monitorPreset);
+                    var preset = counter.monitorPreset;
+                    //var preset = this.eval(counter.monitorPreset);
                     return parseFloat(preset) / monitorRate;
                     //return 1.0 / parseFloat(counter.monitorPreset); 
                 }
@@ -483,39 +484,6 @@ show_dry_run = function(traj, live_state) {
     var dry = dryRun(traj, newContext(live_state));
     display_dry_run(dry);
 }
-
-
-function make_getter(value) {
-    var output_value;
-    if (typeof value != 'object') {
-        output_value = value;
-    }
-    else if (value instanceof Ice.EnumBase) {
-        output_value = "'" + value._name + "'";
-    }
-    else if (value.toNumber) {
-        // for Ice.Long type
-        output_value = value.toNumber();
-    }
-    var f = function() { return output_value }
-    return f
-}
-
-function deice(value) {
-    var output_value;
-    if (typeof value != 'object') {
-        output_value = value;
-    }
-    else if (value instanceof Ice.EnumBase) {
-        output_value = "'" + value._name + "'";
-    }
-    else if (value.toNumber) {
-        // for Ice.Long type
-        output_value = value.toNumber();
-    }
-    return output_value;
-}
-
 
 display_dry_run = function(dry) {
     //var traj_obj = editor.getValue();
