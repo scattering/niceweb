@@ -133,7 +133,7 @@
                 for (var j=0; j<ip.children.length; j++) {
                     nn = ip.children[j];
                     if (nn.name == n.name) {
-                        ip.children.pop(j);
+                        ip.children.splice(j, 1);
                         found = true;
                         break;
                     }

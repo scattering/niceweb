@@ -81,12 +81,13 @@ __sandbox = function() {
                 return parseFloat(preset) / monitorRate;
                 //return 1.0 / parseFloat(counter.monitorPreset); 
             }
-        else { return null }}
+            else { return null }
+        }
     }
 }
 
 onmessage = function(event) {
-    console.log(event);
+    //console.log(event);
     var data = event.data;
     eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.counters) return (' + data.monitorExpressionStr + ')};');
     var context = new __sandbox(data.live_state, monitorEstimateExpressionFunc, data.primaryNodeIDMap);

@@ -248,8 +248,15 @@ $(function() {
     }
     
     enqueue = function() {
-        var filename = wt.filename;
-        return api.runJsonTrajectoryFile(filename);
+        var selected = $('#filelist ol .ui-selected');
+        var promises = [], filename;
+        for (var i=0; i<selected.length; i++) {
+            var filename = $(selected[i]).attr('filename');
+            promises[i] = api.runJsonTrajectoryFile(filename);
+        }
+        return Promise.all(promises);
+        //var filename = wt.filename;
+        //return api.runJsonTrajectoryFile(filename);
     }
     
     server_dry_run = function() {
@@ -810,11 +817,34 @@ $(function() {
       cursorAt: { top: -5, left: -5 }
     });
     
+    /*
     $(document).on("click", "#filelist ol li", function() {
         $(this).addClass("ui-selected").siblings().removeClass("ui-selected");
         var path = $(this)[0].getAttribute('path');
         var fn = $(this)[0].getAttribute('filename');
         loadFile(path, fn);
+    });
+    */
+    
+    $('#filelist ol').selectable({
+        stop: function(event, ui) { 
+            var selected = $('#filelist ol .ui-selected');
+            if (selected.length == 1) {
+                // global filename
+                var path = selected[0].getAttribute('path');
+                var fn = selected[0].getAttribute('filename');
+                loadFile(path, fn);
+            } else { // multiple selection
+                var fullpaths = [];
+                for (var i=0; i<selected.length; i++) {
+                    var path = selected[i].getAttribute('path');
+                    var fn = selected[i].getAttribute('filename');
+                    fullpaths.push(path + '/' + fn);
+                }
+                //alert('multiple selection');
+            }
+            
+        }
     });
     
     $('#filelist ol').keydown(arrowKeyNav);

@@ -84,7 +84,8 @@ function newContext(live_state, monitorEstimateExpression, primaryNodesMap) {
                     return parseFloat(preset) / monitorRate;
                     //return 1.0 / parseFloat(counter.monitorPreset); 
                 }
-            else { return null }}
+                else { return null }
+            }
         }
     }
     var sandbox = new iframe.contentWindow.sandbox();
