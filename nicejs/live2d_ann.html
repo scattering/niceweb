@@ -325,10 +325,11 @@
             r2ctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
             document.getElementById('slicecontrols').appendChild(r2ctl.div);
             document.getElementById('slicecontrols').appendChild(document.createElement('br'));
-            var centerxctl = new pointTextControl(slice_annulus.c, 'x', 'center<sub>x</sub>', 5);
+            // make these global: centerxctl and centeryctl
+            centerxctl = new pointTextControl(slice_annulus.c, 'x', 'center<sub>x</sub>', 5, 'center_x');
             centerxctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
             document.getElementById('slicecontrols').appendChild(centerxctl.div);
-            var centeryctl = new pointTextControl(slice_annulus.c, 'y', 'center<sub>y</sub>', 5);
+            centeryctl = new pointTextControl(slice_annulus.c, 'y', 'center<sub>y</sub>', 5, 'center_y');
             centeryctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
             document.getElementById('slicecontrols').appendChild(centeryctl.div);
 
@@ -361,6 +362,36 @@
             };
             moveToButton.onclick = moveToBeamCenter;
             document.getElementById('slicecontrols').appendChild(moveToButton);
+            
+            var trackBeamCenterSelect = document.createElement('input');
+            trackBeamCenterSelect.setAttribute('type', 'checkbox');
+            trackBeamCenterSelect.setAttribute('class', 'track-beam-center');
+            trackBeamCenterSelect.setAttribute('id', 'track_beam_center');
+            trackBeamCenterSelect.setAttribute('name', 'track_beam_center');
+            trackBeamCenterSelect.setAttribute('autocomplete', 'off');
+            
+            var trackBeamCenter = true;
+            if (localStorage && ('trackBeamCenter' in localStorage)) {
+                trackBeamCenter = (localStorage.trackBeamCenter == 'true');
+            }
+            trackBeamCenterSelect.checked = trackBeamCenter;
+            var toggleTrackBeamCenter = function() {
+                var trackBeamCenter = trackBeamCenterSelect.checked;
+                if (trackBeamCenter) { moveToBeamCenter(); }
+                if (localStorage) {
+                    localStorage.trackBeamCenter = trackBeamCenter.toString();
+                }
+            }
+
+            trackBeamCenterSelect.onchange = toggleTrackBeamCenter;
+            
+            var trackBeamSpan = document.createElement('span');
+            trackBeamSpan.textContent = "track beam center";
+            trackBeamSpan.appendChild(trackBeamCenterSelect);
+            document.getElementById('slicecontrols').appendChild(trackBeamSpan);           
+            toggleTrackBeamCenter();
+            
+            
             //var roiDisplay = document.createElement('div');
             //roiDisplay.setAttribute('class', 'roi-display');
             //roiDisplay.setAttribute('id', 'roi_display');
@@ -606,8 +637,9 @@
          return {xy: xy_list, radius: radius_list, sum: sum_list, normalize: normalize_list}
     }
     
-    pointTextControl = function(p, coord, label, precision) {
+    pointTextControl = function(p, coord, label, precision, id) {
         // coord should be 'x' or 'y'
+        var id = (id == null) ? label : id;
         var precision = precision || 3;
         this.precision = precision;
         this.coord = coord;
@@ -621,7 +653,7 @@
         // div.appendChild(document.createTextNode(label))
         div.appendChild(textbox);
         this.div = div;
-        this.div.setAttribute('id', 'ptTextControl_' + label);
+        this.div.setAttribute('id', 'ptTextControl_' + id);
         this.div.setAttribute('style', 'display: inline; padding: 5px 10px;');
         //this.div.setAttribute('style', 'position: relative; float: left; padding: 5px; text-align: top;');
         this.textbox = textbox;
@@ -704,7 +736,7 @@
         return this;
     }
     
-    var handleNodesChanged = function(nodes) {
+    var detectorNodesChanged = function(nodes) {
         if ('areaDetector.dimension' in nodes) {
             detectors.areaDetector.dims = nodes['areaDetector.dimension'].currentValue.userVal.val;
         }
@@ -722,6 +754,27 @@
         
     }
     
+    var beamCenterChanged = function(nodes) {
+        var x = null, y = null;
+        var trackBeamCenterSelect = document.getElementById('track_beam_center');
+        var trackBeamCenter = (trackBeamCenterSelect && trackBeamCenterSelect.checked);
+        if (trackBeamCenter) {
+            if ('beamStop.beamCenterX' in nodes) {
+                x = nodes['beamStop.beamCenterX'].currentValue.userVal.val; 
+            }
+            if ('beamStop.beamCenterY' in nodes) {
+                y = nodes['beamStop.beamCenterY'].currentValue.userVal.val;
+            }
+            if (x != null && y != null && window.centerxctl && window.centeryctl) {
+                centerxctl.update({x: x});
+                centerxctl.update_external();
+                centeryctl.update({y: y});
+                centeryctl.update_external();
+                
+            }
+        }
+    }
+    
     dialog_login = function() {
         // set the global hostname
         hostname = document.getElementById("instrument_ip").value;
@@ -734,7 +787,7 @@
                 logging_in = false;
                 api = api_object;
                 devicesMonitor = new DevicesMonitorI();
-                devicesMonitor.postChangedHooks = [handleNodesChanged];
+                devicesMonitor.postChangedHooks = [detectorNodesChanged, beamCenterChanged];
                 return Promise.all(
                     subscribe(devicesMonitor, 'devices')
                 )
