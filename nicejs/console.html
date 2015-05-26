@@ -419,7 +419,7 @@
         _format_event: function(event) {
             var p = null;
             var level = event.level._name;
-            if ((level == 'ERROR') || (level == 'SERIOUS') || (level == 'IMPORTANT') || (level == 'INFO' && event.eventID != -3)) {
+            if ((level == 'ERROR') || (level == 'CRITICAL') || (level == 'SERIOUS') || (level == 'IMPORTANT') || (level == 'INFO' && event.eventID != -3)) {
                 p = document.createElement('div');
                 p.classList.add('console-item');            
                 if (event.commandUUID) { p.setAttribute('command_uuid', event.commandUUID) }
