@@ -230,7 +230,7 @@ $(function() {
     deleteFiles = function(filenames) {
         return api.deleteFiles(filenames).then(
             function() {
-                refreshBoth();
+                //refreshBoth();
             }
         ).exception(
             function(data) {

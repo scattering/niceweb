@@ -254,7 +254,6 @@ var __fastTimeEstimate = (function() {
             }
             return output;
         }
-        console.log(lhs, expression_str);
         eval('var expression_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
         return [{lhs: lhs, numPoints: numPoints, expression: expression_func}];
     }
