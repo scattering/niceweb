@@ -369,15 +369,18 @@ $(function() {
             function(c) {
                 cached_monitor = c;
                 var expression_str = MONITOR_RATE_ESTIMATE_EXPRESSION.replace('<cached_monitor>', cached_monitor.toString());
+                console.log('expr:', expression_str);
                 eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.inits) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
                 myEF = monitorEstimateExpressionFunc;
                 //var ctx = newContext(live_state, monitorEstimateExpressionFunc, primaryNodeIDMap);
                 var ctx = new __sandbox(live_state, monitorEstimateExpressionFunc, primaryNodeIDMap);
                 myContext = ctx;
-                var timeEstimate = fastTimeEstimate(traj_obj, ctx);
+                var timeEstimate = __fastTimeEstimate(traj_obj, ctx);
                 callback(timeEstimate, path, filename);
             }
-        );
+        ).exception(
+            function(e) {console.log('error:', e)}
+        )
     }
     
     getFastTimeEstimate = function(path, filename, live_state, primaryNodeIDMap, callback) {

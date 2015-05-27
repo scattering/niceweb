@@ -640,7 +640,7 @@
                 var newobj = this.objListItem(key, value);
                 ul.appendChild(newobj);
             }
-            else if (typeof value === 'string' || typeof value === 'number') {
+            else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
                 if (key in ENUMS) {
                     var newenum = this.enumListItem(key, value, ENUMS[key]);
                     ul.appendChild(newenum);
@@ -776,6 +776,10 @@
                 ul.appendChild(newobj);
             }
             else if (typeof value === 'string') {
+                var newexpr = this.expressionListItem(key, value);
+                ul.appendChild(newexpr);
+            }
+            else if (typeof value === 'boolean') {
                 var newexpr = this.expressionListItem(key, value);
                 ul.appendChild(newexpr);
             }

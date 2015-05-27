@@ -200,15 +200,24 @@ var __fastTimeEstimate = (function() {
         return params;
     }
 
-    function parseVaryItemF(item, counter_str) {
+    function eval_range(range, context) {
+        var output = {}
+        for (var item in range) {
+            output[item] = context.eval(range[item]);
+        }
+        return output;
+    }
+
+    function parseVaryItemF(item, counter_str, context) {
         var numPoints=0, expression_str='';
         var lhs = item[0];
         var val = item[1];
         if (val.hasOwnProperty('range')) {
             var range = val.range;
-            var filled_range, range_start, range_step;
+            var evaluated_range, filled_range, range_start, range_step;
+            evaluated_range = eval_range(range, context);
             try {
-                filled_range = range_fill(range);
+                filled_range = range_fill(evaluated_range);
                 range_start = filled_range.start;
                 range_step = filled_range.step;
                 numPoints = filled_range.numPoints;
@@ -232,7 +241,7 @@ var __fastTimeEstimate = (function() {
             numPoints = val.length;
             expression_str = '['+val.toString() + '][Math.min(' + counter_str + ', ' + numPoints + '-1)]';
         }
-        else if (typeof val === 'string' || typeof val === 'number') {
+        else if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
             numPoints = 0;
             expression_str = val;
         }
@@ -244,6 +253,7 @@ var __fastTimeEstimate = (function() {
             }
             return output;
         }
+        console.log(lhs, expression_str);
         eval('var expression_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
         return [{lhs: lhs, numPoints: numPoints, expression: expression_func}];
     }
@@ -288,14 +298,20 @@ var __fastTimeEstimate = (function() {
         context.assign('counter.monitorPreset', context.eval('live.counter.monitorPreset'), context.moving);
         
         // eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
-        
+        var items = [], cstr = '__initctr';
         if (traj.init && traj.init.forEach) {
             traj.init.forEach( function(item) { 
-                var parsed = parseInitItem(item);
-                context.assign(parsed.lhs, context.eval(parsed.expression), context.moving);
+                //var parsed = parseInitItem(item);
+                items = items.concat(parseVaryItemF(item, cstr, context));
+                //var parsed = parseVaryItemF(item, '__initctr', context);
+                //console.log(parsed);
+                //context.assign(parsed.lhs, context.eval(parsed.expression), context.moving);
                 //context.inits[parsed.lhs] = context.eval(parsed.expression);
             });
         }
+        items.forEach( function(item) {
+            context.assign(item.lhs, context.eval(item.expression), context.moving);
+        });
         
         result = loopsRunWithTimeEstimate(traj.loops, pointNum, context, counter_str, numpoints_str, targetlist, metadata.entryName, timelist);
         var totalTime = 0;
@@ -316,7 +332,7 @@ var __fastTimeEstimate = (function() {
                 var cstr = counterstring + '_' + index.toString();
                 var nstr = npstring + '_' + index.toString();
                 var items = [];
-                loop.vary.forEach( function(item) { items = items.concat(parseVaryItemF(item, cstr)); });
+                loop.vary.forEach( function(item) { items = items.concat(parseVaryItemF(item, cstr, context)); });
                 //context.assign(nstr, items[0].numPoints)
                 context.counters[nstr] = items[0].numPoints;
                 for (context.counters[cstr] = 0; context.counters[cstr] < context.counters[nstr]; context.counters[cstr]++) {
