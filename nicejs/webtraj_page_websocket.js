@@ -505,10 +505,14 @@ $(function() {
             // first, scroll the window to the desired item:
             var selection = $('#filelist ol [filename="' + wt.filename + '"][path="' + wt.path + '"]');
             if (selection && selection.parent && selection.position) {
-                var parent_offset = selection.parent().position().top;
-                var curr_position = selection.position().top;
-                var grandparentdiv = selection.parent().parent();
-                selection.parent().parent().scrollTop(curr_position - parent_offset);
+                try {
+                    var parent_offset = selection.parent().position().top;
+                    var curr_position = selection.position().top;
+                    var grandparentdiv = selection.parent().parent();
+                    selection.parent().parent().scrollTop(curr_position - parent_offset);
+                } catch (e) {
+                    // do nothing on error
+                } 
                 // do the selection
                 selection.trigger('click');
             }  
