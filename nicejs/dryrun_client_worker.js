@@ -191,7 +191,8 @@ var __fastTimeEstimate = (function() {
         if (!('step' in params && 'numPoints' in params)) {
             // fill in missing one:
             if ('step' in params) { 
-                params.numPoints = (params.range / parseFloat(params.step)) + 1 
+                var step = parseFloat(params.step);
+                params.numPoints = (step == 0) ? 1 : (params.range /step) + 1;
             }
             else { // 'step' is missing
                 params.step = params.range / (params.numPoints - 1);
