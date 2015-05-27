@@ -288,7 +288,7 @@ var __fastTimeEstimate = (function() {
         var timelist = new Array();
         var names = new Array();
         for (var key in traj) { 
-            if (key in metadata) {
+            if (key in metadata && metadata[key] != "") {
                 metadata[key] = traj[key];
             }        
         }
