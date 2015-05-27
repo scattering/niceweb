@@ -278,7 +278,7 @@ var __fastTimeEstimate = (function() {
             '_fileGroup': "''",
             '_filePrefix': "trajName",
             '_fileName': "sprintf('%s%d',filePrefix,fileNum)",
-            'entryName': "''",
+            'entryName': "'entry'",
             '_groups': []
         };
         var counter_str = '__counter';
@@ -288,7 +288,7 @@ var __fastTimeEstimate = (function() {
         var timelist = new Array();
         var names = new Array();
         for (var key in traj) { 
-            if (key in metadata && metadata[key] != "") {
+            if (key in metadata && (traj[key] != "")) {
                 metadata[key] = traj[key];
             }        
         }
