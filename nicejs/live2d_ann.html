@@ -18,9 +18,9 @@
     <script type="text/javascript" src="plot_d3_rz.js"></script>
 
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/jquery.jqplot.min.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasTextRenderer.min.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisLabelRenderer.min.js"></script>
-    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisTickRenderer.min.js"></script>
+<!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasTextRenderer.min.js"></script>-->
+<!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisLabelRenderer.min.js"></script>-->
+<!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisTickRenderer.min.js"></script>-->
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.cursor.min.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.errorbarRenderer.js"></script>
     <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.InteractiveLegend.js"></script>
@@ -490,7 +490,7 @@
          var dxpos = (dims.xmax - dims.xmin) / (dims.xdim);
          var dypos = (dims.ymax - dims.ymin) / (dims.ydim);
          var center_x = (center_x_coord - dims.xmin) / dxpos;
-         var center_y = (center_y_coord - dims.ymin) / dypos;
+         var center_y = (dims.ymax - center_y_coord) / dypos;
          var r1 = r1_coord / dxpos; // square pixels only!
          var r2 = r2_coord / dxpos; // square pixels only!
          
@@ -550,7 +550,7 @@
                     for (var j=0; j<dy; j++) {
                         var mi = (i*dy + j) * 4;
                         normalize += maskData[mi];
-                        sum += maskData[mi] * data[min_x + i][min_y + j];
+                        sum += maskData[mi] * data[min_y + j][min_x + i];
                     }
                 }
             }
@@ -568,7 +568,8 @@
          var dxpos = (dims.xmax - dims.xmin) / (dims.xdim);
          var dypos = (dims.ymax - dims.ymin) / (dims.ydim);
          var center_x = (center_x_coord - dims.xmin) / dxpos;
-         var center_y = (center_y_coord - dims.ymin) / dypos;
+         //var center_y = (center_y_coord - dims.ymin) / dypos;
+         var center_y = (dims.ymax - center_y_coord) / dypos;
          
          var ch = maskCanvas.height;
          var cw = maskCanvas.width;
@@ -624,7 +625,7 @@
                     for (var j=0; j<dy; j++) {
                         var mi = (i*dy + j) * 4;
                         normalize += maskData[mi];
-                        sum += maskData[mi] * data[min_x + i][min_y + j];
+                        sum += maskData[mi] * data[min_y + j][min_x + i];
                     }
                 }
             }
