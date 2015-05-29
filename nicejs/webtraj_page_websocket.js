@@ -440,7 +440,7 @@ $(function() {
     }
     
     arrowKeyNav = function(e){
-        var ol = $(e.target);
+        var ol = $(e.target).children('ol');
         var selected = ol.find('.ui-selected');
         if (selected.length == 0) { e.preventDefault(); return }
         switch(e.which) {
@@ -450,9 +450,17 @@ $(function() {
 
             case $.ui.keyCode.UP:
             var prev = selected.prev();
-            if (prev.length > 0) {
-                prev.trigger('click');    
-            }    
+            if (prev.length == 1) {
+                // global filename
+                selected.removeClass('ui-selected');
+                prev.addClass('ui-selected');
+                var path = prev[0].getAttribute('path');
+                var fn = prev[0].getAttribute('filename');
+                loadFile(path, fn);
+            }
+            //if (prev.length > 0) {
+            //    prev.trigger('click');    
+            //}    
             break;
 
             case $.ui.keyCode.RIGHT:
@@ -461,9 +469,17 @@ $(function() {
 
             case $.ui.keyCode.DOWN:
             var next = selected.next();
-            if (next.length > 0) {
-                next.trigger('click');    
-            }  
+            if (next.length == 1) {
+                // global filename
+                selected.removeClass('ui-selected');
+                next.addClass('ui-selected');
+                var path = next[0].getAttribute('path');
+                var fn = next[0].getAttribute('filename');
+                loadFile(path, fn);
+            }
+            //if (next.length > 0) {
+            //    next.trigger('click');    
+            //}  
             break;
 
             default: return; // allow other keys to be handled
@@ -517,82 +533,6 @@ $(function() {
                 selection.trigger('click');
             }  
         }
-        //console.log('trajectories:', trajectory_files, trajectories_path, labels);
-        
-        /*
-        var req_common;
-        
-        if (show_common) {
-            req_common = api.ls(COMMON_PATH, '*.json', false);
-        } else {
-            req_common = new Promise().succeed(); // bail
-        }
-        
-        var req_current = api.ls(TRAJECTORY_PATH, '*.json', false);
-        
-
-        Promise.all(req_common, req_current).then( function( t_comm, t_curr ) {
-            //console.log(t_comm[0], t_curr[0]);
-            var show_common = document.getElementById('show_common').checked;
-            var sort_files = document.getElementById('sort_files').checked;
-            var current_files = t_curr[0];
-            if (sort_files) { current_files.sort(); }
-            updateFileList('', [], true, 'ui-widget-content common-trajectories'); // clear
-            if (show_common) {
-                var common_files = t_comm[0];
-                if (sort_files) { common_files.sort(); }
-                updateFileList(COMMON_PATH, t_comm[0], false, 'ui-widget-content common-trajectories',
-                   function(path, filename) { return path + '/' + filename });
-            }
-            updateFileList(TRAJECTORY_PATH, t_curr[0], false, 'ui-widget-content local-trajectories');
-            
-            $('#filelist ol').selectable({
-                stop: function(event, ui) { 
-                    var selected = $('#filelist ol .ui-selected');
-                    if (selected.length == 1) {
-                        // global filename
-                        var path = selected[0].getAttribute('path');
-                        var fn = selected[0].getAttribute('filename');
-                        loadFile(path, fn);
-                    } else { // multiple selection
-                        var fullpaths = [];
-                        for (var i=0; i<selected.length; i++) {
-                            var path = selected[i].getAttribute('path');
-                            var fn = selected[i].getAttribute('filename');
-                            fullpaths.push(path + '/' + fn);
-                        }
-                        bulkEdit(fullpaths);
-                        //alert('multiple selection');
-                    }
-                    
-                }
-            });
-            
-            $("#filelist ol li").click(function() {
-                $(this).addClass("ui-selected").siblings().removeClass("ui-selected");
-                var path = $(this)[0].getAttribute('path');
-                var fn = $(this)[0].getAttribute('filename');
-                loadFile(path, fn);
-            });
-            
-            if (wt.filename && wt.path) {
-                // auto re-select currently selected file after save or refresh.
-                // first, scroll the window to the desired item:
-                var selection = $('#filelist ol [filename="' + wt.filename + '"][path="' + wt.path + '"]');
-                var parent_offset = selection.parent().position().top;
-                var curr_position = selection.position().top;
-                var grandparentdiv = selection.parent().parent();
-                selection.parent().parent().scrollTop(curr_position - parent_offset);
-                // do the selection
-                selection.trigger('click');  
-            }   
-        }).exception(
-                function(ex)
-                {
-                    alert(ex.toString());
-                }
-            );
-        */
     }
     
     /*
@@ -835,6 +775,7 @@ $(function() {
     
     $('#filelist ol').selectable({
         stop: function(event, ui) { 
+            $('#filelist').focus();
             var selected = $('#filelist ol .ui-selected');
             if (selected.length == 1) {
                 // global filename
@@ -854,6 +795,6 @@ $(function() {
         }
     });
     
-    $('#filelist ol').keydown(arrowKeyNav);
+    $('#filelist').keydown(arrowKeyNav);
     
 });
