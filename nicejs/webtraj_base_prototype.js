@@ -157,7 +157,9 @@
         
         function getValue() {
             var value = this.entry.value;
-            if ($.isNumeric(value)) { value = parseFloat(value) };
+            if ($.isNumeric(value)) { value = parseFloat(value) }
+            else if (value === "true") { value = true }
+            else if (value === "false") { value = false }            
             return value;
         }
         
