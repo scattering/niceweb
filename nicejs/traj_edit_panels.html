@@ -97,6 +97,7 @@
     var FileMonitorI = Ice.Class(nice.api.file.FileMonitor, {
         __init__: function() {
             this.pathseparator = '/';
+            this.subscribed = new Promise();
         },
         onSubscribe: function(root, __current) {
             this._root = root;
@@ -104,6 +105,7 @@
             this.removed = [];
             this.updated = [];
             this.contents = [];
+            this.subscribed.succeed();
         },
         filesAdded: function(nodes, contents, __current) {
             if (nodes.length != contents.length) {
@@ -166,11 +168,15 @@
         }
     });
     var ExperimentMonitorI = Ice.Class(nice.api.experiment.ExperimentMonitor, {
+        __init__: function() {
+            this.subscribed = new Promise();
+        },
         onSubscribe: function(all_experiments, current_experiment, __current) {
             this.all_experiments = all_experiments;
             this.current_experiment = current_experiment;
             this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
             this.postChangedHooks.forEach( function(callback) { callback(current_experiment); });
+            this.subscribed.succeed();
         },
         switchedCurrentExperiment: function(current_experiment, __current) {
             this.current_experiment = current_experiment;
@@ -205,12 +211,14 @@
                 fileMonitor = new FileMonitorI();
                 experimentMonitor = new ExperimentMonitorI();
                 //devicesMonitor.postChangedHooks = [handleNodesChanged];
-                experimentMonitor.postChangedHooks = [refreshBoth];
+                //experimentMonitor.postChangedHooks = [refreshBoth];
                 return Promise.all(
                     subscribe(devicesMonitor, 'devices'),
                     subscribe(fileMonitor, 'file'),
-                    subscribe(experimentMonitor, 'experiment')
-                )//.then(function() { refreshBoth(); })
+                    subscribe(experimentMonitor, 'experiment'),
+                    fileMonitor.subscribed, // check to make sure the subscribe event is complete on this end
+                    experimentMonitor.subscribed
+                ).then(function() { refreshBoth(); experimentMonitor.postChangedHooks = [refreshBoth]; })
         }).exception(
             function(ex) {console.log(ex)}
         );
