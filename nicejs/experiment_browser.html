@@ -5,9 +5,11 @@
   <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
   <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
             type="text/css" rel="Stylesheet" />
+  <link href="//cdn.datatables.net/1.10.7/css/jquery.dataTables.min.css" type="text/css" rel="Stylesheet" />
   <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
   <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
   <script src="../../niceclient/static/jquery.layout-latest.js"></script>
+  <script src="//cdn.datatables.net/1.10.7/js/jquery.dataTables.min.js" type="text/javascript"></script>
   
   <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
   <link rel="stylesheet" href="http://ncnr.nist.gov/instruments/magik/jstree/dist/themes/default/style.min.css"/>
@@ -60,9 +62,14 @@
     }
 
     var ExperimentMonitorI = Ice.Class(nice.api.experiment.ExperimentMonitor, {
+        __init__: function(postSubscribeHooks) {
+            this.postSubscribeHooks = (postSubscribeHooks == null) ? [] : postSubscribeHooks;
+        },
         onSubscribe: function(all_experiments, current_experiment, __current) {
+            var all_experiments = this.HashMapToObject(all_experiments);
             this.all_experiments = all_experiments;
             this.current_experiment = current_experiment;
+            this.postSubscribeHooks.forEach(function(callback) { callback(all_experiments, current_experiment); });
         },
         switchedCurrentExperiment: function(current_experiment, __current) {
             this.current_experiment = current_experiment;
@@ -94,6 +101,14 @@
                 logging_in = false;
                 api = api_object;
                 experimentMonitor = new ExperimentMonitorI();
+                experimentMonitor.postSubscribeHooks = [
+                    function (e) { 
+                        var t = makeExperimentsTable(e); 
+                        t.id = "myTable"; 
+                        $('#center_panel').append(t); 
+                        $('#myTable').DataTable();
+                    }
+                ]
                 // the subscribe function won't work until the connection is 
                 // complete, which is why it's in the "then" block here
                 return Promise.all(
@@ -104,6 +119,32 @@
             localStorage.nice_hostname = hostname;
         }
         document.getElementById("login").close();
+    }
+    
+    makeExperimentsTable = function(experiments) {
+        var headers = ["id", "creationTimeStamp", "isIMS", "description", "participants", "title"];
+        var table = document.createElement('table');
+        var thead = table.createTHead();
+        var theadrow = thead.insertRow();
+        headers.forEach(function(h) { 
+            //var th = document.createElement('th');
+            var th = theadrow.insertCell();
+            th.textContent = h
+        });
+        var tbody = table.createTBody();
+        for (var expkey in experiments) {
+            var experiment = experiments[expkey];
+            var row = tbody.insertRow();
+            headers.forEach(function(h) {
+                var cell = row.insertCell();
+                if (h in experiment) {
+                    var content = experiment[h]
+                    if (content.toNumber) { content = content.toNumber() }
+                    cell.textContent = content;
+                }
+            });
+        }
+        return table;
     }
     
     window.onload = function() {
