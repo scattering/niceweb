@@ -550,7 +550,8 @@
                     for (var j=0; j<dy; j++) {
                         var mi = (i*dy + j) * 4;
                         normalize += maskData[mi];
-                        sum += maskData[mi] * data[min_y + j][min_x + i];
+                        //sum += maskData[mi] * data[min_y + j][min_x + i];
+                        sum += maskData[mi] * data[max_y - 1 - j][min_x + i];
                     }
                 }
             }
@@ -625,7 +626,8 @@
                     for (var j=0; j<dy; j++) {
                         var mi = (i*dy + j) * 4;
                         normalize += maskData[mi];
-                        sum += maskData[mi] * data[min_y + j][min_x + i];
+                        //sum += maskData[mi] * data[min_y + j][min_x + i];
+                        sum += maskData[mi] * data[max_y - 1 - j][min_x + i];
                     }
                 }
             }
