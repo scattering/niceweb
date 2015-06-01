@@ -122,7 +122,21 @@
     }
     
     makeExperimentsTable = function(experiments) {
-        var headers = ["id", "creationTimeStamp", "isIMS", "description", "participants", "title"];
+        var headers = ["id", "creationDate", "creationTimeStamp", "isIMS", "description", "participants", "title"];
+        // populate the creationDate of each entry from the creationTimeStamp
+        for (var expkey in experiments) {
+            var experiment = experiments[expkey];
+            var creationDate = "";
+            if ("creationTimeStamp" in experiment) {
+                var d = new Date(experiment.creationTimeStamp.toNumber());
+                var year = d.getFullYear().toFixed(0);
+                var month = (d.getMonth() + 1).toFixed(0);
+                var day = d.getDate().toFixed(0);
+                month = (month.length < 2) ? "0" + month : month;
+                day = (day.length < 2) ? "0" + day : day;
+                experiment.creationDate = year + "-" + month + "-" + day;
+            }
+        }
         var table = document.createElement('table');
         var thead = table.createTHead();
         var theadrow = thead.insertRow();
@@ -166,7 +180,7 @@
         logging_in = true;
     
         myLayout = $('body').layout({
-		    east__size:			300
+		    east__size:			0
 	    ,	west__size:			300
 	    ,   south__size:        "auto"
 	    ,   north_size:         "auto"
@@ -236,9 +250,6 @@
     <h3 class="instrument-name">Instrument: </h3>
     <div id="control_buttons" class="control-buttons">
     <span id="queue_state"></span>
-    <input type="button" onclick="api.suspend();" value="Pause" class="pause-button" id="pause_button">
-    <input type="button" onclick="api.resume();" value="Resume" class="resume-button" id="resume_button">
-    <input type="button" onclick="api.stop();" value="Stop" class="stop-button">
     </div>
 </div>
 <div id="east_panel" class="ui-layout-east">
