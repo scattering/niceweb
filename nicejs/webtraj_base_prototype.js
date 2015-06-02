@@ -932,7 +932,7 @@
         }
         
         if (item.hasOwnProperty('loops')) {            
-            var newloops = this.loopsList(item.loops, "Loops");
+            var newloops = this.loopsList(item.loops, "loops");
             ul.appendChild(newloops);
         }
                
