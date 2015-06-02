@@ -253,6 +253,9 @@
         font-weight: bold;
     }
     
+    .ui-layout-north h3 {
+        padding-right: 4em;
+    }
     .current-experiment-id {
         text-decoration: underline !important;
         
@@ -277,6 +280,7 @@
 
 <div id="north_panel" class="ui-layout-north">
     <h3 class="instrument-name">Instrument: </h3>
+    <h3>Current experiment: <a href="#" class="current-experiment-id"></a></h3>
     <div id="control_buttons" class="control-buttons">
     <span id="queue_state"></span>
     </div>
@@ -284,9 +288,6 @@
 <div id="east_panel" class="ui-layout-east">
 </div>
 <div id="center_panel" class="ui-layout-wrapper ui-layout-center">
-    <div id="current_experiment">
-        <h3>Current experiment: <span class="current-experiment-id"></span></h3>
-    </div>
     <div id="all_experiments"></div>
 </div>
 <div id="south_panel" class="ui-layout-south">
