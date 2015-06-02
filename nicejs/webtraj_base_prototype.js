@@ -550,7 +550,7 @@
     webtraj.prototype.expressionListItem = function(name, initial_value) {
         var li = this.listItem(name);  
         li.classList.add('item-expression'); 
-        var entry = this.createEntry('expression', {'width':30, 'format_str':'%s'});
+        var entry = this.createEntry('', {'width':30, 'format_str':'%s'});
         li.appendChild(entry);
         
         function getValue() {

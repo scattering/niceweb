@@ -198,7 +198,7 @@
     dialog_login = function() {
         
         // set the global hostname
-        var nice_hostname = document.getElementById("instrument_ip").value;
+        nice_hostname = document.getElementById("instrument_ip").value;
         var username = document.getElementById("username").value;
         var password = document.getElementById("password").value;
         
@@ -236,6 +236,16 @@
         }
         document.getElementById("instrument_ip").value = nice_hostname;
 	    //hostname = document.getElementById("instrument_ip").value;
+	    $(window).on('niceServerShutdown', function(ev) {
+            $('#top_panel').removeClass('connected', 4000)
+                .find('#status')
+                .find('.instrument-name').text('Server shut down: Not connected');
+        }).on('niceServerConnected', function(ev) {
+            $('#top_panel').addClass('connected')
+                .find('#status')
+                .find('.instrument-name').text("Instrument connected: " + nice_hostname);
+        });
+	    
 	    dialog.show();
         logging_in = true;
         
@@ -272,6 +282,23 @@
     };
   </script>
   <style type="text/css">
+    #top_panel {
+        background-color: LightYellow;
+        /* height: 30px; */
+        /* padding-top: 0px; */
+        /* padding-bottom: 0px; */
+        font-weight: bold;
+        font-family: 'Open Sans' !important;
+        /* font-family: 'Special Elite' !important; */
+        /* font-family: 'xkcd' !important; */
+        /* font-variant: small-caps; */
+    }
+    #top_panel.connected {
+        background-color: LightGreen;
+    }
+    .instrument-name {
+        color: DarkGreen;
+    }
     #login {
         top: 28%;
         position: absolute;
@@ -312,7 +339,10 @@
     <div id="bulk_edit_buttons" style="display: inline-block;"></div>
 </div>
 <div id="top_panel" class="ui-layout-north">
-    <div id="statusline">Trajectory Editor</div>
+    <div id="status">
+        <span id="statusline">Trajectory Editor</span>
+        <span id="instrument_name" class="instrument-name"></span>
+    </div>
     <div id="catalog">
         Drag onto editor below: 
         <span class="catalog-item vary-catalog-item ui-state-default" name="range" title="drag onto a loop below">+ range</span>
