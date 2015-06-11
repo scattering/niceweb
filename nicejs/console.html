@@ -45,6 +45,13 @@
     var ice_protocol_version = "1.0";
     var logging_in = false;
 
+    var INSTRUMENT_LOGOS = {
+        'pbr': 'pbr_logo_main.svg',
+        'pbr.ncnr.nist.gov': 'pbr_logo_main.svg',
+        'magik': 'magik_logo_red.svg', 
+        'magik.ncnr.nist.gov': 'magik_logo_red.svg',
+        'default': 'appicon.png'
+    }
     var hostname = "h123062.ncnr.nist.gov"; // default NICE host
     var port = '9999';
     if (localStorage && localStorage.nice_hostname) {
@@ -528,8 +535,15 @@
         $('#top_panel').removeClass('connected', 4000)
             .find('.instrument-name').text('Server shut down: Not connected');
     }).on('niceServerConnected', function(ev) {
+        var logopath = 'css/';
+        if (hostname in INSTRUMENT_LOGOS) {
+            logopath += INSTRUMENT_LOGOS[hostname];
+        } else {
+            logopath += INSTRUMENT_LOGOS['default'];
+        }
         $('#top_panel').addClass('connected')
-            .find('.instrument-name').text("Instrument connected: " + hostname);
+            .find('.instrument-name').text("Instrument connected: " + hostname)
+            .parent().find('.instrument-logo').attr("src", logopath);
     });
     
     dialog.show();
@@ -689,6 +703,11 @@
     #console {
         overflow: auto;
     }
+    .instrument-logo {
+        height: 3em;
+        padding-left: 1em;
+        padding-right: 1em;
+    }
     .command-highlight, .queue-highlight {
         background-color: yellow !important;
         color: red;
@@ -748,6 +767,7 @@
 
 <div id="top_panel" class="ui-layout-north">
     <h3 class="instrument-name">Instrument: </h3>
+    <img src="css/appicon.png" class="instrument-logo">
     <div id="control_buttons" class="control-buttons">
     <span id="queue_state"></span>
     <input type="button" onclick="api.suspend();" value="Pause" class="pause-button" id="pause_button">
