@@ -21,7 +21,7 @@ $(function() {
         'onchange': 'loadLocalFile()'}));
     buttons['refresh'] = bd.append($('<button />', {
         'text': 'Refresh files',
-        'onclick': 'refreshBoth()'}));
+        'onclick': 'refreshFileSystem()'}));
     bd.append($('<label />', {'text': 'Sort files', 'for': 'sort_files'}));
     buttons['sort'] = bd.append($('<input />', {
         'type': 'checkbox', 
@@ -498,6 +498,13 @@ $(function() {
         var trajectories_folder = experiment_folder[0].children.filter( function(x) { return /trajectories/.test(x.name) });
         var trajectories_path = trajectories_folder[0].name;
         return trajectories_path;
+    }
+    
+    refreshFileSystem = function() {
+        var current_path = experimentMonitor.current_experiment.clientPath;
+        return api.refreshFileSystem(current_path + '/trajectories/').then(function() {
+            refreshBoth()
+        });
     }
     
     refreshBoth = function() {
