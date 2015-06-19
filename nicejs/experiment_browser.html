@@ -108,9 +108,7 @@
                     // if called with 1 argument, it is just the current experiment.
                     var curr = arguments[arguments.length - 1];
                     var currentDisplayed = $('.current-experiment-id');
-                    currentDisplayed.each(function(i, e) { 
-                        if (e.hasOwnProperty('textContent')) { e.textContent = curr.id.toString() }
-                    });
+                    currentDisplayed.text(curr.id.toString());
                 }
                 experimentMonitor.postSwitchedHooks = [postSwitched];
                 // call this from the context of the experimentMonitor:
