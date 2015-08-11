@@ -433,7 +433,12 @@
               (level == 'CRITICAL') || 
               (level == 'SERIOUS') || 
               (level == 'IMPORTANT') || 
-              (level == 'INFO' && (event.eventID != -3 || event.message.indexOf("runTrajectory") >=0))
+              (level == 'INFO' && 
+                event.message.indexOf("Queued") != 0 && 
+                  ( event.eventID != -3 || 
+                    event.message.indexOf("runTrajectory") >=0
+                  )
+              )
               ){
                 p = document.createElement('div');
                 p.classList.add('console-item');            

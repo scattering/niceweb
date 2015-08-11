@@ -526,7 +526,10 @@ $(function() {
         if (wt.filename && wt.path) {
             // auto re-select currently selected file after save or refresh.
             // first, scroll the window to the desired item:
+            $('#filelist ol li').removeClass("ui-selected");
             var selection = $('#filelist ol [filename="' + wt.filename + '"][path="' + wt.path + '"]');
+            selection.addClass('ui-selected');
+            
             if (selection && selection.parent && selection.position) {
                 try {
                     var parent_offset = selection.parent().position().top;
@@ -536,8 +539,10 @@ $(function() {
                 } catch (e) {
                     // do nothing on error
                 } 
-                // do the selection
-                selection.trigger('click');
+                // optional: do the selection.  Will reload data from server.  Do we want this?
+                // see http://stackoverflow.com/questions/5541601/trigger-jquery-ui-events-ui-selectable
+                $('#filelist ol').data("ui-selectable")._mouseStop(null);
+                //selection.trigger('click');
             }  
         }
     }
