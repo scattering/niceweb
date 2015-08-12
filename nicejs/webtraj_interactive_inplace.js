@@ -161,9 +161,11 @@
         button.click(function(e) {
             var subtype = $(this).attr("name");
             var newitem = that.itemCreators[subtype].call(that);
-            $( newitem ).insertAfter($(ul).children("li").last());
+            var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
+            $( newitem ).insertAfter(insertionPoint);
         });
-        button.insertAfter($(ul).children("li").last());
+        var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
+        button.insertAfter(insertionPoint);
         //$(ul).sortable({items: "> li"});
         return ul;
         $(ul).sortable();
