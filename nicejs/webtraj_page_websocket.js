@@ -75,16 +75,16 @@ $(function() {
     
     bb.hide();
     
-    var eb = $('#catalog');
+    //var eb = $('#catalog');
     wt = {'variable_names': {}}; // global
     
     update_interactiveness = function() {
         var interactive = document.getElementById('interactive').checked;
-        if (!(interactive)) { 
-            eb.hide(); 
-        } else {
-            eb.show();
-        }
+//        if (!(interactive)) { 
+//            eb.hide(); 
+//        } else {
+//            eb.show();
+//        }
         if (wt.raw) { // && wt.filename) {
             var filename = wt.filename;
             var new_editor = set_data(wt.raw);
@@ -769,12 +769,14 @@ $(function() {
     wt.variable_names['devices'] = device_list;
     wt.variable_names['init'] = init_keywords;
     
+    /*
     $( ".catalog-item" ).draggable({
       appendTo: "body",
       helper: "clone",
       cursor: "crosshair",
       cursorAt: { top: -5, left: -5 }
     });
+    */
     
     /*
     $(document).on("click", "#filelist ol li", function() {
