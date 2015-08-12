@@ -88,12 +88,12 @@
     webtraj_interactive.prototype.varyList = function(items) {
         var ul = webtraj.prototype.varyList.call(this, items);
         var that = this;
-        var classlist = "add-button ui-button ui-corner-all"
+        var classlist = "add-button ui-button ui-corner-all";
         var buttons = [
             {text: "+ subloop", class: classlist, name: "subloop"},
             {text: "+ list", class: classlist, name: "cycliclist"},
             {text: "+ expression", class: classlist, name: "expression"},
-            {text: "+ range", class: classlist, name: "range"},
+            {text: "+ range", class: classlist, name: "range"}
         ];
         for (var i=0; i<buttons.length; i++) {
             var button = $("<button/>", buttons[i]);
@@ -141,15 +141,27 @@
     webtraj_interactive.prototype.mainList = function(items) {
         var ul = webtraj.prototype.mainList.call(this, items);
         var that = this;
-        var button = $("<button/>", {text: "+ expression", class:"add-button ui-button ui-corner-all", name: "expression"});
-        button.click(function(e) {
-            var subtype = $(this).attr("name");
-            var newitem = that.itemCreators[subtype].call(that);
-            var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();           
-            $( newitem ).insertAfter(insertionPoint);
-        });
-        var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
-        button.insertAfter(insertionPoint);
+        var classlist = "add-button ui-button ui-corner-all";
+        var buttons = [
+            {text: "+ subloop", class: classlist, name: "subloop"},
+            {text: "+ expression", class: classlist, name: "expression"}
+        ];
+        for (var i=0; i<buttons.length; i++) {
+            var button = $("<button/>", buttons[i]);
+            button.click(function(e) {
+                var subtype = $(this).attr("name");
+                var newitem = that.itemCreators[subtype].call(that);
+                if (subtype == "subloop") {
+                    $( ul ).append( $(newitem) );
+                } else {
+                    var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
+                    $( newitem ).insertAfter(insertionPoint);
+                }
+            });
+            // insert after the section header, and after the items.
+            var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
+            button.insertAfter(insertionPoint);
+        }
         //$(ul).sortable({items: "> li"});
         return ul;
     }
@@ -167,7 +179,6 @@
         var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
         button.insertAfter(insertionPoint);
         //$(ul).sortable({items: "> li"});
-        return ul;
         $(ul).sortable();
         var rb = removeButton(ul);
         ul.insertBefore(rb, ul.childNodes[0]);
