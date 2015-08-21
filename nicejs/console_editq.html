@@ -1,0 +1,880 @@
+<html>
+<head>
+  <link rel="icon" type="image/png" href="css/appicon.png" />
+  <link rel="stylesheet" href="../../niceclient/static/css/layout-default-latest.css" />
+  <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
+  <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
+            type="text/css" rel="Stylesheet" />
+  <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
+  <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+  <script src="../../niceclient/static/jquery.layout-latest.js"></script>
+  <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/jstree_style.min.css"/>
+  <script type="text/javascript" src="jstree.js"></script>
+  <script type="text/javascript" src="jstree_dnd_nice.js"></script>
+
+  <!-- dialog support -->
+  <link rel="stylesheet" href="../static/dialog-polyfill.css" />
+  <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
+
+  <script src="icejs/Ice.js"></script>
+  <script src="icejs/Glacier2.js"></script>
+  <script src="icejs/IceStorm.js"></script>
+  <script src="icejs/IceGrid.js"></script>
+
+  <script src="generated/data.js"></script>
+  <script src="generated/file.js"></script>
+  <script src="generated/system.js"></script>
+  <script src="generated/devices.js"></script>
+  <script src="generated/console.js"></script>
+  <script src="generated/dryrun.js"></script>
+  <script src="generated/exceptions.js"></script>
+  <script src="generated/nice.js"></script>
+  <script src="generated/events.js"></script>
+  <script src="generated/experiment.js"></script>
+  <script src="generated/queue.js"></script>
+  <script src="generated/sampleAlignment.js"></script>
+  <script src="generated/clientapi.js"></script>
+  <script src="connect_zeroc.js"></script>
+  <script type="text/javascript">
+    var Promise = Ice.Promise;
+    var RouterPrx = Glacier2.RouterPrx;
+    var logging_in = false;
+    
+    var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
+    var ice_protocol_version = "1.0";
+    var logging_in = false;
+
+    var INSTRUMENT_LOGOS = {
+        'pbr': 'pbr_logo_main.svg',
+        'pbr.ncnr.nist.gov': 'pbr_logo_main.svg',
+        'magik': 'magik_logo_red.svg', 
+        'magik.ncnr.nist.gov': 'magik_logo_red.svg',
+        'ngbsans.ncnr.nist.gov': 'nSoftlogo_mission.png',
+        'cts.ncnr.nist.gov': 'phades_logo.svg',
+        'default': 'appicon.png'
+    }
+    var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+    var port = '9999';
+    if (localStorage && localStorage.nice_hostname) {
+        hostname = localStorage.nice_hostname
+    }
+    
+    var command_history = [];
+  
+    function getEnumValues(ice_enum) {
+        var enumVals = [];
+        for (var i=0; i<=ice_enum.maxValue; i++) {
+            enumVals[i] = ice_enum.valueOf(i)._name;
+        }
+        return enumVals;
+    }
+    // preread the CommandState enum:
+    CommandStatusEnum = getEnumValues(nice.api.queue.CommandState);
+    //CommandStatusEnum =  [ 'QUEUED', 'RUNNING', 'CHILDREN', 'FINISHED', 'SKIPPED' ];
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // JSTREE
+    ////////////////////////////////////////////////////////////////////////////
+
+    function showQueue(queue) {
+        myqueue = queue;
+        //treequeue = json_to_jstree(queue, true);
+        newqueue = queue_to_jstree(queue, true);
+        
+        $('#queue').on('ready.jstree', function(e, data) { window.scrollTo(0,document.body.scrollHeight) });
+        $("#queue").bind("select_node.jstree", function (e, data) { return data.instance.toggle_node(data.node); });
+        return $('#queue').jstree(newqueue);
+        
+    }
+
+    function type (object) {
+        if (object === null) {
+            return 'null';
+        }
+        if (object === undefined) {
+            return 'undefined';
+        }
+        if ((object instanceof Number) || (typeof object === 'number')) {
+            return 'number';
+        }
+        if ((object instanceof String) || (typeof object === 'string')) {
+            return 'string';
+        }
+        if ((object instanceof Boolean) || (typeof object === 'boolean')) {
+            return 'boolean';
+        }
+        if ((object instanceof RegExp) || (typeof object === 'regexp')) {
+            return 'regexp';
+        }
+        if (Array.isArray(object)) {
+            return 'array';
+        }
+
+        return 'object';
+    };
+
+    function command_to_node(command) {
+        var out = {};
+        out.parent = command.parentUUID || "#";
+        out.id = command.UUID;
+        out.li_attr = {'class': ''};
+        if ('status' in command) {
+            var status = command.status;
+            
+            if ('commandStr' in status) {
+                out.text = status.commandStr;
+            }
+            if ('state' in status) {
+                var v;
+                if ('value' in status.state) {                            
+                    v = parseInt(status.state.value);
+                } 
+                else if ('_value' in status.state) {
+                    v = parseInt(status.state._value);
+                }
+                if (v != null) {
+                    out.text += ": " + CommandStatusEnum[v];
+                    out.li_attr.class += " queue-" + CommandStatusEnum[v];
+                    //out.attributes = {"class": "queue-" + CommandStatusEnum[v]};
+                }
+                if (v == 1 || v == 2) {
+                    out.icon = "css/running.gif"; // running!
+                }
+                if (v == 3) {
+                    var t = new Date(status.endCommandTimestamp.toNumber());
+                    var hours_str = t.getHours().toFixed();
+                    if (hours_str.length < 2) {
+                        hours_str = "0" + hours_str; 
+                    }
+                    var minutes_str = t.getMinutes().toFixed();
+                    if (minutes_str.length < 2) {
+                        minutes_str = "0" + minutes_str; 
+                    }
+                    out.text += " " + hours_str + ":" + minutes_str;
+                    out.text += " " + t.toLocaleDateString();
+                    out.icon = "css/checkmark.gif";
+                }
+                if (v==0) {
+                    out.icon = "css/queue.gif"; // queued
+                }
+                if (v==4) {
+                    out.icon = "css/ex.gif";
+                }
+                    
+            }
+            if(status.isBreakPoint) {
+                out.icon = "css/stopsign.gif";
+                out.li_attr.class += " queue-breakpoint";
+            }
+            
+        }
+        return out
+    }
+
+    function q2jstree(root){
+        var output = {
+            'core': {
+                'data': [],
+                'animation': 0,
+                'check_callback': true
+            },
+            'plugins': ['contextmenu'], // 'dnd_nice'], 'search'] // 'state', 'types', 'wholerow']
+            'contextmenu': {
+                "items": function($node) {
+                    var tree = queueMonitor.jstree;
+                    var isBreakPoint = queueMonitor._commands[$node.id].status.isBreakPoint;
+                    var uuid = $node.id;
+                    var selection = tree.get_selected();
+                    return {
+                        
+                        "scrollConsoleTo": {
+                            "separator_before": false,
+                            "separator_after": false,
+                            "label": "show in console",
+                            "action": function(obj) {
+                                var uuid = obj.reference.parent().attr('id');
+                                var cmd = $('#console [command_uuid='+uuid+'] .console-message')
+                                if (cmd[0] && cmd[0].scrollIntoView) {
+                                    cmd[0].scrollIntoView();
+                                }
+                                cmd.addClass('command-highlight', 400, 'swing', 
+                                    function() {
+                                        $(this).removeClass('command-highlight', 2000, 'swing')
+                                    }
+                                );   
+                            }
+                        },
+                        "Edit": {
+                            "separator_before": false,
+                            "separator_after": false,
+                            "label": "edit",
+                            "action": function (obj) { 
+                                var selection = tree.get_selected();
+                                if (selection.length > 1) {
+                                    alert("Can only edit one item at a time");
+                                    return;
+                                } else {
+                                    var uuid = selection[0];
+                                    var command = queueMonitor._commands[uuid];
+                                    var state = command.status.state;
+                                    if (state._name == "QUEUED") {
+                                        api.setUserBreak(uuid, true);
+                                    }
+                                    editCommand(command.status.commandStr, uuid);
+                                    /*
+                                    if (!(newCommand.canceled)) {
+                                        api.insertQueueCommand(uuid, newCommand)
+                                        .then(function(s) {
+                                            api.deleteQueueCommand(uuid);
+                                        })
+                                        .exception(function(e) {
+                                            alert('adding edited command failed:\n' + e.reason);
+                                        });
+                                    }
+                                    */
+                                }
+                            }
+                        },
+                        "SetUserBreak": {
+                            "separator_before": false,
+                            "separator_after": false,
+                            "label": (isBreakPoint) ? "Clear breakpoint" : "Set breakpoint",
+                            "action": function (obj) { 
+                                api.setUserBreak(uuid, !isBreakPoint); 
+                            }
+                        },                    
+                        "Delete": {
+                            "separator_before": false,
+                            "separator_after": false,
+                            "label": "delete",
+                            "action": function (obj) {
+                                tree.get_selected().forEach(function(uuid) { api.deleteQueueCommand(uuid) })
+                            }
+                        },
+                        "Copy": {
+                            "separator_before": true,
+                            "separator_after": false,
+                            "label": "copy",
+                            "action": function() {
+                                var copy_buffer = [];
+                                tree.get_selected().forEach(function(uuid) {copy_buffer.push(queueMonitor._commands[uuid].status.commandStr)});
+                                queueMonitor._copy_buffer = copy_buffer;
+                                if (copy_buffer.length == 1) {
+                                    $('.command-line-paste').show();
+                                } else {
+                                    $('.command-line-paste').hide();
+                                }
+                            }
+                        },
+                        "Paste": {
+                            "separator_before": false,
+                            "separator_after": false,
+                            "label": "paste after",
+                            "_disabled": (queueMonitor._copy_buffer == null),
+                            "action": function() {
+                                if (queueMonitor._copy_buffer) {
+                                    var target_uuid = selection[selection.length - 1];
+                                    api.insertQueueCommand(target_uuid, queueMonitor._copy_buffer);
+                                }
+                            }
+                        }
+                        /*
+                        "Create": {
+                            "separator_before": false,
+                            "separator_after": false,
+                            "label": "Create",
+                            "action": function (obj) { 
+                                $node = tree.create_node($node);
+                                tree.edit($node);
+                            }
+                        },
+                        "Rename": {
+                            "separator_before": false,
+                            "separator_after": false,
+                            "label": "Rename",
+                            "action": function (obj) { 
+                                tree.edit($node);
+                            }
+                        },
+                        */
+                    };
+                }
+            }
+        }
+        
+        var command, i=0;
+        for (var c in root._commands) {
+            command = root._commands[c];
+            var new_node_def = command_to_node(command);
+            output.core.data[i++] = new_node_def;
+        }
+        output.core.data[0].state = {opened: true};
+        return output;
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // END JSTREE
+    ////////////////////////////////////////////////////////////////////////////
+
+    var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
+        __init__: function(jstree_target) {
+            this.jstree_target = jstree_target;
+            var target = $(jstree_target);
+            this._copy_buffer = null; // for copy/paste operations.
+            target.on('ready.jstree', function(e, data) { e.currentTarget.scrollTop = e.currentTarget.scrollHeight });
+            target.bind("select_node.jstree", function (e, data) { return data.instance.toggle_node(data.node); });
+        },
+        onSubscribe_old: function(state, root, __current) {
+            this.state = state;
+            this.root = root;
+        },
+        onSubscribe: function(queueState, root, __current) {
+            // Called when we initially subscribe to the queue topic
+            this.state = queueState;
+            this._update_controls(queueState);
+            this._root = root;
+            this._commands = {};
+            this._addToNodeTable(this, root);
+            this._addToCommandHistory(this, root);
+            this.jstree = $(this.jstree_target).jstree(q2jstree(this)).jstree(true);
+        },
+        nodesAdded: function(path, node, __current) {
+            // Called when a command node is added to the queue
+            this._addToNodeTable(this, node);
+            this._addToCommandHistory(this, node);
+            var childIndex = path[path.length - 1];
+            this.jstree.create_node(node.parentUUID, command_to_node(node), childIndex, function() {});
+            var newNode = document.getElementById(node.UUID);
+            if (newNode && newNode.scrollIntoView) {
+                newNode.scrollIntoView(true);
+            }
+        },
+        nodesRemoved: function(path, node, __current) {
+            /*
+            Called when a command node is removed from the queue.
+            Handles removal of nodes. We remove the corresponding nodes
+            from the command map and from the queue structure.
+            */
+            this._removeFromNodeTable(this, node);
+            this.jstree.delete_node(node.UUID);
+        },
+        nodeStatusChanged: function(path, nodeID, status, __current) {
+            // Called when an individual command's state changes
+            if (nodeID in this._commands) {
+                this._commands[nodeID].status = status;        
+                var node = this.jstree.get_node(nodeID);
+                $.extend(node, command_to_node(this._commands[nodeID]), true);
+                this.jstree.redraw_node(nodeID);
+            }
+        },
+        stateChanged: function(queueState, __current) {
+            //console.log('stateChanged:', queueState);
+            this.state = queueState;
+            this._update_controls(queueState);
+        },
+        ////////////////////////////////////////////////////////////////////
+        // END OF API IMPLEMENTATION OVERRIDES
+        ////////////////////////////////////////////////////////////////////
+        _update_controls: function(queueState) {
+            var name = queueState._name;
+            if (name == 'SUSPENDED') {
+                $('.pause-button').hide();
+                $('.resume-button').show();
+            } else {
+                $('.pause-button').show();
+                $('.resume-button').hide();
+            }
+            $('#queue_state').text(name);
+        },
+        _removeFromNodeTable: function(ctx, node) {
+            /*
+            Removes a node from the id->node map. This is done recursively for all the node's children.
+            Each node that is removed has its id added to the set of removed command IDs.
+            */
+            for (var i=0; i<node.children.length; i++) {
+                var child = node.children[i];
+                ctx._removeFromNodeTable(ctx, child);
+            }
+            delete ctx._commands[node.UUID];
+        },
+        _addToNodeTable: function(ctx, node) {
+            /*
+            Adds a node to the id->node map. This is done recursively for all the node's
+            children.
+            */
+            this._commands[node.UUID] = node;
+            for (var i=0; i<node.children.length; i++) {
+                var child = node.children[i];
+                ctx._addToNodeTable(ctx, child);
+            }
+            
+        },
+        _addToCommandHistory: function(ctx, node) {
+            /*
+            Adds a command string to the history list. This is done recursively for all the node's
+            children.
+            */
+            if (node.status && node.status.commandStr) {
+                command_history.push(node.status.commandStr);
+            }
+            for (var i=0; i<node.children.length; i++) {
+                var child = node.children[i];
+                ctx._addToCommandHistory(ctx, child);
+            }
+        }
+        
+    });
+
+    var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
+        __init__: function(console_id) {
+            this.console_id = console_id;
+        },
+        onSubscribe: function(history, __current) {
+            this._history = history;
+            var last_visible_p;
+            var html = "", h, p, msg, msg_span, ts, t;
+            var console_div = document.getElementById(this.console_id);
+            for (var i=0; i<history.length; i++) {
+                h = history[i];
+                p = this._format_event(h);
+                if (p != null) {
+                    console_div.appendChild(p);
+                    last_visible_p = p;
+                }
+            }
+            if (last_visible_p != null && last_visible_p.scrollIntoView) {
+                last_visible_p.scrollIntoView(true);
+            }
+        },
+        switchedCurrentExperiment: function(history, __current) {
+            this.onSubscribe(history, __current);
+        },
+        report: function(event, __current) {
+            this._lastEvent = event;
+            var p = this._format_event(event);
+            if (p != null) {
+                document.getElementById(this.console_id).appendChild(p);
+                p.scrollIntoView(true);
+            }
+        },
+
+        _format_event: function(event) {
+            var p = null;
+            var level = event.level._name;
+            if ( 
+              (level == 'ERROR') || 
+              (level == 'CRITICAL') || 
+              (level == 'SERIOUS') || 
+              (level == 'IMPORTANT') || 
+              (level == 'INFO' && 
+                event.message.indexOf("Queued") != 0 && 
+                  ( event.eventID != -3 || 
+                    event.message.indexOf("runTrajectory") >=0
+                  )
+              )
+              ){
+                p = document.createElement('div');
+                p.classList.add('console-item');            
+                if (event.commandUUID) { p.setAttribute('command_uuid', event.commandUUID) }
+                var ts = document.createElement('div');
+                ts.classList.add('console-timestamp');
+                var timestamp = event.timestamp;
+                if (timestamp.low < 0) {
+                    timestamp.low += Ice.Long.HIGH_MASK;
+                }
+                var t = new Date(event.timestamp.toNumber());
+                ts.textContent = t.toISOString().split("T")[0] + ' ' + t.toTimeString().split(" ")[0] + ' > ';
+                p.appendChild(ts);
+                var msg_div = document.createElement('div');
+                msg_div.classList.add('console-message');
+                if (level != 'INFO') {
+                    var notifier = document.createElement('span');
+                    notifier.classList.add('console-flag');
+                    notifier.classList.add(level.toLowerCase() + '-event');
+                    notifier.textContent = level + ": ";
+                    msg_div.appendChild(notifier);
+                }
+                var msg_span = document.createElement('span');
+                msg_span.innerHTML = event.message;
+                msg_div.appendChild(msg_span);
+                p.appendChild(msg_div);
+            }
+            return p
+        }
+    });
+
+    function editCommand(commandStr, uuid) {
+        $('#command_line').val(commandStr);
+        $('.command-line-title').text("Editing command:");
+        $('.command-line-uuid').text(uuid);
+        $('.command-line-cancel').show();        
+    }
+    
+    function cancelEditCommand() {
+        $('#command_line').val("");
+        $('.command-line-title').text("New command:");
+        var uuid = $('.command-line-uuid').text();
+        if (uuid in queueMonitor._commands) {
+            api.setUserBreak(uuid, false);
+        }
+        $('.command-line-uuid').text("");
+        $('.command-line-cancel').hide();   
+    }
+    
+    function pasteCommand() {
+        var commandStr = queueMonitor._copy_buffer[0];
+        $('#command_line').val(commandStr);
+    }
+
+    function submitCommand() {
+        var command_line = document.getElementById('command_line');
+        var command = command_line.value.trim('\n');
+        command_history.push(command);
+        command_offset = 0;
+        command_line.value = "";
+        var uuid = $('.command-line-uuid').text();
+        if (uuid == "") {
+            return api.console(command);
+        } else {
+            cancelEditCommand();
+            return api.insertQueueCommand(uuid, [command]).then(function(s) {
+                console.log('successful edit: ', s);
+                api.deleteQueueCommand(uuid);
+            }).exception(function(e) {
+                alert('adding edited command failed:\n' + e.reason);
+            });
+        }
+    }
+
+    function getCommandCompletion(command_stub, callback) {
+        var command_stub = (command_stub.term) ? command_stub.term : command_stub;
+        var tokens = command_stub.split(/\s+/);
+        var last_length = tokens[tokens.length - 1].length;
+        var root = command_stub.slice(0, (command_stub.length - last_length));
+        api.complete(command_stub).then(function(result) {
+            var completions = [];
+            sorted = result.fullCompletions.sort(
+                function(a,b) { 
+                    return ((a.relevance > b.relevance) || 
+                             ((a.relevance == b.relevance) && (a.replacementText < b.replacementText))) ? -1 : 1
+                }
+            );
+            sorted.forEach(function(s) { completions.push(root + s.replacementText); });
+            $('body').layout().allowOverflow('command_line');
+            callback(completions);
+        });
+    }
+
+    getCursorPosition = function(input) {
+        if (!input) return; // No (input) element found
+        if ('selectionStart' in input) {
+            // Standard-compliant browsers
+            return input.selectionStart;
+        } else if (document.selection) {
+            // IE
+            input.focus();
+            var sel = document.selection.createRange();
+            var selLen = document.selection.createRange().text.length;
+            sel.moveStart('character', -input.value.length);
+            return sel.text.length - selLen;
+        }
+    }
+
+    dialog_login = function() {
+        // set the global hostname
+        hostname = document.getElementById("instrument_ip").value;
+        var username = document.getElementById("username").value;
+        var password = document.getElementById("password").value;
+        
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+            function(api_object) {
+                // globals:
+                logging_in = false;
+                api = api_object;
+                queueMonitor = new QueueMonitorI("#queue_panel");
+                consoleMonitor = new ConsoleMonitorI("console");
+                return Promise.all(
+                    subscribe(queueMonitor, 'queue'),
+                    subscribe(consoleMonitor, 'console')
+                )
+        });
+        if (localStorage) {
+            localStorage.nice_hostname = hostname;
+        }
+        document.getElementById("login").close();
+    }
+ 
+  window.onload = function() {
+    var dialog = document.getElementById("login");
+    if (!dialog.show) {
+        dialogPolyfill.registerDialog(dialog);
+    }
+    document.getElementById("instrument_ip").value = hostname;
+    
+    $(window).on('niceServerShutdown', function(ev) {
+        $('#top_panel').removeClass('connected', 4000)
+            .find('.instrument-name').text('Server shut down: Not connected');
+    }).on('niceServerConnected', function(ev) {
+        var logopath = 'css/';
+        if (hostname in INSTRUMENT_LOGOS) {
+            logopath += INSTRUMENT_LOGOS[hostname];
+        } else {
+            logopath += INSTRUMENT_LOGOS['default'];
+        }
+        $('#top_panel').addClass('connected')
+            .find('.instrument-name').text("Instrument connected: " + hostname)
+            .parent().find('.instrument-logo').attr("src", logopath);
+    });
+    
+    dialog.show();
+    logging_in = true;
+    
+    $('#command_line').on('keydown', function(ev) {
+        var keyCode = ev.keyCode || ev.which;
+        if (keyCode == 38 || keyCode == 40) {
+            ev.preventDefault();
+            var cursor_pos = cl.selectionStart;
+            command_match = new RegExp("^"+cl.value.slice(0, cursor_pos), "i"); // ignore case            
+            //var matching_commands = queueMonitor._root.children.filter(function(item) { return command_match.test(item.status.commandStr) });
+            var matching_commands = command_history.filter(function(item) { return command_match.test(item) });
+            if (matching_commands.length == 0) { 
+                return 
+            }
+            //command_offset += bump[ev.keyIdentifier];
+            command_offset += bump[keyCode];
+            var index = command_offset % matching_commands.length;
+            if (index < 0) {
+                index += matching_commands.length;
+            }
+            //cl.value = matching_commands[index].status.commandStr;
+            cl.value = matching_commands[index];
+            cl.setSelectionRange(cursor_pos, cursor_pos);
+        }
+        else if (keyCode == 13 || keyCode == 10) {
+            if ($('ul.ui-autocomplete').is(':visible')) {
+                // if the autocomplete menu is up, don't submit!
+                return false;
+            }
+            $(this).autocomplete("disable");
+            ev.preventDefault();
+            ev.stopPropagation();
+            submitCommand();
+        }
+        else if (keyCode == 9) {
+            $(this).autocomplete("enable")
+                .autocomplete("search", this.value);
+            ev.preventDefault();
+        }
+        else if (keyCode == 27) {
+            // escape!
+        }
+
+    });
+    
+    $('.command-line-paste').click(pasteCommand).hide(); // set handler and hide.
+    $('.command-line-cancel').click(cancelEditCommand).hide(); // set handler and hide.
+    
+    $(document)
+        .on('mouseenter.console2queue', '#console .console-item', function(ev) {
+            var uuid = this.getAttribute('command_uuid');
+            $('#queue_panel ul li[id='+uuid+'] a').addClass('queue-highlight') })
+        .on('mouseleave.console2queue', '#console .console-item', function(ev) {
+            var uuid = this.getAttribute('command_uuid');
+            $('#queue_panel ul li[id='+uuid+'] a').removeClass('queue-highlight') });
+            
+    $(document)
+        .on('mouseenter.queue2console', '#queue_panel ul li', function(ev) {
+            var uuid = this.id; //getAttribute('command_uuid');
+            $('#console .console-item[command_uuid="'+uuid+'"] .console-message').addClass('command-highlight', 0) })
+        .on('mouseleave.queue2console', '#queue_panel ul li', function(ev) {
+            var uuid = this.id; //getAttribute('command_uuid');
+            $('#console .console-item[command_uuid="'+uuid+'"] .console-message').removeClass('command-highlight', 0) });
+    
+    document.body.onkeydown = function(ev) {
+        var keyCode = ev.keyCode || ev.which;
+        var command_line = document.getElementById('command_line');
+        // block backspace when not in command line
+        if ((document.activeElement.type != "text") && (keyCode == 8)) { ev.preventDefault(); }
+        // put focus in command line if not there for number or a-z keys
+        if (!logging_in && keyCode > 47 && keyCode < 91) {
+            command_line.focus();
+        } 
+    }
+    
+    
+    myLayout = $('body').layout({
+		east__size:			300
+	,	west__size:			0
+	,   south__size:        "auto"
+	,   north_size:         "auto"
+		// RESIZE Accordion widget when panes resize
+	,	west__onresize:		$.layout.callbacks.resizePaneAccordions
+	,	east__onresize:		$.layout.callbacks.resizePaneAccordions
+	,	south__onresize:    $.layout.callbacks.resizePaneAccordions
+	,	north__onresize:    $.layout.callbacks.resizePaneAccordions
+	});
+    
+        
+    //document.getElementById('command_line').onchange = submitCommand;
+    var cl = document.getElementById('command_line');
+    command_offset = 0;
+
+    // To use the jQueryUI autocomplete function, uncomment:
+    // (still needs some tweaking to match what comes out of the api.complete command)
+    // also need to remove the <datalist> from the document below
+    // 
+    $('#command_line').autocomplete({
+        'source': getCommandCompletion,
+        'position': { my : "left bottom", at: "left top" },
+        'disabled': true,
+        // disable the autocomplete after every selection... we want to 
+        // trigger it with 'tab' instead of a delay.
+        'close': function(ev, ui) { $(this).autocomplete("disable"); },
+        'response': function( ev, ui ) {
+            if (ui.content.length <= 1) {
+                // if no responses or if 1 response, quit autocomplete.
+                $(this).autocomplete("disable");
+            }
+            if (ui.content.length == 1) {
+                // if one response, use it!
+                $(this).val(ui.content[0].value);
+            }
+        }
+    });
+    
+    var bump = {38: -1, 40: 1};
+    
+    
+  }
+  </script>
+  <style type="text/css">
+    body {
+        font-family: 'Open Sans' !important;
+    }
+    #login {
+        top: 28%;
+        position: absolute;
+        z-index: 10;
+    }
+    #command {
+        width: 100%;
+        height: 50px;
+        background:#F0F0F0;
+        /*position: fixed;*/
+        /*top: 0;*/
+        /*left: 0;*/
+    }
+    #command .command-line-input {
+        width: 100%;
+        height: 30px;    
+    }
+    #command .command-line-cancel {
+        display: none;
+    }
+    #top_panel {
+        background-color: LightYellow;
+        height: 30px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-weight: normal;
+        /* font-family: 'Open Sans'; */
+        /* font-variant: small-caps; */
+    }
+    #top_panel.connected {
+        background-color: LightGreen;
+    }
+    #top_panel h3 {
+        display: inline-block;
+    }
+    #console {
+        overflow: auto;
+    }
+    .instrument-logo {
+        height: 3em;
+        padding-left: 1em;
+        padding-right: 1em;
+    }
+    .command-highlight, .queue-highlight {
+        background-color: yellow !important;
+        color: red;
+    }
+    .console-item {
+        clear: left;
+        display: block;
+    }
+    .console-timestamp {
+        display: inline-block;
+        vertical-align: top;
+        float: left;
+    }
+    .console-message {
+        display: inline-block;
+        vertical-align: top;
+        float: left;
+        width: 80%;
+    }
+    .console-flag {
+        font-weight: bold;
+    }
+    .ui-autocomplete {
+        max-height: 150px;
+        overflow-y: auto;
+        /* prevent horizontal scrollbar */
+        overflow-x: hidden;
+        z-index: 3 !important;
+    }
+    .control-buttons {
+        float: right;
+        font-size: 14pt;
+        font-weight: bold;
+    }
+    .control-buttons .stop-button {
+        background-color: red;
+        color: white;
+    }
+  </style>
+  <link rel="stylesheet" type="text/css" href="css/main.css">
+  <title>NICE console</title>
+</head>
+<body>
+<dialog id="login">
+  <h2>Login</h2>
+  <label for="instrument_ip">Instrument address</label>
+  <input type="text" id="instrument_ip" value="happy.home">
+  <br>
+  <label for="username">Username:</label>
+  <input type="text" id="username" value="" placeholder="username">
+  <br>
+  <label for="password">Password:</label>
+  <input type="password" id="password" placeholder="password">
+  <br>
+  <input type="button" onclick="dialog_login()" value="Go">
+</dialog>
+
+<div id="top_panel" class="ui-layout-north">
+    <h3 class="instrument-name">Instrument: </h3>
+    <img src="css/appicon.png" class="instrument-logo">
+    <div id="control_buttons" class="control-buttons">
+    <span id="queue_state"></span>
+    <input type="button" onclick="api.suspend();" value="Pause" class="pause-button" id="pause_button">
+    <input type="button" onclick="api.resume();" value="Resume" class="resume-button" id="resume_button">
+    <input type="button" onclick="api.stop();" value="Stop" class="stop-button">
+    </div>
+</div>
+<div id="queue_panel" class="ui-layout-east">
+    <div id="queue"></div>
+</div>
+<div id="console" class="ui-layout-wrapper ui-layout-center"></div>
+<div id="command" class="ui-layout-south">
+    <span class="command-line-title">New command:</span>
+    <span class="command-line-uuid"></span>
+    <input type="button" id="command_line_cancel" value="Cancel" class="command-line-cancel"/>
+    <input type="button" id="command_line_paste" value="Paste" class="command-line-paste"/>
+    <input type="text" id="command_line" class="command-line-input" name="command_line"/>
+    
+</div>
+</body>
+</html>
