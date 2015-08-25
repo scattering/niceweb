@@ -140,7 +140,7 @@
             }
         }
         // format string defaults to float with 4 digits
-        var format_str = format_str == null ? '%.6f' : format_str;
+        //var format_str = format_str == null ? '%.6f' : format_str;
         if (kwargs.type && kwargs.type == "float") {
             entry.type = "number";
             entry.step = 0.001;
