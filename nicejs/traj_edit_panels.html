@@ -106,11 +106,7 @@
             this.contents = [];
             this.subscribed.succeed();
         },
-        filesAdded: function(nodes, contents, __current) {
-            if (nodes.length != contents.length) {
-                console.log('error! lengths of added nodes doesn\'t match contents');
-                return
-            }
+        filesAdded: function(nodes, __current) {
             var n, c, ip;
             for (var i=0; i<nodes.length; i++) {
                 n = nodes[i];
@@ -119,7 +115,7 @@
                 ip.children.push(n)               
             };
             refreshBoth();
-            this.added.push([nodes, contents]);
+            this.added.push([nodes]);
         },
         filesRemoved: function(nodes,  __current) {
             //if (nodes.length != contents.length) {
@@ -310,6 +306,10 @@
     .numPoints {
         float: right;
         color: green;
+    }
+    .remove-button {
+        width: 2em;
+        height: 2em;
     }
   </style>
 </head>

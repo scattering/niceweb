@@ -222,10 +222,13 @@
     
     function removeButton(item) {
         var b = document.createElement('button');
-        b.textContent = "x";
-        b.classList.add('remove-button');
-        b.classList.add('ui-state-error');
-        $(b).button({icons: {primary: "ui-icon-close"}, text: false});
+        //b.textContent = "x";
+        //$( b ).button( "option", "icons", { primary: "ui-icon-close" } );
+        //b.classList.add('remove-button');
+        //b.classList.add('ui-state-error');
+        $(b).button({icons: {primary: "ui-icon-close"}, text: false})
+            .addClass("remove-button")
+            .addClass("ui-state-error");
         b.onclick = function (evt) {
             $(item).empty();
             $(item).remove();
