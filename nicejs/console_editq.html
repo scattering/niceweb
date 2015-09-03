@@ -510,11 +510,13 @@
         $('#command_line').val(commandStr);
         $('.command-line-title').text("Editing command:");
         $('.command-line-uuid').text(uuid);
-        $('.command-line-cancel').show();        
+        $('.command-line-cancel').show();  
+        $('#command').addClass("command-editing");
     }
     
     function cancelEditCommand() {
         $('#command_line').val("");
+        $('#command').removeClass("command-editing");
         $('.command-line-title').text("New command:");
         var uuid = $('.command-line-uuid').text();
         if (uuid in queueMonitor._commands) {
@@ -766,6 +768,9 @@
         /*position: fixed;*/
         /*top: 0;*/
         /*left: 0;*/
+    }
+    .command-editing {
+        background: #FF69B4 !important;
     }
     #command .command-line-input {
         width: 100%;

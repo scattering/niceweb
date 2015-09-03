@@ -44,7 +44,7 @@ li .sorting-handle { display: inline-block; background: #f8f8f8; left: 0; top: 0
 .ui-selecting .handle { background: #ddd; }
 .ui-selected { background: #def; }
 .ui-selected .handle { background: #cde; }
-#filelist { overflow-y: scroll; overflow-x: hidden; }
+#filelist { overflow-y: scroll; overflow-x: hidden; display: block; }
 #filelist ol .ui-selecting { background: #FECA40; }
 #filelist ol .ui-selected { background: #F39814; color: white; }
 #filelist ol li {border: none;}

@@ -1,0 +1,128 @@
+{
+    "id": "http://localhost/~brian/newprepare-trajectory-schema.json#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "schema for PBR specular q-scan",
+    "type": "object",
+    "required": ["loops"],
+    "properties": {
+        "loops": { "$ref": "#/definitions/loops" },
+        "init": { "$ref": "#/definitions/init" },
+        "filePrefix": {"type": "string"},
+        "alwaysWrite": {"type": "string"},
+        "neverWrite": {"type": "string"},
+        "fileGroup": {"type": "string"},
+        "entryName": {"type": "string"},
+        "xAxis": {"type": "string"},
+        "yAxis": {"type": "string"},
+        "description": {"type": "string"}
+    },
+    "definitions": {
+        "loops": {
+            "type": "array",
+            "items": {"$ref":"#/definitions/loop"},
+            "minItems": 1,
+            "maxItems": 1,
+            "additionalItems": false
+        },
+        "loop": {
+            "type": "object",
+            "properties": {
+                "vary": { 
+                    "type": "array",
+                    "items": [
+                        {"type": "array", "items": [
+                            {"type": "string", "enum": ["_q"]}, 
+                            {"$ref": "#/definitions/rangeitem"}
+                        ]},
+                        {"type": "array", "items": [
+                            {"type": "string", "enum": ["sampleAngle"]}, 
+                            {"type": "string", "enum": ["Math.asin(_q*_wavelength/(4.0 * Math.PI)) * 180.0 / Math.PI + _thetaOffset"]}
+                        ]},
+                        {"type": "array", "items": [
+                            {"type": "string", "enum": ["detectorAngle"]}, 
+                            {"type": "string", "enum": ["2.0 * Math.asin(_q*_wavelength/(4.0 * Math.PI)) * 180.0 / Math.PI"]}
+                        ]},
+                        {"type": "array", "items": [
+                            {"type": "string", "enum": ["_w"]}, 
+                            {"type": "string", "enum": ["_spotSize * Math.sin(sampleAngle * Math.PI / 180.0)"]}
+                        ]},
+                        {"type": "array", "items": [
+                            {"type": "string", "enum": ["slitAperture1"]}, 
+                            {"type": "string", "enum": ["_w / (1 + ( _L2S / _L12))"]}
+                        ]},
+                        {"type": "array", "items": [
+                            {"type": "string", "enum": ["slitAperture2"]}, 
+                            {"type": "string", "enum": ["1.0 * slitAperture1"]}
+                        ]},
+                        {"type": "array", "items": [
+                            {"type": "string", "enum": ["slitAperture3"]}, 
+                            {"type": "string", "enum": ["3.0 * slitAperture1"]}
+                        ]},
+                        {"type": "array", "items": [
+                            {"type": "string", "enum": ["slitAperture4"]}, 
+                            {"type": "string", "enum": ["4.0 * slitAperture1"]}
+                        ]},
+                        {"type": "array", "items": [
+                            {"type": "string", "enum": ["counter.timePreset", "counter.monitorPreset"]}, 
+                            {"type": "string", "enum": ["_pre * ( _mon0 + _mon1* Math.pow(_q, _exp)"]}
+                        ]}
+                    ],
+                    "additionalItems": {"$ref": "#/definitions/varyitem" }
+                }
+            },       
+            "required": ["vary"],
+            "additionalProperties": false          
+        },
+        "init": {
+            "type": "array",
+            "items": [
+                {"type": "array", "items": [{"type": "string", "enum": ["description"]}, {"type": "string"}]},
+                {"type": "array", "items": [
+                    {"type": "string", "enum": ["counter.countAgainst"]}, 
+                    {"type": "string", "enum": ["'TIME'", "'MONITOR'"]}
+                ]},
+                {"type": "array", "items": [{"type": "string", "enum": ["_pre"]}, {}]},
+                {"type": "array", "items": [{"type": "string", "enum": ["_mon0"]}, {}]},
+                {"type": "array", "items": [{"type": "string", "enum": ["_mon1"]}, {}]},
+                {"type": "array", "items": [{"type": "string", "enum": ["_exp"]}, {}]},
+                {"type": "array", "items": [{"type": "string", "enum": ["_spotSize"]}, {}]},
+                {"type": "array", "items": [{"type": "string", "enum": ["_L2S"]}, {}]},
+                {"type": "array", "items": [{"type": "string", "enum": ["_L12"]}, {}]},
+                {"type": "array", "items": [{"type": "string", "enum": ["_wavelength"]}, {}]},
+                {"type": "array", "items": [{"type": "string", "enum": ["_thetaOffset"]}, {}]}        
+            ],
+            "additionalItems": {"$ref": "#/definitions/inititem" }
+        },
+        "varyitem": {
+            "type": "array", 
+            "minItems": 2,
+            "maxItems": 2,
+            "items": [{"type": "string"}, {"anyOf": [{"type": "number"}, {"type":"string"}, {"$ref": "#definitions/rangeitem"}, {"type": "array"}]}]
+        },
+        "inititem": {
+            "type": "array", 
+            "minItems": 2,
+            "maxItems": 2,
+            "items": [{"type": "string"}, {}]
+        },
+        "rangeitem": {
+            "type": "object",
+            "properties": {
+                "range": {
+                    "type": "object",
+                    "properties": {
+                        "start": {"anyOf": [{"type":"number"}, {"type":"string"}]},
+                        "step": {"anyOf": [{"type":"number"}, {"type":"string"}]},
+                        "stop": {"anyOf": [{"type":"number"}, {"type":"string"}]},
+                        "center": {"anyOf": [{"type":"number"}, {"type":"string"}]},
+                        "range": {"anyOf": [{"type":"number"}, {"type":"string"}]},
+                        "numPoints": {"anyOf": [{"type":"number"}, {"type":"string"}]}
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "required": ["range"],
+            "additionalProperties": false
+        }
+    }
+}

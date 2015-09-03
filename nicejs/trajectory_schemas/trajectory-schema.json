@@ -1,0 +1,94 @@
+{
+    "id": "trajectory-schema.json#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "schema for a NICE trajectory",
+    "type": "object",
+    "required": ["loops"],
+    "properties": {
+        "loops": { "$ref": "#/definitions/loops" },
+        "init": { "$ref": "#/definitions/init" },
+        "filePrefix": {
+            "type": "string"  
+        },
+        "alwaysWrite": {
+            "type": "string"
+        },
+        "neverWrite": {
+            "type": "string"
+        },
+        "fileGroup": {
+            "type": "string"
+        },
+        "entryName": {
+            "type": "string"
+        },
+        "xAxis": {
+            "type": "string"
+        },
+        "yAxis": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "editor": {
+            "type": "string"
+        }
+    },
+    "additionalProperties": true,
+    "definitions": {
+        "loops": {
+            "type": "array",
+            "items": {"$ref":"#/definitions/loop"},
+            "additionalProperties": false
+        },
+        "loop": {
+            "type": "object",
+            "properties": {
+                "vary": { 
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/varyitem" },
+                    "additionalProperties": false
+                },
+                "loops": {"$ref":"#/definitions/loops"}
+            },       
+            "required": ["vary"],
+            "additionalProperties": false          
+        },
+        "init": {
+            "type": "array",
+            "items": {"$ref": "#/definitions/varyitem" },
+            "additionalProperties": false
+        },
+        "varyitem": {
+            "type": "array", 
+            "minItems": 2,
+            "maxItems": 2,
+            "items": [{"type": "string"}, {"anyOf": [{"type": "number"}, {"type":"string"}, {"$ref": "#/definitions/varyobject"}, {"type": "array"}]}]
+        },
+        "varyobject": {
+            "type": "object",
+            "properties": {
+                "range": {
+                    "type": "object",
+                    "properties": {
+                        "start": { "anyOf": [{"type":"string"}, {"type":"number"}] },
+                        "step": { "anyOf": [{"type":"string"}, {"type":"number"}] },
+                        "stop": { "anyOf": [{"type":"string"}, {"type":"number"}] },
+                        "center": { "anyOf": [{"type":"string"}, {"type":"number"}] },
+                        "range": { "anyOf": [{"type":"string"}, {"type":"number"}] }
+                    }
+                }, 
+                "list" : {
+                    "type": "object",
+                    "properties": {
+                        "value": {"type": "array"},
+                        "cyclic": {"type": "boolean"}
+                    },
+                    "required": ["value"] 
+                }
+            },
+            "additionalProperties": true
+        }
+    }
+}

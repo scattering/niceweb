@@ -1,39 +1,24 @@
-<html lang="en">
+<!DOCTYPE HTML>
+<html lang="en" manifest="offline.appcache">
 <head>
   <meta charset="utf-8" />
   <title>NICE Trajectory Editor</title>
   <link rel="icon" type="image/png" href="css/appicon.png" />
-    <link rel="stylesheet" type="text/css" href="../../niceclient/static/css/layout-default-latest.css" />
+    <link rel="stylesheet" type="text/css" href="css/layout-default-latest.css" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Special+Elite" />
-    <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css" />
+<!--    <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css" />-->
+    <link rel="stylesheet" href="jquery-ui-1.11.4.custom/jquery-ui.theme.min.css" />
     <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script>
-    <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
-    <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
+<!--    <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>-->
+    <script type="text/javascript" src="jquery-ui-1.11.4.custom/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="jquery.layout-latest.js"></script>
     <script type="text/javascript" src="tv4.js"></script>
     <script type="text/javascript" src="tv4.async-jquery.js"></script>
-  <!--<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />-->
-  <!--<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/smoothness/jquery-ui.css" />-->
-  <!--<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/redmond/jquery-ui.css" />-->
-  <!--<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>-->
-  <!--<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>-->
   <!-- dialog support -->
     <link rel="stylesheet" href="../static/dialog-polyfill.css" />
     <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
   
-  <script type="text/javascript">
-    if (typeof jQuery == 'undefined')
-        {
-            document.write(unescape("%3Cscript src='jquery-1.11.1.min.js' type='text/javascript'%3E%3C/script%3E"));
-        }
-        
-    if (typeof jQuery.ui == 'undefined')
-        {
-            document.write(unescape("%3Cscript src='jquery-ui.min.js' type='text/javascript'%3E%3C/script%3E"));
-        }
-  </script>
-<!--  <script src="http://code.jquery.com/jquery-1.9.1.js"></script>-->
-<!-- <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>-->
   <script src="sprintf.js"></script>
   <script src="webtraj_base_prototype.js"></script>
   <script src="webtraj_interactive_inplace.js"></script>
@@ -107,6 +92,7 @@
             this.subscribed.succeed();
         },
         filesAdded: function(nodes, contents, __current) {
+            console.log(nodes.length, contents.length);
             if (nodes.length != contents.length) {
                 console.log('error! lengths of added nodes doesn\'t match contents');
                 return

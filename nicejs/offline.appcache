@@ -1,0 +1,71 @@
+CACHE MANIFEST
+
+# Created on 25 Aug 2015 ab
+
+CACHE:
+
+traj_edit_panels_offline.html
+css/appicon.png
+css/layout-default-latest.css
+//fonts.googleapis.com/css?family=Open+Sans
+//fonts.gstatic.com/s/opensans/v13/cJZKeOuBrn4kERxqtaUH3VtXRa8TVwTICgirnJhmVJw.woff2
+//fonts.googleapis.com/css?family=Special+Elite
+jquery-ui-1.11.4.custom/jquery-ui.theme.min.css
+jquery-ui-1.11.4.custom/jquery-ui.min.js
+
+# jquery ui image items
+jquery-ui-1.11.4.custom/images/ui-bg_gloss-wave_75_2191c0_500x100.png
+jquery-ui-1.11.4.custom/images/ui-bg_inset-hard_100_fcfdfd_1x100.png
+jquery-ui-1.11.4.custom/images/ui-bg_glass_45_0078ae_1x400.png
+jquery-ui-1.11.4.custom/images/ui-bg_gloss-wave_45_e14f1c_500x100.png
+jquery-ui-1.11.4.custom/images/ui-icons_fcd113_256x240.png
+jquery-ui-1.11.4.custom/images/ui-icons_0078ae_256x240.png
+jquery-ui-1.11.4.custom/images/ui-icons_e0fdff_256x240.png
+
+#//code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css
+//code.jquery.com/jquery-1.11.1.min.js
+#//code.jquery.com/ui/1.10.4/jquery-ui.min.js
+jquery.layout-latest.js
+tv4.js
+tv4.async-jquery.js
+../static/dialog-polyfill.css
+../static/dialog-polyfill.js
+sprintf.js
+webtraj_base_prototype.js
+webtraj_interactive_inplace.js
+dryrun_client_worker.js
+icejs/Ice.js
+icejs/Glacier2.js
+icejs/IceStorm.js
+icejs/IceGrid.js
+
+generated/data.js
+generated/devices.js
+generated/file.js
+generated/console.js
+generated/system.js
+generated/dryrun.js
+generated/exceptions.js
+generated/nice.js
+generated/events.js
+generated/experiment.js
+generated/queue.js
+generated/sampleAlignment.js
+generated/clientapi.js
+    
+DevicesMonitorI.js
+connect_zeroc.js
+css/webtraj.css
+webtraj_page_websocket.js
+
+NETWORK:
+
+#//code.jquery.com/jquery-1.11.1.min.js
+#//code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css
+# offline.jpg will replace all images in the images folder
+
+# offline.html will replace all html pages if they cannot be found
+
+FALLBACK:
+
+# *.html offline.html
