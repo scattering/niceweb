@@ -40,7 +40,7 @@
   <script src="dryrun_client_worker.js"></script>
 <!--  <script src="jsonpatch.js"></script> -->
 <!--  <script src="jsondiff.js"></script> -->
-  <script src="//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.20/require.min.js"></script>
+<!--  <script src="//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.20/require.min.js"></script>-->
   
   <script src="icejs/Ice.js"></script>
   <script src="icejs/Glacier2.js"></script>
@@ -108,10 +108,9 @@
             this.subscribed.succeed();
         },
         filesAdded: function(nodes, __current) {
-            var n, c, ip;
+            var n, ip;
             for (var i=0; i<nodes.length; i++) {
                 n = nodes[i];
-                c = contents[i];
                 ip = this._findInsertionPoint(n.name, this._root, 2);
                 ip.children.push(n)               
             };
