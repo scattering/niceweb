@@ -42,7 +42,7 @@ $(function() {
     buttons['delete'] = bd.append($('<button />', {
         'text': 'Delete',
         'onclick': 'deleteFile();'}));
-    buttons['dryrun'] = bd.append($('<button />', {
+    buttons['saveAs'] = bd.append($('<button />', {
         'text': 'Save as',
         'onclick': 'saveAs(true);'}));
     //bd.append($('<label />', {'text': 'Show common', 'for': 'show_common'}));
@@ -222,7 +222,7 @@ $(function() {
     }
     
     deleteFilesConfirm = function(filenames) {
-        var yn = confirm("Delete: " + filenames.join(',') + ";  Are you sure?");
+        var yn = confirm("Delete: \n" + filenames.join('\n') + "\n\nAre you sure?");
         if (yn == true) { deleteFiles(filenames); }
         else {} // do nothing
     }
@@ -239,12 +239,21 @@ $(function() {
         );
     }
     
-    deleteFile = function(filename) {
-        if (filename == null || filename == '') {
-            var filename = wt.filename;
-            var path = TRAJECTORY_PATH + '/' + filename;
+    deleteFile = function(path) {
+        if (path == null || path == '') {
+            //var filename = wt.filename;
+            //var path = TRAJECTORY_PATH + '/' + filename;
+            var selected = $('#filelist ol li.ui-selected');
+            var paths = [];
+            for (var i=0; i<selected.length; i++) {
+                paths[i] = TRAJECTORY_PATH + '/' + $(selected[i]).attr("filename");
+            }
+            console.log(selected, paths);
+            deleteFilesConfirm(paths);
         }
-        deleteFilesConfirm([path]);
+        else {
+            deleteFilesConfirm([path]);
+        }
     }
     
     enqueue = function() {

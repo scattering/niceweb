@@ -134,15 +134,17 @@
                 else if ('_value' in status.state) {
                     v = parseInt(status.state._value);
                 }
+                var state_string = null;
                 if (v != null) {
-                    out.text += ": " + CommandStatusEnum[v];
-                    out.li_attr.class += " queue-" + CommandStatusEnum[v];
+                    state_string = CommandStatusEnum[v];
+                    out.text += ": " + state_string;
+                    out.li_attr.class += " queue-" + state_string;
                     //out.attributes = {"class": "queue-" + CommandStatusEnum[v]};
                 }
-                if (v == 1 || v == 2) {
+                if (state_string == "RUNNING" || state_string == "CHILDREN") {
                     out.icon = "css/running.gif"; // running!
                 }
-                if (v == 3) {
+                if (state_string == "FINISHED") {
                     var t = new Date(status.endCommandTimestamp.toNumber());
                     var hours_str = t.getHours().toFixed();
                     if (hours_str.length < 2) {
@@ -156,10 +158,10 @@
                     out.text += " " + t.toLocaleDateString();
                     out.icon = "css/checkmark.gif";
                 }
-                if (v==0) {
+                if (state_string == "QUEUED") {
                     out.icon = "css/queue.gif"; // queued
                 }
-                if (v==4) {
+                if (state_string == "SKIPPED") {
                     out.icon = "css/ex.gif";
                 }
                     
