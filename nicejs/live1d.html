@@ -1,0 +1,456 @@
+<html>
+<head>
+    <!-- Reference the theme's stylesheet on the Google CDN -->
+    
+    <!--<link rel="icon" type="image/png" href="css/appicon.png" />-->
+    <link rel="stylesheet" type="text/css" href="http://nicedata.ncnr.nist.gov/niceclient/static/css/layout-default-latest.css" />
+    <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Open+Sans" />
+    <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Special+Elite" />
+    <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Love+Ya+Like+A+Sister" />
+    <link href="http://code.jquery.com/ui/1.10.4/themes/start/jquery-ui.css"
+            type="text/css" rel="Stylesheet" />
+    <script type="text/javascript" src="http://code.jquery.com/jquery-1.11.1.min.js"></script> 
+    <script type="text/javascript" src="http://code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="http://nicedata.ncnr.nist.gov/niceclient/static/jquery.layout-latest.js"></script>
+<!--    Moved this to local host because it loads so slowly.-->
+<!--    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+    <script type="text/javascript" src="d3.v3.min.js"></script>
+    <script type="text/javascript" src="plot_d3_rz.js"></script>-->
+
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/jquery.jqplot.min.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasTextRenderer.min.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisLabelRenderer.min.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.canvasAxisTickRenderer.min.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot/plugins/jqplot.cursor.min.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.errorbarRenderer.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.InteractiveLegend.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.FixedAspect.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.GracefulAxisRenderer.js"></script>
+<!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.touchEvents.js"></script>-->
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.heatmapRenderer.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.colorbarRenderer.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/plotting_api2.js"></script>   
+<!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/plugins/jqplot.set_transform.js"></script>-->
+    
+<!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors.js"></script>-->
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/interactors_plugin_base.js"></script>
+    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/rectangle_interactor_plugin.js"></script>
+<!--    <script type="text/javascript" src="http://ncnr.nist.gov/instruments/magik/jqplot.science/interactors/circle_interactor_plugin.js"></script>-->
+    
+    <!-- dialog support -->
+    <link rel="stylesheet" href="http://nicedata.ncnr.nist.gov/niceweb/static/dialog-polyfill.css" />
+    <script type="text/javascript" src="http://nicedata.ncnr.nist.gov/niceweb/static/dialog-polyfill.js"></script>
+    
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/icejs/Ice.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/icejs/Glacier2.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/icejs/IceStorm.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/icejs/IceGrid.js"></script>
+
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/data.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/devices.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/console.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/system.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/dryrun.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/exceptions.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/nice.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/events.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/experiment.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/queue.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/sampleAlignment.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/generated/clientapi.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/connect_zeroc.js"></script>
+    <script src="http://nicedata.ncnr.nist.gov/niceweb/nicejs/JSON.parseMore.js"></script>
+    <!--<script src="testdata.js"></script>-->
+    <script type="text/javascript">
+        var Promise = Ice.Promise;
+        var RouterPrx = Glacier2.RouterPrx;
+        
+        var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
+        var ice_protocol_version = "1.0";
+                
+        var logging_in = false;
+
+        var hostname = "ng7refl.ncnr.nist.gov"; // default NICE host
+        var port = '9999';
+        if (localStorage && localStorage.nice_hostname) {
+            hostname = localStorage.nice_hostname
+        }
+        
+        var detectors = {linearDetector: {dims: null, data: null}};
+        currently_drawing = false;
+        draw_again = false;
+        var refreshRequested = false;
+        var sumRequested = false;
+        var sl; // slice listener.
+
+        var hasError = false;
+        active = false;
+
+        function capitalize(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        var DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
+            onSubscribe: function(devices, nodes, groups, __current) {
+                this.devices = this.HashMapToObject(devices);
+                this.nodes = this.HashMapToObject(nodes);
+                var changed = this.nodes;
+                this.groups = this.HashMapToObject(groups);
+                this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
+                this.postChangedHooks.forEach( function(callback) { callback(changed); });
+            },
+            
+            changed: function(nodes, __current) {
+                var changed = this.HashMapToObject(nodes);
+                jQuery.extend(this.nodes, changed);
+                this._lastChanged = changed;
+                this.postChangedHooks.forEach( function(callback) { callback(changed); });
+            },
+            dynamicDevicesAdded: function(addRemoveID, childDeviceIDs, __current) {
+                //alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
+            },
+            dynamicDevicesRemoved: function(addRemoveID, __current) {
+                //alert('device removed: ' + addRemoveID);
+            },
+            removed: function(devices, nodes, __current) {
+                this._lastDevicesRemoved = this.HashMapToObject(devices);
+                this._lastNodesRemoved = this.HashMapToObject(nodes);
+            },
+            added: function(devices, nodes, __current) {
+                this._lastDevicesAdded = this.HashMapToObject(devices);
+                this._lastNodesAdded = this.HashMapToObject(nodes);
+            },
+            getAllDeviceNames: function() {
+                var devices = [];
+                for (var d in this.devices) {
+                    devices.push(d); 
+                }
+                return devices;
+            },
+            HashMapToObject: function(m) {
+                var obj={}; 
+                m.forEach( function(dn) { 
+                    obj[dn]=m.get(dn);
+                }); 
+                return obj
+            } 
+        });
+
+               
+        var plotLinearDetector = function(detectorName) {
+            var target = 'plotwrap';
+            var detector = detectors[detectorName];
+            var data = detector.data; //devicesMonitor.nodes[countsNodeName].currentValue.userVal.val;
+            var plottable = {};
+            jQuery.extend(true, plottable, plottable1d);
+            return plottable;
+        }
+		
+		var summer = function(arr, start_index, stop_index) {
+			var total = 0;
+			for (var i = start_index; i < stop_index; i++) {
+				total += arr[i];
+			}
+			return total;
+		}
+		
+		var print1dData = function(detectorName, target) {
+			var detector = detectors[detectorName];
+			var data = detector.data;
+			var red_data = [];
+			var binsize = 16;
+			var sumdata = 0;
+			var tdata = document.getElementById("htable")
+			var ncells = tdata.rows[1].cells.length
+			var cell_counter = 0;
+						
+			for (var j = 0; j<data.length; j += binsize) {
+				sumdata = summer(data, j, j + binsize);
+				red_data.push(sumdata);
+				if (ncells > 1) {
+					dval = tdata.rows[1].cells[cell_counter+1];
+					dval.innerHTML = sumdata;
+				}
+				else {
+					var jval = tdata.rows[0].insertCell();
+					var dval = tdata.rows[1].insertCell();
+					jval.innerHTML = cell_counter + 1;
+					dval.innerHTML = sumdata;
+				}
+				cell_counter++;
+			}
+						
+			//document.getElementById(target).innerHTML = red_data;
+		}
+		    
+    var updateLoop = function() {
+        if (refreshRequested) {
+            refreshRequested = false;
+            //show1dData(plotLinearDetector('linearDetector'), 'plotwrap');
+			print1dData('linearDetector', 'printer')
+        }
+        requestAnimationFrame(updateLoop);
+    }
+    
+    requestAnimationFrame(updateLoop); // start the drawing loop;
+    
+    var handleNodesChanged = function(nodes) {
+        if ('linearDetector.counts' in nodes) {
+            detectors.linearDetector.data = nodes['linearDetector.counts'].currentValue.userVal.val;            
+            window.refreshRequested = true;
+        }
+    }
+    
+    dialog_login = function() {
+        // set the global hostname
+        hostname = document.getElementById("instrument_ip").value;
+        var username = document.getElementById("username").value;
+        var password = document.getElementById("password").value;
+        
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+            function(api_object) {
+                // globals:
+                logging_in = false;
+                api = api_object;
+                devicesMonitor = new DevicesMonitorI();
+                devicesMonitor.postChangedHooks = [handleNodesChanged];
+                return Promise.all(
+                    subscribe(devicesMonitor, 'devices')
+                )
+        }).exception(
+            function(ex) {}
+			//function(ex) {console.log(ex)}
+        );
+        
+        if (localStorage) {
+            localStorage.nice_hostname = hostname;
+        }
+        document.getElementById("login").close();
+    }
+    
+    var fitPlots = function() {
+//        if (plots && plots.plotwrap) {
+//            $('#plotwrap_plot').width($('#plotwrap').width() - 150);
+//            if (plots.plotwrap.replot) plots.plotwrap.replot();
+//            if (plots.plotwrap.plugins && plots.plotwrap.plugins.cursor.resetZoom) plots.plotwrap.plugins.cursor.resetZoom();
+//        }
+        
+        //if (sl && sl.update) sl.update();
+    }
+    
+    window.onload = function() {
+        plots = {};
+        colorbars = {};
+        var dialog = document.getElementById("login");
+        if (!dialog.show) {
+            dialogPolyfill.registerDialog(dialog);
+        }
+        document.getElementById("instrument_ip").value = hostname;
+
+        $(window).on('niceServerShutdown', function(ev) {
+            $('#top_panel').removeClass('connected', 4000)
+                .find('.instrument-name').text('Server shut down: Not connected');
+        }).on('niceServerConnected', function(ev) {
+            $('#top_panel').addClass('connected')
+                .find('.instrument-name').text("Instrument connected: " + hostname);
+        });
+        
+        dialog.show();
+        logging_in = true;
+        
+        var layout = $('body').layout({
+		    center__size:		500
+	    ,   south__size:        300
+	    ,   north_size:         "auto"
+		    // RESIZE Accordion widget when panes resize
+	    ,	south__onresize:    $.layout.callbacks.resizePaneAccordions
+	    ,	north__onresize:    $.layout.callbacks.resizePaneAccordions
+	    ,   center__onresize:   "fitPlots"
+	    });
+	    
+	    //fitPlots();
+    }
+  </script>
+  <style type="text/css">
+    @font-face {
+        font-family: xkcd;
+        src: url("xkcd.otf");
+    }
+
+    body {
+        font-family: 'Open Sans' !important;
+    }
+    canvas, img {
+        image-rendering: optimizeSpeed;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: optimize-contrast;
+        image-rendering: pixelated;
+        -ms-interpolation-mode: nearest-neighbor;
+    }
+	
+	table, th, td {
+		border: 1 px solid black;
+	}
+	
+    #login {
+        top: 28%;
+        position: absolute;
+        z-index: 10;
+    }
+    #plotwrap {
+        width: 100%;
+        height: 100%;
+    }
+    #top_panel {
+        background-color: LightYellow;
+        height: 30px;
+        padding-top: 0px;
+        padding-bottom: 0px;
+        font-weight: normal;
+        /* font-family: 'Open Sans' !important; */
+        /* font-family: 'Special Elite' !important; */
+        /* font-family: 'xkcd' !important; */
+        /* font-variant: small-caps; */
+    }
+    #top_panel.connected {
+        background-color: LightGreen;
+    }
+    #top_panel h3 {
+        font-size: 16pt;
+        margin-top: 6pt;
+        margin-bottom: 6pt;
+        font-weight: normal;
+    }
+    #hplot_plot {
+        width: 100%;
+        height: 100%;
+    }
+    #slicecontrols {
+        width: 100%;
+        height: 100%;
+        display: inline-block;
+        text-align: center;
+    }
+    .set-new-roi {
+        background-color: #dd0000;
+        color: white;
+        margin-left: 30px;
+        font-weight: bold;
+    }
+    label.transform {
+        position: absolute;
+        bottom: 10;
+        left: 10;
+    }
+  </style>
+  <style type="text/css">                    
+    .grid .tick {
+        stroke: lightgrey;
+        opacity: 0.7;
+        shape-rendering: crispEdges;
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+    }
+     
+    .grid path {
+        stroke-width: 0;
+    }
+     
+    .axis path {
+        fill: none;
+        stroke: #bbb;
+        shape-rendering: crispEdges;
+    }
+     
+    .axis text {
+        fill: #555;
+    }
+     
+    .axis line {	
+        stroke: #e7e7e7;
+        shape-rendering: crispEdges;
+    }
+     
+    .axis .axis-label {
+        font-size: 14px;
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+    }
+    
+    .legend, .tick {
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+    }
+     
+    .line {
+        fill: none;
+        stroke-width: 1.5px;
+    }
+    
+    .highlight {
+        stroke-width: 4.5px;
+    }
+     
+    .dot {
+        /* consider the stroke-with the mouse detect radius? */
+        stroke: transparent;
+        stroke-width: 10px;  
+        cursor: pointer;
+    }
+     
+    .dot:hover {
+        stroke: rgba(68, 127, 255, 0.3);
+    }
+    
+    rect {
+      fill: #fff;
+      user-select: none; 
+      -webkit-user-select: none; 
+      -moz-user-select: none;
+    }
+
+    rect.zoom {
+      stroke: steelblue;
+      fill-opacity: 0.5;
+    }
+  </style>
+  <title>Live 1d data</title>
+</head>
+<body>
+<dialog id="login">
+  <h2>Login</h2>
+  <label for="instrument_ip">Instrument address</label>
+  <input type="text" id="instrument_ip" value="happy.home">
+  <br>
+  <label for="username">Username:</label>
+  <input type="text" id="username" value="" placeholder="username">
+  <br>
+  <label for="password">Password:</label>
+  <input type="password" id="password" placeholder="password">
+  <br>
+  <input type="button" onclick="dialog_login()" value="Go">
+</dialog>
+<div id="top_panel" class="ui-layout-north">
+    <h3 class="instrument-name">Instrument: </h3>
+</div>
+<!--<div id="xplot" class="ui-layout-south">
+    <div id="slicecontrols" class="controls"></div>
+</div>-->
+<div id="hplot" class="ui-layout-center">
+	<div id="printer"></div>
+	<div id="channel_table">
+		<table id="htable" border="1" style="border:1px" width="1000px">
+			<tr id="row_index"><td>Channel:</td></tr>
+			<tr id="row_data"><td>Counts:</td></tr>
+		</table>
+	</div>
+    <div id="hplot_plot"></div>
+</div>
+<div id="plotwrap" class="ui-layout-wrapper ui-layout-center"></div>
+</body>
+</html>
