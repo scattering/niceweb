@@ -99,10 +99,14 @@
             var button = $("<button/>", buttons[i]);
             button.click(function(e) {
                 var subtype = $(this).attr("name");
-                var newitem = that.itemCreators[subtype].call(that);
                 if (subtype == "subloop") {
-                    $( ul ).parent().append( $(newitem) );
+                    if ($(ul).parent().find(">.loops-section").length == 0) {
+                        // only create and insert if no subloops in that loop already.
+                        var newitem = that.itemCreators[subtype].call(that);
+                        $( ul ).parent().append( $(newitem) );
+                    }
                 } else {
+                    var newitem = that.itemCreators[subtype].call(that);
                     var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
                     $( newitem ).insertAfter(insertionPoint);
                 }
@@ -150,10 +154,14 @@
             var button = $("<button/>", buttons[i]);
             button.click(function(e) {
                 var subtype = $(this).attr("name");
-                var newitem = that.itemCreators[subtype].call(that);
                 if (subtype == "subloop") {
-                    $( ul ).append( $(newitem) );
+                    if ($(ul).find(">.loops-section").length == 0) {
+                        // only create and insert if no subloops in that loop already.
+                        var newitem = that.itemCreators[subtype].call(that);
+                        $( ul ).append( $(newitem) );
+                    }
                 } else {
+                    var newitem = that.itemCreators[subtype].call(that);
                     var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
                     $( newitem ).insertAfter(insertionPoint);
                 }
