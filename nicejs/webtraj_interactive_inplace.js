@@ -101,7 +101,7 @@
                 var subtype = $(this).attr("name");
                 var newitem = that.itemCreators[subtype].call(that);
                 if (subtype == "subloop") {
-                    $( ul ).append( $(newitem) );
+                    $( ul ).parent().append( $(newitem) );
                 } else {
                     var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
                     $( newitem ).insertAfter(insertionPoint);
@@ -182,6 +182,7 @@
         $(ul).sortable();
         var rb = removeButton(ul);
         ul.insertBefore(rb, ul.childNodes[0]);
+        
         return ul;
     }
     webtraj_interactive.prototype.itemCreators['subloop'] = webtraj_interactive.prototype.loopsList;

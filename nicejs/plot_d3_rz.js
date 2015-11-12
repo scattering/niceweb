@@ -7,7 +7,8 @@ function plotD3(target_id, data, options) {
         vcursor: false,
         hcursor: false,
         xlabel: 'x-axis',
-        ylabel: 'y-axis'
+        ylabel: 'y-axis',
+        series: []
     }
     
     var options = options || {}, value = null;
