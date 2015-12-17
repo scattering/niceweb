@@ -23,7 +23,6 @@
     var api, communicator, router, session, adapter;
     var systemMonitor; // watch for shutdown
     var shutdown_event = new Event("niceServerShutdown");
-    var connection_event = new Event("niceServerConnected");
 
     signin = function(routerEndpoint, encoding, disableACM, username, password)
     {
@@ -109,7 +108,14 @@
             function(cam) {
                 api = cam;                
                 active = true;
+                return api.getStaticSystemState()
+            }
+        ).then(
+            function(state) {
                 // say we're connected now
+                var connection_event = new CustomEvent("niceServerConnected", {
+                    'detail': {'instrumentID': state.instrumentID}
+                }); 
                 window.dispatchEvent(connection_event);
                 
                 systemMonitor = new SystemMonitorI();
