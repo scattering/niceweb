@@ -177,20 +177,37 @@
     webtraj_interactive.prototype.loopsList = function(items) {
         var ul = webtraj.prototype.loopsList.call(this, items);
         var that = this;
-        var button = $("<button/>", {text: "+ vary", class:"add-button ui-button ui-corner-all", name: "loop"});
-        button.click(function(e) {
-            var subtype = $(this).attr("name");
-            var newitem = that.itemCreators[subtype].call(that);
+        var classlist = "add-button ui-button ui-corner-all";
+        var buttons = [
+            {text: "+ outer loop", class: classlist, name: "outer"},
+            {text: "+ vary", class: classlist, name: "loop"}           
+        ];
+        for (var i=0; i<buttons.length; i++) {
+            var button = $("<button/>", buttons[i]);
+            button.click(function(e) {
+                var subtype = $(this).attr("name");
+                if (subtype == 'outer') {   
+                    var newloop = that.itemCreators['loop'].call(that);
+                    var newsubloop = that.itemCreators['subloop'].call(that);
+                    var insertionPoint = $(newsubloop).children("li").add($(newsubloop).children(".subsection-header,.section-header")).last();
+                    $(newloop).insertAfter(insertionPoint);
+                    $(ul).before(newsubloop);
+                    $('>.vary-section', newloop).after($(ul));
+                }
+                else {
+                    var newitem = that.itemCreators[subtype].call(that);
+                    var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
+                    $( newitem ).insertAfter(insertionPoint);
+                }
+            });
+            // insert after the section header, and after the items.
             var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
-            $( newitem ).insertAfter(insertionPoint);
-        });
-        var insertionPoint = $(ul).children("li").add($(ul).children(".subsection-header,.section-header")).last();
-        button.insertAfter(insertionPoint);
-        //$(ul).sortable({items: "> li"});
-        $(ul).sortable();
+            button.insertAfter(insertionPoint);
+        }
+        $(ul).sortable();        
         var rb = removeButton(ul);
         ul.insertBefore(rb, ul.childNodes[0]);
-        
+
         return ul;
     }
     webtraj_interactive.prototype.itemCreators['subloop'] = webtraj_interactive.prototype.loopsList;
