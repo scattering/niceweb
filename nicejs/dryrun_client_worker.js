@@ -89,7 +89,13 @@ __sandbox = function() {
 onmessage = function(event) {
     //console.log(event);
     var data = event.data;
-    eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.counters) return (' + data.monitorExpressionStr + ')};');
+    try {
+      eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.moving) with(namespace.counters) return (' + data.monitorExpressionStr + ')};');
+    }
+    catch (err) {
+      console.log("error in eval of monitor estimate");
+      eval('var monitorEstimateExpressionFunc = function(namespace) {return NaN}');
+    }
     var context = new __sandbox(data.live_state, monitorEstimateExpressionFunc, data.primaryNodeIDMap);
     var result = __fastTimeEstimate(data.traj, context);
     result.path = event.data.path;
