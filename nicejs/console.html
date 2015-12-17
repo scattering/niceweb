@@ -540,7 +540,7 @@
         }
         document.getElementById("login").close();
     }
- 
+      
   window.onload = function() {
     var dialog = document.getElementById("login");
     if (!dialog.show) {
@@ -553,14 +553,15 @@
             .find('.instrument-name').text('Server shut down: Not connected');
     }).on('niceServerConnected', function(ev) {
         var logopath = 'css/';
-        if (hostname in INSTRUMENT_LOGOS) {
-            logopath += INSTRUMENT_LOGOS[hostname];
+        var instrumentID = ev.originalEvent.detail.instrumentID.toLowerCase();
+        if (instrumentID in INSTRUMENT_LOGOS) {
+          logopath += INSTRUMENT_LOGOS[instrumentID];
         } else {
-            logopath += INSTRUMENT_LOGOS['default'];
+          logopath += INSTRUMENT_LOGOS['default'];
         }
         $('#top_panel').addClass('connected')
-            .find('.instrument-name').text("Instrument connected: " + hostname)
-            .parent().find('.instrument-logo').attr("src", logopath);
+          .find('.instrument-name').text("Instrument connected: " + instrumentID)
+          .parent().find('.instrument-logo').attr("src", logopath);
     });
     
     dialog.show();
