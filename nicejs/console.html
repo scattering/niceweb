@@ -295,7 +295,7 @@
             var target = $(jstree_target);
             this._copy_buffer = null; // for copy/paste operations.
             target.on('ready.jstree', function(e, data) { e.currentTarget.scrollTop = e.currentTarget.scrollHeight });
-            target.bind("select_node.jstree", function (e, data) { return data.instance.toggle_node(data.node); });
+            //target.bind("select_node.jstree", function (e, data) { return data.instance.toggle_node(data.node); });
         },
         onSubscribe_old: function(state, root, __current) {
             this.state = state;
