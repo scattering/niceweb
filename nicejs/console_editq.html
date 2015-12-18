@@ -628,13 +628,14 @@
     }).on('niceServerConnected', function(ev) {
         var logopath = 'css/';
         var instrumentID = ev.originalEvent.detail.instrumentID.toLowerCase();
+        var virtual = ev.originalEvent.detail.testDeployment;
         if (instrumentID in INSTRUMENT_LOGOS) {
           logopath += INSTRUMENT_LOGOS[instrumentID];
         } else {
           logopath += INSTRUMENT_LOGOS['default'];
         }
         $('#top_panel').addClass('connected')
-          .find('.instrument-name').text("Instrument connected: " + instrumentID)
+          .find('.instrument-name').text("Instrument connected: " + ((virtual)? "VIRTUAL " : "") + instrumentID)
           .parent().find('.instrument-logo').attr("src", logopath);
     });
     

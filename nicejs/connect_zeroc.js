@@ -114,7 +114,7 @@
             function(state) {
                 // say we're connected now
                 var connection_event = new CustomEvent("niceServerConnected", {
-                    'detail': {'instrumentID': state.instrumentID}
+                    'detail': state // {'instrumentID': state.instrumentID}
                 }); 
                 window.dispatchEvent(connection_event);
                 
