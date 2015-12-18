@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
   <link rel="stylesheet" href="css/jstree_style.min.css"/>
   <script type="text/javascript" src="jstree.js"></script>
-  <script type="text/javascript" src="jstree_dnd_nice.js"></script>
+  <script type="text/javascript" src="jstree.dnd_outside.js"></script>
 
   <!-- dialog support -->
   <link rel="stylesheet" href="../static/dialog-polyfill.css" />
@@ -186,7 +186,7 @@
                 'animation': 0,
                 'check_callback': true
             },
-            'plugins': ['contextmenu'], // 'dnd_nice'], 'search'] // 'state', 'types', 'wholerow']
+            'plugins': ['contextmenu', 'dnd_outside'], //'search'] // 'state', 'types', 'wholerow']
             'contextmenu': {
                 "items": function($node) {
                     var tree = queueMonitor.jstree;
@@ -626,6 +626,24 @@
         .on('mouseleave.queue2console', '#queue_panel ul li', function(ev) {
             var uuid = this.id; //getAttribute('command_uuid');
             $('#console .console-item[command_uuid="'+uuid+'"] .console-message').removeClass('command-highlight', 0) });
+    
+    $(document).on("dnd_outside_finish.vakata.jstree", function(e, data) {
+        console.log('e: ', e, '\ndata: ', data);
+        var jstree = $("#queue_panel").jstree(true);
+        var uuids_to_move = data.nodes.map(function(n) {return n.id});
+        var uuid_below = jstree.get_node(data.par).children[data.pos];
+        var asChild = (data.pos == 0); 
+        var copyNotMove = false;
+        if (asChild) {
+            // if insertion point is 0th element, insert as first child of the parent node
+            uuid_above = data.par;
+        } else {
+            // insert below the UUID above. 
+            uuid_above = jstree.get_node(data.par).children[data.pos-1]            
+        }
+        console.log(uuids_to_move, uuid_below, uuid_above, asChild);
+        api.moveQueueCommand(uuids_to_move, uuid_above, asChild, copyNotMove);
+    });
     
     document.body.onkeydown = function(ev) {
         var keyCode = ev.keyCode || ev.which;

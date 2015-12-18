@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
   <link rel="stylesheet" href="css/jstree_style.min.css"/>
   <script type="text/javascript" src="jstree.js"></script>
-  <script type="text/javascript" src="jstree_dnd_nice.js"></script>
+  <script type="text/javascript" src="jstree.dnd_outside.js"></script>
 
   <!-- dialog support -->
   <link rel="stylesheet" href="../static/dialog-polyfill.css" />
@@ -50,8 +50,12 @@
         'pbr.ncnr.nist.gov': 'pbr_logo_main.svg',
         'magik': 'magik_logo_red.svg', 
         'magik.ncnr.nist.gov': 'magik_logo_red.svg',
+        'sans:ngb': 'nSoftlogo_mission.png',
         'ngbsans.ncnr.nist.gov': 'nSoftlogo_mission.png',
         'cts.ncnr.nist.gov': 'phades_logo.svg',
+        'phades': 'phades_logo.svg',
+        'bt4.ncnr.nist.gov': 'wurtzite_trans.gif',
+        'bt4': 'wurtzite_trans.gif',
         'default': 'appicon.png'
     }
     var hostname = "h123062.ncnr.nist.gov"; // default NICE host
@@ -134,15 +138,17 @@
                 else if ('_value' in status.state) {
                     v = parseInt(status.state._value);
                 }
+                var state_string = null;
                 if (v != null) {
-                    out.text += ": " + CommandStatusEnum[v];
-                    out.li_attr.class += " queue-" + CommandStatusEnum[v];
+                    state_string = CommandStatusEnum[v];
+                    out.text += ": " + state_string;
+                    out.li_attr.class += " queue-" + state_string;
                     //out.attributes = {"class": "queue-" + CommandStatusEnum[v]};
                 }
-                if (v == 1 || v == 2) {
+                if (state_string == "RUNNING" || state_string == "CHILDREN") {
                     out.icon = "css/running.gif"; // running!
                 }
-                if (v == 3) {
+                if (state_string == "FINISHED") {
                     var t = new Date(status.endCommandTimestamp.toNumber());
                     var hours_str = t.getHours().toFixed();
                     if (hours_str.length < 2) {
@@ -156,10 +162,10 @@
                     out.text += " " + t.toLocaleDateString();
                     out.icon = "css/checkmark.gif";
                 }
-                if (v==0) {
+                if (state_string == "QUEUED") {
                     out.icon = "css/queue.gif"; // queued
                 }
-                if (v==4) {
+                if (state_string == "SKIPPED") {
                     out.icon = "css/ex.gif";
                 }
                     
@@ -180,7 +186,7 @@
                 'animation': 0,
                 'check_callback': true
             },
-            'plugins': ['contextmenu'], // 'dnd_nice'], 'search'] // 'state', 'types', 'wholerow']
+            'plugins': ['contextmenu', 'dnd_outside'], //'search'] // 'state', 'types', 'wholerow']
             'contextmenu': {
                 "items": function($node) {
                     var tree = queueMonitor.jstree;
@@ -621,14 +627,15 @@
             .find('.instrument-name').text('Server shut down: Not connected');
     }).on('niceServerConnected', function(ev) {
         var logopath = 'css/';
-        if (hostname in INSTRUMENT_LOGOS) {
-            logopath += INSTRUMENT_LOGOS[hostname];
+        var instrumentID = ev.originalEvent.detail.instrumentID.toLowerCase();
+        if (instrumentID in INSTRUMENT_LOGOS) {
+          logopath += INSTRUMENT_LOGOS[instrumentID];
         } else {
-            logopath += INSTRUMENT_LOGOS['default'];
+          logopath += INSTRUMENT_LOGOS['default'];
         }
         $('#top_panel').addClass('connected')
-            .find('.instrument-name').text("Instrument connected: " + hostname)
-            .parent().find('.instrument-logo').attr("src", logopath);
+          .find('.instrument-name').text("Instrument connected: " + instrumentID)
+          .parent().find('.instrument-logo').attr("src", logopath);
     });
     
     dialog.show();
@@ -694,6 +701,24 @@
         .on('mouseleave.queue2console', '#queue_panel ul li', function(ev) {
             var uuid = this.id; //getAttribute('command_uuid');
             $('#console .console-item[command_uuid="'+uuid+'"] .console-message').removeClass('command-highlight', 0) });
+    
+    $(document).on("dnd_outside_finish.vakata.jstree", function(e, data) {
+        console.log('e: ', e, '\ndata: ', data);
+        var jstree = $("#queue_panel").jstree(true);
+        var uuids_to_move = data.nodes.map(function(n) {return n.id});
+        var uuid_below = jstree.get_node(data.par).children[data.pos];
+        var asChild = (data.pos == 0); 
+        var copyNotMove = false;
+        if (asChild) {
+            // if insertion point is 0th element, insert as first child of the parent node
+            uuid_above = data.par;
+        } else {
+            // insert below the UUID above. 
+            uuid_above = jstree.get_node(data.par).children[data.pos-1]            
+        }
+        console.log(uuids_to_move, uuid_below, uuid_above, asChild);
+        api.moveQueueCommand(uuids_to_move, uuid_above, asChild, copyNotMove);
+    });
     
     document.body.onkeydown = function(ev) {
         var keyCode = ev.keyCode || ev.which;
