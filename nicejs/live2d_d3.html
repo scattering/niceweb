@@ -1,0 +1,814 @@
+<html>
+<head>
+    <!-- Reference the theme's stylesheet on the Google CDN -->
+    
+    <link rel="icon" type="image/png" href="css/appicon.png" />
+    <link rel="stylesheet" type="text/css" href="../../niceclient/static/css/layout-default-latest.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Special+Elite" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Love+Ya+Like+A+Sister" />
+    <link href="http://code.jquery.com/ui/1.10.4/themes/start/jquery-ui.css"
+            type="text/css" rel="Stylesheet" />
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
+    <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
+<!--    Moved this to local host because it loads so slowly.-->
+<!--    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>-->
+    <script type="text/javascript" src="d3.v3.min.js"></script>
+    <script type="text/javascript" src="plot_d3_rz.js"></script>
+<!--    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>-->
+    <script src="/~bbm/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/rectangle-interactor.js"></script>
+    
+    <!-- dialog support -->
+    <link rel="stylesheet" href="../static/dialog-polyfill.css" />
+    <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
+    
+    <script src="icejs/Ice.js"></script>
+    <script src="icejs/Glacier2.js"></script>
+    <script src="icejs/IceStorm.js"></script>
+    <script src="icejs/IceGrid.js"></script>
+
+    <script src="generated/data.js"></script>
+    <script src="generated/devices.js"></script>
+    <script src="generated/console.js"></script>
+    <script src="generated/system.js"></script>
+    <script src="generated/dryrun.js"></script>
+    <script src="generated/exceptions.js"></script>
+    <script src="generated/nice.js"></script>
+    <script src="generated/events.js"></script>
+    <script src="generated/experiment.js"></script>
+    <script src="generated/queue.js"></script>
+    <script src="generated/sampleAlignment.js"></script>
+    <script src="generated/clientapi.js"></script>
+    <script src="connect_zeroc.js"></script>
+    <script src="JSON.parseMore.js"></script>
+    <script src="testdata.js"></script>
+    <script type="text/javascript">
+        var Promise = Ice.Promise;
+        var RouterPrx = Glacier2.RouterPrx;
+        
+        var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
+        var ice_protocol_version = "1.0";
+                
+        var logging_in = false;
+
+        var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+        var port = '9999';
+        if (localStorage && localStorage.nice_hostname) {
+            hostname = localStorage.nice_hostname
+        }
+        
+        var detectors = {areaDetector: {dims: null, data: null}};
+        currently_drawing = false;
+        draw_again = false;
+        var refreshRequested = false;
+        var sumRequested = false;
+        var sl; // slice listener.
+
+        var hasError = false;
+        active = false;
+
+        function capitalize(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        var DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
+            onSubscribe: function(devices, nodes, groups, __current) {
+                this.devices = this.HashMapToObject(devices);
+                this.nodes = this.HashMapToObject(nodes);
+                var changed = this.nodes;
+                this.groups = this.HashMapToObject(groups);
+                this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
+                this.postChangedHooks.forEach( function(callback) { callback(changed); });
+            },
+            
+            changed: function(nodes, __current) {
+                var changed = this.HashMapToObject(nodes);
+                jQuery.extend(this.nodes, changed);
+                this._lastChanged = changed;
+                this.postChangedHooks.forEach( function(callback) { callback(changed); });
+            },
+            dynamicDevicesAdded: function(addRemoveID, childDeviceIDs, __current) {
+                //alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
+            },
+            dynamicDevicesRemoved: function(addRemoveID, __current) {
+                //alert('device removed: ' + addRemoveID);
+            },
+            removed: function(devices, nodes, __current) {
+                this._lastDevicesRemoved = this.HashMapToObject(devices);
+                this._lastNodesRemoved = this.HashMapToObject(nodes);
+            },
+            added: function(devices, nodes, __current) {
+                this._lastDevicesAdded = this.HashMapToObject(devices);
+                this._lastNodesAdded = this.HashMapToObject(nodes);
+            },
+            getAllDeviceNames: function() {
+                var devices = [];
+                for (var d in this.devices) {
+                    devices.push(d); 
+                }
+                return devices;
+            },
+            HashMapToObject: function(m) {
+                var obj={}; 
+                m.forEach( function(dn) { 
+                    obj[dn]=m.get(dn);
+                }); 
+                return obj
+            } 
+        });
+
+        var plottableX = {
+            "options": {
+                "series": [{"label": "x-slice"}]
+            },
+            "data": [[[1,2], [3,4], [5,6]]]
+            
+        }
+        var plottableY = {
+            "options": {
+                "series": [{"label": "y-slice"}]
+            },
+            "data": [[[1,2], [3,4], [5,6]]] 
+        }
+        
+        var plottable2d = {
+            "dims": {
+                "xdim": 128, 
+                "xmax": 128, 
+                "xmin": 0.0, 
+                "ydim": 128, 
+                "ymax": 128, 
+                "ymin": 0.0, 
+                "zmax": 899.0, 
+                "zmin": 1.0
+            },
+            "options": {
+                "interactors": [{ type:'master', scrollZoom: true, dragPan: true, rightZoom: false, alpha: 0.8 },
+                                      { type:'Rectangle', 
+		                                name:'roi_rectangle',
+		                                color1: '#ff0000',
+		                                color2: '#ff0000',
+		                                showcenter: false,
+		                                showrect: false,
+		                                show: false,
+		                                xmin: 50, 
+		                                ymin: 51,
+		                                xmax: 300, 
+		                                ymax: 301},
+		                              { type:'Rectangle', 
+		                                name:'rectangle',
+		                                color1: '#ffffff',
+		                                color2: '#ffdddd',
+		                                showrect: false,
+		                                xmin: 10, 
+		                                ymin: 10,
+		                                xmax: 502, 
+		                                ymax: 502}
+		                              ],
+                "sortData": false,
+		        "series": [ {shadow: false, padding: 0, showMarker:false, showLine:false, breakOnNull:true} ],
+		        "grid": {shadow: false},
+                "fixedAspect": {
+                    "aspectRatio": 1.0, 
+                    "fixAspect": true
+                },
+                "transform": {"zaxis": "log"},
+                "seriesDefaults": {
+                    "shadow": false,
+                    "rendererOptions": {"transform": "log", "draw_method": "backed"},
+                },
+                "axesDefaults": {
+                },
+                
+	            "cursor": null
+            }, 
+            "title": "live 2d data", 
+            "type": "2d", 
+            "xlabel": "X", 
+            "ylabel": "Y", 
+            "z": [],
+            "zlabel": "Intensity (I)",
+            "roi": {x1: null, x2: null, y1: null, y2:null}
+        }
+        
+        var plotAreaDetector = function(detectorName) {
+            var target = 'plotwrap';
+            var detector = detectors[detectorName];
+            var zdata = detector.data; //devicesMonitor.nodes[countsNodeName].currentValue.userVal.val;
+            var dims = detector.dims;
+            var roi = detector.roi;
+            var z = []
+            var rowlength = dims[0];
+            var zmax = -Infinity;
+            var zmin = Infinity;
+            var row, zmaxtemp, zmintemp;
+            for (var i=0; i<rowlength; i++) {
+                row = zdata.slice(i*rowlength, (i+1) * rowlength);
+                zmaxtemp = Math.max.apply(Math, row);
+                zmintemp = Math.min.apply(Math, row);
+                zmax = Math.max(zmax, zmaxtemp);
+                zmin = Math.min(zmin, zmintemp);
+                z.push(row);
+            }
+            var plottable = {};
+            jQuery.extend(true, plottable, plottable2d);
+            plottable.z = [z];
+            plottable.dims.xdim = plottable.dims.xmax = dims[0];
+            plottable.dims.ydim = plottable.dims.ymax = dims[1];
+            plottable.dims.zmin = zmin;
+            plottable.dims.zmax = zmax;
+            var rectangle_opts = plottable.options.interactors[2];
+            rectangle_opts.xmin = 10;
+            rectangle_opts.xmax = dims[0] -10;
+            rectangle_opts.ymin = 10;
+            rectangle_opts.ymax = dims[1] - 10;
+            if (roi) {
+                jQuery.extend(true, plottable.roi, roi);
+            }
+            return plottable;
+        }
+    
+    var updateLoop = function() {
+        if (refreshRequested) {
+            refreshRequested = false;
+            show2dData(plotAreaDetector('areaDetector'), 'plotwrap');
+        }
+        if (sumRequested) {
+            sumRequested = false;
+            if (sl && sl.update_actual) {
+                sl.update_actual();
+            }
+        }
+        requestAnimationFrame(updateLoop);
+    }
+    
+    requestAnimationFrame(updateLoop); // start the drawing loop;
+    
+    var setMaskWindow = function(xmin, xmax, ymin, ymax) {
+        // limits should be in pixels
+        var set_string = "{name=rect, ";
+        set_string += "x1=" + xmin.toFixed(0) + ", ";
+        set_string += "x2=" + xmax.toFixed(0) + ", ";
+        set_string += "y1=" + ymin.toFixed(0) + ", ";
+        set_string += "y2=" + ymax.toFixed(0) + "}";
+        return api.move(["areaDetector.roiShape", set_string], false)
+    }
+    
+    var updateTransform = function(ev) {
+        if (plots && plots.plotwrap && plots.plotwrap.ztransform) {
+            var logselected = ev.target.checked; 
+            var transform = logselected? 'log' : 'linear';
+            plots.plotwrap.ztransform(transform);
+        }
+    }
+    
+    var show2dData = function(data, next_target) {
+        if (!(plots[next_target])) {
+            // if there is no plot, then create one:
+            $('#' + next_target).empty();            
+            var transform = 'log';
+            var plotbox = $("#" + next_target);
+            
+            var ztransform = $('<label />', {'class': 'transform', 'axis': 'zaxis'}).text('logZ').append($('<input />', {'type': 'checkbox', 'id': 'ztransform', 'checked': true}));
+            plotbox.append(ztransform);
+            ztransform.prop('checked', true).change(updateTransform);
+            var plot = heatChart({
+              "ztransform": transform,
+              "dims": data.dims,
+              "aspect_ratio": 1.0})
+              .autoscale(true);
+            mydata = data;
+            c = d3.select("#" + next_target)
+              .data(data.z)
+              .call(plot);
+            plots[next_target] = null;
+            plots[next_target] = plot;
+            cumsums = null;
+            
+            var roi_rectangle_opts = { 
+                type:'Rectangle', 
+                name:'roi_rectangle',
+                color1: '#ff0000',
+		            color2: '#ffdddd',
+                fill: "none",
+                fixed: true,
+                show_center: false,
+                show: false,
+                xmin: 0.022, 
+                ymin: 1.0,
+                xmax: 0.024, 
+                ymax: 6
+            }
+            
+            roi_rectangle = new rectangleInteractor(roi_rectangle_opts);
+            var shape = data.roi;
+            if (shape) {
+                var ys = [parseFloat(shape.y1), parseFloat(shape.y2)],
+                    xs = [parseFloat(shape.x1), parseFloat(shape.x2)];
+                roi_rectangle.state.ymax = Math.max.apply(Math,ys);
+                roi_rectangle.state.ymin = Math.min.apply(Math,ys);
+                roi_rectangle.state.xmax = Math.max.apply(Math,xs);
+                roi_rectangle.state.xmin = Math.min.apply(Math,xs);
+                roi_rectangle.show = true;
+            } else {
+                roi_rectangle.show = false;
+            }
+            
+            plot.interactors(roi_rectangle);
+            
+            var selector_opts = { 
+              type:'Rectangle', 
+              name:'selector_rectangle',
+              color1: '#000000',
+              color2: '#880000',
+              fill: "none",
+              show_center: true,
+              show: false,
+              xmin: 10, 
+              ymin: 10,
+              xmax: 502, 
+              ymax: 502
+            }
+            
+            selector_rectangle = new rectangleInteractor(selector_opts);
+            plot.interactors(selector_rectangle);
+            
+            cumsums = {x: null, y: null};
+            
+            //interactorTextControl = function(interactor, key, precision) {
+            var ymaxctl = new interactorTextControl(selector_rectangle, 'ymax', "y<sub>max</sub>", 1);
+            ymaxctl.div.setAttribute('style', 'display: block; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(ymaxctl.div);
+            var xminctl = new interactorTextControl(selector_rectangle, 'xmin', "x<sub>min</sub>", 1);
+            xminctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(xminctl.div);
+            var xmaxctl = new interactorTextControl(selector_rectangle, 'xmax', "x<sub>max</sub>", 1);
+            xmaxctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(xmaxctl.div);
+            var yminctl = new interactorTextControl(selector_rectangle, 'ymin', "y<sub>min</sub>", 1);
+            yminctl.div.setAttribute('style', 'display: block; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(yminctl.div);
+            var hr = document.createElement('div'); hr.innerHTML = "<hr>";
+            document.getElementById('slicecontrols').appendChild(hr);
+            
+            var maxbutton = document.createElement('input');
+            maxbutton.setAttribute('type', 'button');
+            maxbutton.setAttribute('value', 'Maximize to data');
+            var maximize = function () {
+                selector_rectangle.state.xmin = data.dims.xmin;
+                selector_rectangle.state.xmax = data.dims.xmax;
+                selector_rectangle.state.ymin = data.dims.ymin;
+                selector_rectangle.state.ymax = data.dims.ymax;
+                selector_rectangle.update();
+            }
+            maxbutton.onclick = maximize;            
+            document.getElementById('slicecontrols').appendChild(maxbutton);
+            
+            var setNewBoxButton = document.createElement('input');
+            setNewBoxButton.setAttribute('type', 'button');
+            setNewBoxButton.setAttribute('class', 'set-new-roi');
+            setNewBoxButton.setAttribute('value', 'Set new ROI');
+            var submitChanges = function() {
+                var xmin = parseFloat(xminctl.textbox.value);
+                var xmax = parseFloat(xmaxctl.textbox.value);
+                var ymin = parseFloat(yminctl.textbox.value);
+                var ymax = parseFloat(ymaxctl.textbox.value);
+                setMaskWindow(xmin, xmax, ymin, ymax);                        
+            };
+            setNewBoxButton.onclick = submitChanges;
+            document.getElementById('slicecontrols').appendChild(setNewBoxButton);
+            document.getElementById('slicecontrols').appendChild(document.createElement('hr'));
+            var roiDisplay = document.createElement('div');
+            roiDisplay.setAttribute('class', 'roi-display');
+            roiDisplay.setAttribute('id', 'roi_display');
+            roiDisplay.innerHTML = JSON.stringify(shape);
+            document.getElementById('slicecontrols').appendChild(roiDisplay);
+            
+
+            
+            //plot.series[0].generate_cumsums();
+            //plot.replot(); // for aspect ratio plugin!
+            
+            slice_listener = function(interactor) {
+                this.update = function(pos) {
+                    sumRequested = true;
+                }
+                this.update_actual = function() {
+                    var dx = (data.dims.xmax - data.dims.xmin) / data.dims.xdim;
+                    var dy = (data.dims.ymax - data.dims.ymin) / data.dims.ydim;
+                    //console.log(slicebox.p1.coords.x, p0.dims.xmin, p0.dims.xdim);
+                    i_min = Math.floor((interactor.state.xmin - data.dims.xmin) / dx);
+                    i_min = Math.min(Math.max(i_min, 0), data.dims.xdim-1);
+                    i_max = Math.ceil((interactor.state.xmax - data.dims.xmin) / dx);
+                    i_max = Math.max(Math.min(i_max, data.dims.xdim-1), 0);
+                    j_min = Math.floor((interactor.state.ymin - data.dims.ymin) / dy);
+                    j_min = Math.min(Math.max(j_min, 0), data.dims.ydim-1);
+                    j_max = Math.ceil((interactor.state.ymax - data.dims.ymin) / dy);
+                    j_max = Math.max(Math.min(j_max, data.dims.ydim-1), 0);
+                    var xdata = [], ydata = [];
+                    var xi=0, yi=0;
+                    for (var c=i_min; c <=i_max-1; c++) {
+                        xdata[xi++] = ([data.dims.xmin + c*dx, cumsums.x[c][j_max] - cumsums.x[c][j_min]]);
+                    }
+                    for (var r=j_min; r<=j_max-1; r++) {
+                        ydata[yi++] = ([cumsums.y[i_max][r] - cumsums.y[i_min][r], data.dims.ymin + r*dy]);
+                    }
+
+                    var zislog = document.getElementById('ztransform').checked;
+                    var intensity_label = (zislog) ? "Log counts" : "counts";
+                    
+                    plottableX.data = [xdata];
+                    $("#xplot_plot").empty();
+                    xplot = plotD3("xplot_plot", plottableX, {
+                        log_y: zislog, 
+                        showline: true, 
+                        show_points: false, 
+                        vcursor: true, 
+                        ylabel: intensity_label,
+                        position_cursor: true});
+                    
+                    plottableY.data = [ydata];
+                    $("#yplot_plot").empty();
+                    yplot = plotD3("yplot_plot", plottableY,  {
+                        log_x: zislog, 
+                        showline: true, 
+                        show_points: false, 
+                        hcursor: true, 
+                        xlabel: intensity_label,
+                        position_cursor: true});
+
+                };
+                return this;  
+            };
+            sl = slice_listener(selector_rectangle);
+            cumsums = plot.generate_cumsums();
+            sl.update();
+            selector_rectangle.dispatch.on('update.slices', sl.update);
+            
+        } else {
+            var plot = plots[next_target];
+            plot.source_data(data.z[0]); // defer update: colorbar will trigger it later
+            var shape = data.roi;
+            if (shape) {
+                var ys = [parseFloat(shape.y1), parseFloat(shape.y2)],
+                    xs = [parseFloat(shape.x1), parseFloat(shape.x2)];
+                roi_rectangle.state.ymax = Math.max.apply(Math,ys);
+                roi_rectangle.state.ymin = Math.min.apply(Math,ys);
+                roi_rectangle.state.xmax = Math.max.apply(Math,xs);
+                roi_rectangle.state.xmin = Math.min.apply(Math,xs);
+                roi_rectangle.show = true;
+            } else {
+                roi_rectangle.show = false;
+            }
+            cumsums = plot.generate_cumsums();
+            roi_rectangle.update();
+            document.getElementById('roi_display').innerHTML = JSON.stringify(shape);
+            /*
+            plot.series[0].generate_cumsums();
+            colorbar.series[0].set_dims(data.dims);
+            var roi_rectangle = plot.plugins.interactors.roi_rectangle;
+            var shape = data.roi;
+            document.getElementById('roi_display').innerHTML = JSON.stringify(shape);
+            if (shape) {
+                roi_rectangle.p1.coords.y = roi_rectangle.p2.coords.y = parseFloat(shape.y1);
+                roi_rectangle.p3.coords.y = roi_rectangle.p4.coords.y = parseFloat(shape.y2);
+                roi_rectangle.p1.coords.x = roi_rectangle.p4.coords.x = parseFloat(shape.x1);
+                roi_rectangle.p2.coords.x = roi_rectangle.p3.coords.x = parseFloat(shape.x2);
+                roi_rectangle.show = true;
+            } else {
+                roi_rectangle.show = false;
+            }
+            roi_rectangle.redraw();
+            roi_rectangle.redraw();
+            //plot.replot();
+            colorbar.plugins._interactor.zoomMax(); // for scale!
+            colorbar.replot();
+            sl.update();
+            */
+        }
+        
+    }
+    
+    interactorTextControl = function(interactor, key, label, precision) {
+        var precision = precision || 3;
+        this.precision = precision;
+        this.key = key;
+        this.interactor = interactor;
+        var textbox = document.createElement('input');
+        textbox.setAttribute('type', 'text');
+        textbox.setAttribute('style', 'width:90px');
+        var input_label = document.createElement('label');
+        var div = document.createElement('div');
+        div.innerHTML = label;
+        // div.appendChild(document.createTextNode(label))
+        div.appendChild(textbox);
+        this.div = div;
+        this.div.setAttribute('id', 'stateTextControl_' + key);
+        this.div.setAttribute('style', 'display: inline; padding: 5px 10px;');
+        this.textbox = textbox;
+        textbox.onchange = function() {
+            interactor.state[key] = textbox.value;
+            interactor.update();
+        }
+        interactor.dispatch.on("update." + key, function() {textbox.value = interactor.state[key].toFixed(precision)});
+        interactor.dispatch.update();
+        return this;
+    }
+    
+    pointTextControl = function(p, coord, label, precision) {
+        // coord should be 'x' or 'y'
+        var precision = precision || 3;
+        this.precision = precision;
+        this.coord = coord;
+        this.p = p;
+        var textbox = document.createElement('input');
+        textbox.setAttribute('type', 'text');
+        textbox.setAttribute('style', 'width:90px');
+        var input_label = document.createElement('label');
+        var div = document.createElement('div');
+        div.innerHTML = label;
+        // div.appendChild(document.createTextNode(label))
+        div.appendChild(textbox);
+        this.div = div;
+        this.div.setAttribute('id', 'ptTextControl_' + label);
+        this.div.setAttribute('style', 'display: inline; padding: 5px 10px;');
+        //this.div.setAttribute('style', 'position: relative; float: left; padding: 5px; text-align: top;');
+        this.textbox = textbox;
+        this.update = function(pos) {
+            textbox.value = pos[coord].toPrecision(precision);
+        }
+        var me = this;
+        this.update_external = function() {
+            var mypos = {}; mypos[coord] = textbox.value;
+            
+            var newpos = p.putCoords ? p.putCoords(mypos) : mypos;
+            var dpos = {}; dpos[coord] = newpos[coord] - p.pos[coord];
+            p.move(dpos);
+            p.parent.onDrag();  // centers
+            p.parent.redraw();
+        }
+        
+        textbox.onchange = this.update_external;
+        p.listeners.push(this);
+        this.update(p.getCoords());
+        return this;
+    }
+    
+    var handleNodesChanged = function(nodes) {
+        if ('areaDetector.dimension' in nodes) {
+            detectors.areaDetector.dims = nodes['areaDetector.dimension'].currentValue.userVal.val;
+        }
+        if ('areaDetector.counts' in nodes) {
+            detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;            
+            window.refreshRequested = true;
+        }
+        if ('areaDetector.roiShape' in nodes) {
+            var shape = devicesMonitor.HashMapToObject(nodes['areaDetector.roiShape'].currentValue.userVal.val);
+            if (shape.name == 'rect') {
+                detectors.areaDetector.roi = shape;
+            } else {
+                detectors.areaDetector.roi = null;
+            }
+                window.refreshRequested = true;
+        }
+    }
+    
+    dialog_login = function() {
+        // set the global hostname
+        hostname = document.getElementById("instrument_ip").value;
+        var username = document.getElementById("username").value;
+        var password = document.getElementById("password").value;
+        
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+            function(api_object) {
+                // globals:
+                logging_in = false;
+                api = api_object;
+                devicesMonitor = new DevicesMonitorI();
+                devicesMonitor.postChangedHooks = [handleNodesChanged];
+                return Promise.all(
+                    subscribe(devicesMonitor, 'devices')
+                )
+        }).exception(
+            function(ex) {console.log(ex)}
+        );
+        
+        if (localStorage) {
+            localStorage.nice_hostname = hostname;
+        }
+        document.getElementById("login").close();
+    }
+    
+    var fitPlots = function() {
+        if (plots && plots.plotwrap) {
+            $('#plotwrap_plot').width($('#plotwrap').width() - 150);
+            if (plots.plotwrap.replot) plots.plotwrap.replot();
+            if (plots.plotwrap.plugins && plots.plotwrap.plugins.cursor.resetZoom) plots.plotwrap.plugins.cursor.resetZoom();
+        }
+        if (colorbars && colorbars.plotwrap && colorbars.plotwrap.replot) colorbars.plotwrap.replot();
+        
+        var xplot_width = $('#plotwrap').width() || 100;
+        $('#xplot_plot').width(xplot_width);
+        $('#slicecontrols').width($('.ui-layout-south').width() - xplot_width - 25); 
+        if (sl && sl.update) sl.update();
+    }
+    
+    window.onload = function() {
+        plots = {};
+        colorbars = {};
+        var dialog = document.getElementById("login");
+        if (!dialog.show) {
+            dialogPolyfill.registerDialog(dialog);
+        }
+        document.getElementById("instrument_ip").value = hostname;
+
+        $(window).on('niceServerShutdown', function(ev) {
+            $('#top_panel').removeClass('connected', 4000)
+                .find('.instrument-name').text('Server shut down: Not connected');
+        }).on('niceServerConnected', function(ev) {
+            $('#top_panel').addClass('connected')
+                .find('.instrument-name').text("Instrument connected: " + hostname);
+        });
+        
+        dialog.show();
+        logging_in = true;
+        
+        var layout = $('body').layout({
+		    east__size:			500
+	    ,	west__size:			0
+	    ,   south__size:        300
+	    ,   north_size:         "auto"
+		    // RESIZE Accordion widget when panes resize
+	    ,	west__onresize:		$.layout.callbacks.resizePaneAccordions
+	    ,	east__onresize:		$.layout.callbacks.resizePaneAccordions
+	    ,	south__onresize:    $.layout.callbacks.resizePaneAccordions
+	    ,	north__onresize:    $.layout.callbacks.resizePaneAccordions
+	    ,   center__onresize:   "fitPlots"
+	    });
+	    
+	    fitPlots();
+    }
+  </script>
+  <style type="text/css">
+    @font-face {
+        font-family: xkcd;
+        src: url("xkcd.otf");
+    }
+
+    body {
+        font-family: 'Love Ya Like A Sister' !important;
+    }
+    canvas, img {
+        image-rendering: optimizeSpeed;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: optimize-contrast;
+        image-rendering: pixelated;
+        -ms-interpolation-mode: nearest-neighbor;
+    }
+    #login {
+        top: 28%;
+        position: absolute;
+        z-index: 10;
+    }
+    #plotwrap {
+        width: 100%;
+        height: 90%;
+    }
+    #top_panel {
+        background-color: LightYellow;
+        height: 30px;
+        padding-top: 0px;
+        padding-bottom: 0px;
+        font-weight: normal;
+        /* font-family: 'Open Sans' !important; */
+        /* font-family: 'Special Elite' !important; */
+        /* font-family: 'xkcd' !important; */
+        /* font-variant: small-caps; */
+    }
+    #top_panel.connected {
+        background-color: LightGreen;
+    }
+    #top_panel h3 {
+        font-size: 16pt;
+        margin-top: 6pt;
+        margin-bottom: 6pt;
+        font-weight: normal;
+    }
+    #xplot_plot {
+        width: 50%;
+        height: 100%;
+        display: inline-block;
+    }
+    #yplot_plot {
+        width: 100%;
+        height: 100%;
+    }
+    #slicecontrols {
+        width: 100%;
+        height: 100%;
+        display: inline-block;
+        text-align: center;
+    }
+    .set-new-roi {
+        background-color: #dd0000;
+        color: white;
+        margin-left: 30px;
+        font-weight: bold;
+    }
+    label.transform {
+        position: absolute;
+        bottom: 10;
+        left: 10;
+        z-index: 10;
+    }
+  </style>
+  <style type="text/css">
+
+    html, body {
+      position: relative;
+      height: 100%;
+      font-family: 'Open Sans' !important;
+    }
+
+    svg,
+    canvas {
+      position: absolute;
+      image-rendering: optimizeSpeed;
+      image-rendering: crisp-edges;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: optimize-contrast;
+      -ms-interpolation-mode: nearest-neighbor;
+    }
+
+    .axis text {
+      font: 14px 'Open Sans';
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+    .axis .axis-label {
+        font-size: 14px;
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+    }
+
+    .grid .tick {
+        stroke: lightgrey;
+        opacity: 0.7;
+    }
+    .grid path {
+          stroke-width: 0;
+    }
+    .line {
+        fill: none;
+        stroke-width: 1.5px;
+    }
+    
+    rect {
+      fill: #fff;
+      user-select: none; 
+      -webkit-user-select: none; 
+      -moz-user-select: none;
+    }
+
+  </style>
+  <title>Live 2d data</title>
+</head>
+<body>
+<dialog id="login">
+  <h2>Login</h2>
+  <label for="instrument_ip">Instrument address</label>
+  <input type="text" id="instrument_ip" value="happy.home">
+  <br>
+  <label for="username">Username:</label>
+  <input type="text" id="username" value="" placeholder="username">
+  <br>
+  <label for="password">Password:</label>
+  <input type="password" id="password" placeholder="password">
+  <br>
+  <input type="button" onclick="dialog_login()" value="Go">
+</dialog>
+<div id="top_panel" class="ui-layout-north">
+    <h3 class="instrument-name">Instrument: </h3>
+</div>
+<div id="xplot" class="ui-layout-south">
+    <div id="xplot_plot"></div>
+    <div id="slicecontrols" class="controls"></div>
+</div>
+<div id="yplot" class="ui-layout-east">
+    <div id="yplot_plot"></div>
+</div>
+<div id="mainplot" class="ui-layout-wrapper ui-layout-center">
+  <div id="plotwrap"></div>
+</div>
+</body>
+</html>
