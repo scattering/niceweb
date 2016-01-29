@@ -465,28 +465,6 @@
             cumsums = plot.generate_cumsums();
             roi_rectangle.update();
             document.getElementById('roi_display').innerHTML = JSON.stringify(shape);
-            /*
-            plot.series[0].generate_cumsums();
-            colorbar.series[0].set_dims(data.dims);
-            var roi_rectangle = plot.plugins.interactors.roi_rectangle;
-            var shape = data.roi;
-            document.getElementById('roi_display').innerHTML = JSON.stringify(shape);
-            if (shape) {
-                roi_rectangle.p1.coords.y = roi_rectangle.p2.coords.y = parseFloat(shape.y1);
-                roi_rectangle.p3.coords.y = roi_rectangle.p4.coords.y = parseFloat(shape.y2);
-                roi_rectangle.p1.coords.x = roi_rectangle.p4.coords.x = parseFloat(shape.x1);
-                roi_rectangle.p2.coords.x = roi_rectangle.p3.coords.x = parseFloat(shape.x2);
-                roi_rectangle.show = true;
-            } else {
-                roi_rectangle.show = false;
-            }
-            roi_rectangle.redraw();
-            roi_rectangle.redraw();
-            //plot.replot();
-            colorbar.plugins._interactor.zoomMax(); // for scale!
-            colorbar.replot();
-            sl.update();
-            */
         }
         
     }
