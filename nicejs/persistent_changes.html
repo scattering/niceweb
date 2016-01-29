@@ -1,0 +1,390 @@
+<html>
+<head>
+  <link rel="icon" type="image/png" href="css/appicon.png" />
+  <link rel="stylesheet" href="../../niceclient/static/css/layout-default-latest.css" />
+  <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
+  <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
+            type="text/css" rel="Stylesheet" />
+  <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
+  <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+  <script src="../../niceclient/static/jquery.layout-latest.js"></script>
+  <script type="text/javascript" src="d3.v3.min.js"></script>
+
+  <!-- dialog support -->
+  <link rel="stylesheet" href="../static/dialog-polyfill.css" />
+  <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
+
+  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.6.1/Ice.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.6.1/Glacier2.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.6.1/IceStorm.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.6.1/IceGrid.min.js"></script>
+
+  <script src="generated/data.js"></script>
+  <script src="generated/file.js"></script>
+  <script src="generated/system.js"></script>
+  <script src="generated/devices.js"></script>
+  <script src="generated/console.js"></script>
+  <script src="generated/dryrun.js"></script>
+  <script src="generated/exceptions.js"></script>
+  <script src="generated/nice.js"></script>
+  <script src="generated/events.js"></script>
+  <script src="generated/experiment.js"></script>
+  <script src="generated/queue.js"></script>
+  <script src="generated/sampleAlignment.js"></script>
+  <script src="generated/clientapi.js"></script>
+  <script src="connect_zeroc.js"></script>
+  <script type="text/javascript">
+    var Promise = Ice.Promise;
+    var RouterPrx = Glacier2.RouterPrx;
+    var logging_in = false;
+    var abort = false;
+    
+    var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
+    var ice_protocol_version = "1.0";
+    var logging_in = false;
+
+    var INSTRUMENT_LOGOS = {
+        'pbr': 'pbr_logo_main.svg',
+        'pbr.ncnr.nist.gov': 'pbr_logo_main.svg',
+        'magik': 'magik_logo_red.svg', 
+        'magik.ncnr.nist.gov': 'magik_logo_red.svg',
+        'sans:ngb': 'nSoftlogo_mission.png',
+        'ngbsans.ncnr.nist.gov': 'nSoftlogo_mission.png',
+        'cts.ncnr.nist.gov': 'phades_logo.svg',
+        'phades': 'phades_logo.svg',
+        'bt4.ncnr.nist.gov': 'wurtzite_trans.gif',
+        'bt4': 'wurtzite_trans.gif',
+        'default': 'appicon.png'
+    }
+    var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+    var port = '9999';
+    if (localStorage && localStorage.nice_hostname) {
+        hostname = localStorage.nice_hostname
+    }
+    
+    var command_history = [];
+  
+    function getEnumValues(ice_enum) {
+        var enumVals = [];
+        for (var i=0; i<=ice_enum.maxValue; i++) {
+            enumVals[i] = ice_enum.valueOf(i)._name;
+        }
+        return enumVals;
+    }
+    // preread the CommandState enum:
+    CommandStatusEnum = getEnumValues(nice.api.queue.CommandState);
+    //CommandStatusEnum =  [ 'QUEUED', 'RUNNING', 'CHILDREN', 'FINISHED', 'SKIPPED' ];
+
+    function toLong(number) {
+      // only works for positive numbers.
+      var high = parseInt(Math.floor(number / Ice.Long.HIGH_MASK));
+      var low = parseInt(number % Ice.Long.HIGH_MASK);
+      return new Ice.Long(high, low);
+    }
+
+    function type (object) {
+        if (object === null) {
+            return 'null';
+        }
+        if (object === undefined) {
+            return 'undefined';
+        }
+        if ((object instanceof Number) || (typeof object === 'number')) {
+            return 'number';
+        }
+        if ((object instanceof String) || (typeof object === 'string')) {
+            return 'string';
+        }
+        if ((object instanceof Boolean) || (typeof object === 'boolean')) {
+            return 'boolean';
+        }
+        if ((object instanceof RegExp) || (typeof object === 'regexp')) {
+            return 'regexp';
+        }
+        if (Array.isArray(object)) {
+            return 'array';
+        }
+
+        return 'object';
+    };
+
+    
+    function submitCommand() {
+        var command_line = document.getElementById('command_line');
+        var command = command_line.value.trim('\n');
+        command_history.push(command);
+        command_offset = 0;
+        command_line.value = "";
+        return api.console(command);
+    }
+
+    function getCommandCompletion(command_stub, callback) {
+        var command_stub = (command_stub.term) ? command_stub.term : command_stub;
+        var tokens = command_stub.split(/\s+/);
+        var last_length = tokens[tokens.length - 1].length;
+        var root = command_stub.slice(0, (command_stub.length - last_length));
+        api.complete(command_stub).then(function(result) {
+            var completions = [];
+            sorted = result.fullCompletions.sort(
+                function(a,b) { 
+                    return ((a.relevance > b.relevance) || 
+                             ((a.relevance == b.relevance) && (a.replacementText < b.replacementText))) ? -1 : 1
+                }
+            );
+            sorted.forEach(function(s) { completions.push(root + s.replacementText); });
+            $('body').layout().allowOverflow('command_line');
+            callback(completions);
+        });
+    }
+
+    getCursorPosition = function(input) {
+        if (!input) return; // No (input) element found
+        if ('selectionStart' in input) {
+            // Standard-compliant browsers
+            return input.selectionStart;
+        } else if (document.selection) {
+            // IE
+            input.focus();
+            var sel = document.selection.createRange();
+            var selLen = document.selection.createRange().text.length;
+            sel.moveStart('character', -input.value.length);
+            return sel.text.length - selLen;
+        }
+    }
+
+    dialog_login = function() {
+        // set the global hostname
+        hostname = document.getElementById("instrument_ip").value;
+        var username = document.getElementById("username").value;
+        var password = document.getElementById("password").value;
+        
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+            function(api_object) {
+                // globals:
+                logging_in = false;
+                api = api_object;
+                nodes = [];
+                node_ids = [];
+                return api.getAllNodes()
+        })
+        .then(
+          function(n) {
+            nodes = n; 
+            node_ids = n.map(function(node) {return node.id});
+            $("#devicenode").autocomplete({
+                'source': node_ids,
+                'position': { my : "left bottom", at: "left top" }
+            })
+          }
+        );
+        if (localStorage) {
+            localStorage.nice_hostname = hostname;
+        }
+        document.getElementById("login").close();
+    }
+      
+  window.onload = function() {
+    var dialog = document.getElementById("login");
+    if (!dialog.show) {
+        dialogPolyfill.registerDialog(dialog);
+    }
+    document.getElementById("instrument_ip").value = hostname;
+    
+    $(window).on('niceServerShutdown', function(ev) {
+        $('#top_panel').removeClass('connected', 4000)
+            .find('.instrument-name').text('Server shut down: Not connected');
+    }).on('niceServerConnected', function(ev) {
+        var logopath = 'css/';
+        var instrumentID = ev.originalEvent.detail.instrumentID.toLowerCase();
+        var virtual = ev.originalEvent.detail.testDeployment;
+        if (instrumentID in INSTRUMENT_LOGOS) {
+          logopath += INSTRUMENT_LOGOS[instrumentID];
+        } else {
+          logopath += INSTRUMENT_LOGOS['default'];
+        }
+        $('#top_panel').addClass('connected')
+          .find('.instrument-name').text("Instrument connected: " + ((virtual)? "VIRTUAL " : "") + instrumentID)
+          .parent().find('.instrument-logo').attr("src", logopath);
+    });
+    
+    dialog.show();
+    logging_in = true;
+    
+    myLayout = $('body').layout({
+		east__size:			400
+	,	west__size:			0
+	,   south__size:        "auto"
+	,   north_size:         "auto"
+		// RESIZE Accordion widget when panes resize
+	,	west__onresize:		$.layout.callbacks.resizePaneAccordions
+	,	east__onresize:		$.layout.callbacks.resizePaneAccordions
+	,	south__onresize:    $.layout.callbacks.resizePaneAccordions
+	,	north__onresize:    $.layout.callbacks.resizePaneAccordions
+	});
+    
+        
+    //document.getElementById('command_line').onchange = submitCommand;
+    var cl = document.getElementById('command_line');
+    command_offset = 0;
+
+    // To use the jQueryUI autocomplete function, uncomment:
+    // (still needs some tweaking to match what comes out of the api.complete command)
+    // also need to remove the <datalist> from the document below
+    // 
+    /*
+    $('#command_line').autocomplete({
+        'source': getCommandCompletion,
+        'position': { my : "left bottom", at: "left top" },
+        'disabled': true,
+        // disable the autocomplete after every selection... we want to 
+        // trigger it with 'tab' instead of a delay.
+        'close': function(ev, ui) { $(this).autocomplete("disable"); },
+        'response': function( ev, ui ) {
+            if (ui.content.length <= 1) {
+                // if no responses or if 1 response, quit autocomplete.
+                $(this).autocomplete("disable");
+            }
+            if (ui.content.length == 1) {
+                // if one response, use it!
+                $(this).val(ui.content[0].value);
+            }
+        }
+    });
+    */
+    
+    var bump = {38: -1, 40: 1};
+    
+    
+    
+    $("#start").click(function() {
+        $("#console").empty();
+        abort = false;
+        var now = (new Date()).getTime();
+        var lower = 0;
+        var upper = $("#changes").val();
+        var step = 1;
+        getValue(lower, step, upper, $("#devicenode").val(), now);
+    });
+    
+    $("#stop").click(function() { abort=true });
+    
+    function getValue(lower, step, upper, devicename, current) {
+        console.log(lower, step, upper, devicename, current);
+        if (lower > upper || abort == true) {
+            return
+            abort = false;
+        }
+        else {
+            return api.getHistoricValue([devicename], toLong(current), false).then(
+                function(v) {
+                    var last_changed = v[0].timeStampAfter; // Ice.Long;
+                    var new_current = last_changed.toNumber() - 1000;
+                    console.log((new Date(current)), v[0].userVal.val, v[0].userUnit);
+                    $("#console").append($("<div/>", {text: (new Date(last_changed.toNumber())).toLocaleString() + " " + v[0].userVal.val + " " + v[0].userUnit + "\n"}));
+                    getValue(lower + step, step, upper, devicename, new_current);
+                }
+            );
+        }
+    }
+    
+  }
+  </script>
+  <style type="text/css">
+    body {
+        font-family: 'Open Sans' !important;
+    }
+    #login {
+        top: 28%;
+        position: absolute;
+        z-index: 10;
+    }
+    
+    #top_panel {
+        background-color: LightYellow;
+        height: 30px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-weight: normal;
+        /* font-family: 'Open Sans'; */
+        /* font-variant: small-caps; */
+    }
+    #top_panel.connected {
+        background-color: LightGreen;
+    }
+    #top_panel h3 {
+        display: inline-block;
+    }
+    #console {
+        overflow: auto;
+    }
+    .instrument-logo {
+        height: 3em;
+        padding-left: 1em;
+        padding-right: 1em;
+    }
+    .command-highlight, .queue-highlight {
+        background-color: yellow !important;
+        color: red;
+    }
+    .console-item {
+        clear: left;
+        display: block;
+    }
+    .console-timestamp {
+        display: inline-block;
+        vertical-align: top;
+        float: left;
+    }
+    .console-message {
+        display: inline-block;
+        vertical-align: top;
+        float: left;
+        width: 80%;
+    }
+    .console-flag {
+        font-weight: bold;
+    }
+    .ui-autocomplete {
+        max-height: 150px;
+        overflow-y: auto;
+        /* prevent horizontal scrollbar */
+        overflow-x: hidden;
+        z-index: 3 !important;
+    }
+    
+    
+  </style>
+  <title>NICE console</title>
+</head>
+<body>
+<dialog id="login">
+  <h2>Login</h2>
+  <label for="instrument_ip">Instrument address</label>
+  <input type="text" id="instrument_ip" value="happy.home">
+  <br>
+  <label for="username">Username:</label>
+  <input type="text" id="username" value="" placeholder="username">
+  <br>
+  <label for="password">Password:</label>
+  <input type="password" id="password" placeholder="password">
+  <br>
+  <input type="button" onclick="dialog_login()" value="Go">
+</dialog>
+
+<div id="top_panel" class="ui-layout-north">
+    <h3 class="instrument-name">Instrument: </h3>
+    <img src="css/appicon.png" class="instrument-logo">
+</div>
+<div id="queue_panel" class="ui-layout-east">
+    <div id="queue"></div>
+</div>
+<div id="console" class="ui-layout-wrapper ui-layout-center"></div>
+<div id="command" class="ui-layout-south">
+    <label>Node name:<input type="text" width="50" id="devicenode" value="detectorAngle.zero" /></label>
+    <label>get last N changes: <input type="number" step="1" id="changes" value=10 /></label>
+    <input type="button" value="start" id="start">
+    <input type="button" value="stop" id="stop">
+
+</div>
+</body>
+</html>
