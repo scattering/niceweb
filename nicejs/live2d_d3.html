@@ -16,8 +16,8 @@
 <!--    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>-->
     <script type="text/javascript" src="d3.v3.min.js"></script>
     <script type="text/javascript" src="plot_d3_rz.js"></script>
-<!--    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>-->
     <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>
+<!--    <script src="/~bbm/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>-->
     <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/rectangle-interactor.js"></script>
     
     <!-- dialog support -->
@@ -150,8 +150,7 @@
 		                                name:'roi_rectangle',
 		                                color1: '#ff0000',
 		                                color2: '#ff0000',
-		                                showcenter: false,
-		                                showrect: false,
+		                                show_points: false,
 		                                show: false,
 		                                xmin: 50, 
 		                                ymin: 51,
@@ -295,6 +294,7 @@
                 fill: "none",
                 fixed: true,
                 show_center: false,
+                show_points: false,
                 show: false,
                 xmin: 0.022, 
                 ymin: 1.0,
@@ -328,8 +328,8 @@
               show: false,
               xmin: 10, 
               ymin: 10,
-              xmax: 502, 
-              ymax: 502
+              xmax: data.dims.xmax - 10, 
+              ymax: data.dims.ymax - 10
             }
             
             selector_rectangle = new rectangleInteractor(selector_opts);
