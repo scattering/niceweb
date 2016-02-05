@@ -145,30 +145,6 @@
                 "zmin": 1.0
             },
             "options": {
-                "interactors": [{ type:'master', scrollZoom: true, dragPan: true, rightZoom: false, alpha: 0.8 },
-                                      { type:'Rectangle', 
-		                                name:'roi_rectangle',
-		                                color1: '#ff0000',
-		                                color2: '#ff0000',
-		                                show_points: false,
-		                                show: false,
-		                                xmin: 50, 
-		                                ymin: 51,
-		                                xmax: 300, 
-		                                ymax: 301},
-		                              { type:'Rectangle', 
-		                                name:'rectangle',
-		                                color1: '#ffffff',
-		                                color2: '#ffdddd',
-		                                showrect: false,
-		                                xmin: 10, 
-		                                ymin: 10,
-		                                xmax: 502, 
-		                                ymax: 502}
-		                              ],
-                "sortData": false,
-		        "series": [ {shadow: false, padding: 0, showMarker:false, showLine:false, breakOnNull:true} ],
-		        "grid": {shadow: false},
                 "fixedAspect": {
                     "aspectRatio": 1.0, 
                     "fixAspect": true
@@ -218,11 +194,6 @@
             plottable.dims.ydim = plottable.dims.ymax = dims[1];
             plottable.dims.zmin = zmin;
             plottable.dims.zmax = zmax;
-            var rectangle_opts = plottable.options.interactors[2];
-            rectangle_opts.xmin = 10;
-            rectangle_opts.xmax = dims[0] -10;
-            rectangle_opts.ymin = 10;
-            rectangle_opts.ymax = dims[1] - 10;
             if (roi) {
                 jQuery.extend(true, plottable.roi, roi);
             }
@@ -584,6 +555,7 @@
             $('#plotwrap_plot').width($('#plotwrap').width() - 150);
             if (plots.plotwrap.replot) plots.plotwrap.replot();
             if (plots.plotwrap.plugins && plots.plotwrap.plugins.cursor.resetZoom) plots.plotwrap.plugins.cursor.resetZoom();
+            if (plots.plotwrap.autofit) plots.plotwrap.autofit();
         }
         if (colorbars && colorbars.plotwrap && colorbars.plotwrap.replot) colorbars.plotwrap.replot();
         
