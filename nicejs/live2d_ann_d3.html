@@ -1,0 +1,786 @@
+<html>
+<head>
+    <!-- Reference the theme's stylesheet on the Google CDN -->
+    
+    <link rel="icon" type="image/png" href="css/appicon.png" />
+    <link rel="stylesheet" type="text/css" href="../../niceclient/static/css/layout-default-latest.css" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Special+Elite" />
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Love+Ya+Like+A+Sister" />
+    <link href="http://code.jquery.com/ui/1.10.4/themes/start/jquery-ui.css"
+            type="text/css" rel="Stylesheet" />
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
+    <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
+<!--    Moved this to local host because it loads so slowly.-->
+<!--    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>-->
+    <script type="text/javascript" src="d3.v3.min.js"></script>
+    <script type="text/javascript" src="plot_d3_rz.js"></script>
+<!--    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>-->
+    <script src="/~bbm/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>
+    <script src="/~bbm/d3-science/ellipse-interactor.js"></script>
+    <script type="text/javascript" src="circular_sums.js"></script>
+    
+    <!-- dialog support -->
+    <link rel="stylesheet" href="../static/dialog-polyfill.css" />
+    <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
+    
+    <script src="icejs/Ice.js"></script>
+    <script src="icejs/Glacier2.js"></script>
+    <script src="icejs/IceStorm.js"></script>
+    <script src="icejs/IceGrid.js"></script>
+
+    <script src="generated/data.js"></script>
+    <script src="generated/devices.js"></script>
+    <script src="generated/console.js"></script>
+    <script src="generated/system.js"></script>
+    <script src="generated/dryrun.js"></script>
+    <script src="generated/exceptions.js"></script>
+    <script src="generated/nice.js"></script>
+    <script src="generated/events.js"></script>
+    <script src="generated/experiment.js"></script>
+    <script src="generated/queue.js"></script>
+    <script src="generated/sampleAlignment.js"></script>
+    <script src="generated/clientapi.js"></script>
+    <script src="connect_zeroc.js"></script>
+    <script src="JSON.parseMore.js"></script>
+    <script src="testdata.js"></script>
+    <script type="text/javascript">
+        var Promise = Ice.Promise;
+        var RouterPrx = Glacier2.RouterPrx;
+        var PHI_STEP = 2.0;
+        
+        var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
+        var ice_protocol_version = "1.0";
+        var logging_in = false;
+
+        var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+        var port = '9999';
+        if (localStorage && localStorage.nice_hostname) {
+            hostname = localStorage.nice_hostname
+        }
+        
+        var detectors = {areaDetector: {dims: null, data: null, beamCenterX: null, beamCenterY: null}};
+        currently_drawing = false;
+        draw_again = false;
+        var doIvsQ = true; // automatically calculate I vs Q and plot
+        var refreshRequested = false;
+        var phisumRequested = false;
+        var rsumRequested = false;
+        var sl_phi, sl_r; // slice listeners.
+        var maskCanvas; // for integrations
+
+        function capitalize(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        var DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
+            onSubscribe: function(devices, nodes, groups, __current) {
+                this.devices = this.HashMapToObject(devices);
+                this.nodes = this.HashMapToObject(nodes);
+                var changed = this.nodes;
+                this.groups = this.HashMapToObject(groups);
+                this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
+                this.postChangedHooks.forEach( function(callback) { callback(changed); });
+            },
+            
+            changed: function(nodes, __current) {
+                var changed = this.HashMapToObject(nodes);
+                jQuery.extend(this.nodes, changed);
+                this._lastChanged = changed;
+                this.postChangedHooks.forEach( function(callback) { callback(changed); });
+            },
+            dynamicDevicesAdded: function(addRemoveID, childDeviceIDs, __current) {
+                //alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
+            },
+            dynamicDevicesRemoved: function(addRemoveID, __current) {
+                //alert('device removed: ' + addRemoveID);
+            },
+            removed: function(devices, nodes, __current) {
+                this._lastDevicesRemoved = this.HashMapToObject(devices);
+                this._lastNodesRemoved = this.HashMapToObject(nodes);
+            },
+            added: function(devices, nodes, __current) {
+                this._lastDevicesAdded = this.HashMapToObject(devices);
+                this._lastNodesAdded = this.HashMapToObject(nodes);
+            },
+            getAllDeviceNames: function() {
+                var devices = [];
+                for (var d in this.devices) {
+                    devices.push(d); 
+                }
+                return devices;
+            },
+            HashMapToObject: function(m) {
+                var obj={}; 
+                m.forEach( function(dn) { 
+                    obj[dn]=m.get(dn);
+                }); 
+                return obj
+            } 
+        });
+
+        var plottableX = {
+            "options": {
+                "series": [{"label": "phi-slice"}]
+            },
+            "data": [[[1,2], [3,4], [5,6]]]
+            
+        }
+        var plottableY = {
+            "options": {
+                "series": [{"label": "y-slice"}]
+            },
+            "data": [[[1,2], [3,4], [5,6]]] 
+        }
+        
+        var plottable2d = {
+            "dims": {
+                "xdim": 128, 
+                "xmax": 128, 
+                "xmin": 0.0, 
+                "ydim": 128, 
+                "ymax": 128, 
+                "ymin": 0.0, 
+                "zmax": 899.0, 
+                "zmin": 1.0
+            },
+            "options": {
+                "fixedAspect": {
+                    "aspectRatio": 1.0, 
+                    "fixAspect": true
+                },
+                "transform": {"zaxis": "log"},
+                
+	            "cursor": null
+            }, 
+            "title": "live 2d data", 
+            "type": "2d", 
+            "xlabel": "X", 
+            "ylabel": "Y", 
+            "z": [],
+            "zlabel": "Intensity (I)",
+        }
+        
+        var plotAreaDetector = function(detectorName) {
+            var target = 'plotwrap';
+            var detector = detectors[detectorName];
+            var zdata = detector.data; //devicesMonitor.nodes[countsNodeName].currentValue.userVal.val;
+            var dims = detector.dims;
+            var roi = detector.roi;
+            var z = []
+            var rowlength = dims[0];
+            var zmax = -Infinity;
+            var zmin = Infinity;
+            var row, zmaxtemp, zmintemp;
+            for (var i=0; i<rowlength; i++) {
+                row = zdata.slice(i*rowlength, (i+1) * rowlength);
+                zmaxtemp = Math.max.apply(Math, row);
+                zmintemp = Math.min.apply(Math, row);
+                zmax = Math.max(zmax, zmaxtemp);
+                zmin = Math.min(zmin, zmintemp);
+                z.push(row);
+            }
+            var plottable = {};
+            jQuery.extend(true, plottable, plottable2d);
+            plottable.z = [z];
+            plottable.dims.xdim = plottable.dims.xmax = dims[0];
+            plottable.dims.ydim = plottable.dims.ymax = dims[1];
+            plottable.dims.zmin = zmin;
+            plottable.dims.zmax = zmax;
+            
+            return plottable;
+        }
+    
+    var updateLoop = function() {
+        if (refreshRequested) {
+            refreshRequested = false;
+            show2dData(plotAreaDetector('areaDetector'), 'plotwrap');
+        }
+        if (phisumRequested) {
+            phisumRequested = false;
+            if (sl_phi && sl_phi.update_actual) {
+                sl_phi.update_actual();
+            }
+        }
+        if (rsumRequested) {
+            rsumRequested = false;
+            if (sl_r && sl_r.update_actual) {
+                sl_r.update_actual();
+            }
+        }
+        requestAnimationFrame(updateLoop);
+    }
+    
+    requestAnimationFrame(updateLoop); // start the drawing loop;
+    
+    var updateTransform = function(ev) {
+        if (plots && plots.plotwrap && plots.plotwrap.ztransform) {
+            var logselected = ev.target.checked; 
+            var transform = logselected? 'log' : 'linear';
+            plots.plotwrap.ztransform(transform);
+        }
+    }
+    
+    var show2dData = function(data, next_target) {
+      if (!(plots[next_target])) {
+            // if there is no plot, then create one:
+            $('#' + next_target).empty();            
+            var transform = 'log';
+            var plotbox = $("#" + next_target);
+            
+            var ztransform = $('<label />', {'class': 'transform', 'axis': 'zaxis'}).text('logZ').append($('<input />', {'type': 'checkbox', 'id': 'ztransform', 'checked': true}));
+            plotbox.append(ztransform);
+            ztransform.prop('checked', true).change(updateTransform);
+            var plot = heatChart({
+              "ztransform": transform,
+              "dims": data.dims,
+              "aspect_ratio": 1.0})
+              .autoscale(true);
+            mydata = data;
+            c = d3.select("#" + next_target)
+              .data(data.z)
+              .call(plot);
+            plots[next_target] = null;
+            plots[next_target] = plot;
+            cumsums = null;
+            
+            var circle1_opts = { 
+                type:'Ellipse', 
+                name:'ellipse_1',
+                color1: '#00ffff',
+                color2: '#00ffff',
+                fill: "none",
+                show_center: true,
+                show_points: false,
+                show: false,
+                cx: 64, 
+                cy: 64,
+                rx: 40,
+                ry: 40
+            }
+            var circle2_opts = { 
+                type:'Ellipse', 
+                name:'ellipse_2',
+                color1: '#00ffff',
+                color2: '#00ffff',
+                fill: "none",
+                show_center: true,
+                show_points: false,
+                show: false,
+                cx: 64, 
+                cy: 64,
+                rx: 50,
+                ry: 50
+            }
+            
+            roi_outer = new ellipseInteractor(circle2_opts);
+            roi_inner = new ellipseInteractor(circle1_opts);
+            
+            plot.interactors(roi_outer);
+            plot.interactors(roi_inner);
+       
+            var r1ctl = new radiusTextControl(roi_inner, 'r<sub>1</sub>', 1);
+            r1ctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(r1ctl.div);
+            var r2ctl = new radiusTextControl(roi_outer, 'r<sub>2</sub>', 1);
+            r2ctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(r2ctl.div);
+            document.getElementById('slicecontrols').appendChild(document.createElement('br'));
+            // make these global: centerxctl and centeryctl
+            centerxctl = new interactorTextControl(roi_inner, 'cx', 'center<sub>x</sub>', 1);
+            centerxctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(centerxctl.div);
+            centeryctl = new interactorTextControl(roi_inner, 'cy', 'center<sub>y</sub>', 1);
+            centeryctl.div.setAttribute('style', 'display: inline; text-align: center; width: 100%; padding: 5px 10px;');
+            document.getElementById('slicecontrols').appendChild(centeryctl.div);
+
+            var hr = document.createElement('div'); hr.innerHTML = "<hr>";
+            document.getElementById('slicecontrols').appendChild(hr);
+            
+
+            document.getElementById('slicecontrols').appendChild(document.createElement('hr'));
+            var moveToButton = document.createElement('input');
+            moveToButton.setAttribute('type', 'button');
+            moveToButton.setAttribute('class', 'move-to-beam-center');
+            moveToButton.setAttribute('value', 'Move to beam center');
+            var moveToBeamCenter = function() {
+                var x = null, y = null;
+                if ('areaDetector.beamCenterX' in devicesMonitor.nodes) {
+                    x = devicesMonitor.nodes['areaDetector.beamCenterX'].currentValue.internalVal.val; 
+                }
+                if ('areaDetector.beamCenterY' in devicesMonitor.nodes) {
+                    y = devicesMonitor.nodes['areaDetector.beamCenterY'].currentValue.internalVal.val;
+                }
+                if (x != null && y != null) {
+                    centerxctl.setValue(x);
+                    centerxctl.syncInteractorToValue();
+                    centeryctl.setValue(y);
+                    centeryctl.syncInteractorToValue();
+                    
+                } else {
+                    alert('beam center is not defined');
+                }
+            };
+            moveToButton.onclick = moveToBeamCenter;
+            document.getElementById('slicecontrols').appendChild(moveToButton);
+            
+            var trackBeamCenterSelect = document.createElement('input');
+            trackBeamCenterSelect.setAttribute('type', 'checkbox');
+            trackBeamCenterSelect.setAttribute('class', 'track-beam-center');
+            trackBeamCenterSelect.setAttribute('id', 'track_beam_center');
+            trackBeamCenterSelect.setAttribute('name', 'track_beam_center');
+            trackBeamCenterSelect.setAttribute('autocomplete', 'off');
+            
+            var trackBeamCenter = true;
+            if (localStorage && ('trackBeamCenter' in localStorage)) {
+                trackBeamCenter = (localStorage.trackBeamCenter == 'true');
+            }
+            trackBeamCenterSelect.checked = trackBeamCenter;
+            var toggleTrackBeamCenter = function() {
+                var trackBeamCenter = trackBeamCenterSelect.checked;
+                if (trackBeamCenter) { moveToBeamCenter(); }
+                if (localStorage) {
+                    localStorage.trackBeamCenter = trackBeamCenter.toString();
+                }
+            }
+
+            trackBeamCenterSelect.onchange = toggleTrackBeamCenter;
+            
+            var trackBeamSpan = document.createElement('span');
+            trackBeamSpan.textContent = "track beam center";
+            trackBeamSpan.appendChild(trackBeamCenterSelect);
+            document.getElementById('slicecontrols').appendChild(trackBeamSpan);           
+            toggleTrackBeamCenter();
+            
+            slice_listener_phi = function(circle1, circle2) {
+                this.update = function(pos) {
+                    phisumRequested = true;
+                }
+                this.update_actual = function() {
+                    var zislog = document.getElementById('ztransform').checked;
+                    var intensity_label = (zislog) ? "(Log counts)/pixel" : "counts/pixel";
+                    
+                    var r1 = circle1.state.rx;
+                    var r2 = circle2.state.rx;
+                    var phisum = multiplySumArc(maskCanvas, data.z[0], data.dims, circle1.state.cx, circle1.state.cy, r1, r2);
+                    plottableX.data = [phisum.xy];
+                    $("#xplot_plot").empty();
+                    xplot = plotD3("xplot_plot", plottableX, {
+                        log_y: zislog, 
+                        showline: true, 
+                        show_points: false, 
+                        vcursor: true, 
+                        ylabel: intensity_label, 
+                        xlabel: 'Phi (deg)',
+                        position_cursor: true});
+                    xplot.svg.select('.x.axis').call(xplot.xAxis.tickValues([0,45,90,135,180,225,270,315,360]));
+                }
+                return this;
+            }
+            slice_listener_r = function(circle1, circle2) {
+                this.update = function(pos) {
+                    if (doIvsQ) {
+                        rsumRequested = true;
+                    }
+                }
+                this.update_actual = function() {
+                    var zislog = document.getElementById('ztransform').checked;
+                    var intensity_label = (zislog) ? "(Log counts)/pixel" : "counts/pixel";
+
+                    var rsum = multiplySumRadial(maskCanvas, data.z[0], data.dims, circle1.state.cx, circle1.state.cy);
+                    plottableY.data = [rsum.xy];
+                    $("#yplot_plot").empty();
+                    yplot = plotD3("yplot_plot", plottableY, {
+                        log_y: zislog, 
+                        log_x: zislog, 
+                        showline: true, 
+                        show_points: false, 
+                        vcursor: true, 
+                        ylabel: intensity_label, 
+                        xlabel: 'pixels from center',
+                        position_cursor: true});
+                }
+                return this;  
+            };
+            sl_phi = new slice_listener_phi(roi_outer, roi_inner);
+            sl_r = new slice_listener_r(roi_outer, roi_inner);
+            maskCanvas.width = data.dims.xdim;
+            maskCanvas.height = data.dims.ydim;
+            roi_outer.dispatch.on('update.phi_slice', sl_phi.update);
+            roi_inner.dispatch.on('update.phi_slice', sl_phi.update);
+            roi_outer.dispatch.on('update.r_slice', sl_r.update);
+            roi_inner.dispatch.on('update.r_slice', sl_r.update);
+            
+            // lock the centers
+            roi_outer.dispatch.on('update.lock_center', function() {
+              roi_inner.state.cx = roi_outer.state.cx;
+              roi_inner.state.cy = roi_outer.state.cy;
+              roi_inner.update(true); // prevent propagation
+            });
+            
+            roi_inner.dispatch.on('update.lock_center', function() {
+              roi_outer.state.cx = roi_inner.state.cx;
+              roi_outer.state.cy = roi_inner.state.cy;
+              roi_outer.update(true); // prevent propagation
+            });
+            sl_phi.update();
+            sl_r.update();
+            
+        } else {
+            var plot = plots[next_target];
+            plot.source_data(data.z[0]); // defer update: colorbar will trigger it later
+            roi_outer.update();
+            roi_inner.update();
+        }
+        
+    }
+    
+    function radians(deg) {
+        return Math.PI * deg/180.0;
+    }
+    function degrees(rad) {
+        return 180.0 * rad/Math.PI;
+    }
+    
+    
+    function radiusTextControl(interactor, label, precision) {
+        var precision = precision || 3;
+        this.precision = precision;
+        this.interactor = interactor;
+        var textbox = document.createElement('input');
+        textbox.setAttribute('type', 'text');
+        textbox.setAttribute('style', 'width:90px');
+        var input_label = document.createElement('label');
+        var div = document.createElement('div');
+        div.innerHTML = label;
+        // div.appendChild(document.createTextNode(label))
+        div.appendChild(textbox);
+        this.div = div;
+        this.div.setAttribute('id', 'stateTextControl_r');
+        this.div.setAttribute('style', 'display: inline; padding: 5px 10px;');
+        this.textbox = textbox;
+        var setValue = function(val) {textbox.value = val.toFixed(precision)};
+        this.setValue = setValue;
+        this.syncInteractorToValue = function() {
+            interactor.state.rx = interactor.state.ry = parseFloat(textbox.value);
+            interactor.update();
+        }
+        var syncValueToInteractor = function() {
+          setValue(interactor.state.rx);
+        }
+        textbox.onchange = this.syncInteractorToValue; 
+        interactor.dispatch.on("update.r", syncValueToInteractor);
+        interactor.dispatch.update();
+        return this;
+    }
+    
+    interactorTextControl = function(interactor, key, label, precision) {
+        var precision = precision || 3;
+        this.precision = precision;
+        this.key = key;
+        this.interactor = interactor;
+        var textbox = document.createElement('input');
+        textbox.setAttribute('type', 'text');
+        textbox.setAttribute('style', 'width:90px');
+        var input_label = document.createElement('label');
+        var div = document.createElement('div');
+        div.innerHTML = label;
+        // div.appendChild(document.createTextNode(label))
+        div.appendChild(textbox);
+        this.div = div;
+        this.div.setAttribute('id', 'stateTextControl_' + key);
+        this.div.setAttribute('style', 'display: inline; padding: 5px 10px;');
+        this.textbox = textbox;
+        var setValue = function(val) {textbox.value = val.toFixed(precision)};
+        this.setValue = setValue;
+        this.syncInteractorToValue = function() {
+          interactor.state[key] = parseFloat(textbox.value);
+          interactor.update();
+        }
+        var syncValueToInteractor = function() {
+          setValue(interactor.state[key]);
+        }
+        textbox.onchange = this.syncInteractorToValue;
+        interactor.dispatch.on("update." + key, syncValueToInteractor);
+        interactor.dispatch.update();
+        return this;
+    }
+    
+    var detectorNodesChanged = function(nodes) {
+        if ('areaDetector.dimension' in nodes) {
+            detectors.areaDetector.dims = nodes['areaDetector.dimension'].currentValue.userVal.val;
+        }
+        if ('areaDetector.counts' in nodes) {
+            detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;
+           
+            window.refreshRequested = true;
+        }
+        if ('areaDetector.beamCenterX' in nodes) {
+            detectors.areaDetector.beamCenterX = nodes['areaDetector.beamCenterX'].currentValue.internalVal.val;
+        }
+        if ('areaDetector.beamCenterY' in nodes) {
+            detectors.areaDetector.beamCenterY = nodes['areaDetector.beamCenterY'].currentValue.internalVal.val;
+        }
+        
+    }
+    
+    var beamCenterChanged = function(nodes) {
+        var x = null, y = null;
+        var trackBeamCenterSelect = document.getElementById('track_beam_center');
+        var trackBeamCenter = (trackBeamCenterSelect && trackBeamCenterSelect.checked);
+        if (trackBeamCenter) {
+            if ('areaDetector.beamCenterX' in nodes) {
+                x = nodes['areaDetector.beamCenterX'].currentValue.internalVal.val;
+                centerxctl.setValue(x);
+                centerxctl.syncInteractorToValue();
+            }
+            if ('areaDetector.beamCenterY' in nodes) {
+                y = nodes['areaDetector.beamCenterY'].currentValue.internalVal.val;
+                centeryctl.setValue(y);
+                centeryctl.syncInteractorToValue();
+            }
+        }
+    }
+    
+    dialog_login = function() {
+        // set the global hostname
+        hostname = document.getElementById("instrument_ip").value;
+        var username = document.getElementById("username").value;
+        var password = document.getElementById("password").value;
+        
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+            function(api_object) {
+                // globals:
+                logging_in = false;
+                api = api_object;
+                devicesMonitor = new DevicesMonitorI();
+                devicesMonitor.postChangedHooks = [detectorNodesChanged, beamCenterChanged];
+                return Promise.all(
+                    subscribe(devicesMonitor, 'devices')
+                )
+        }).exception(
+            function(ex) {console.log(ex)}
+        );
+        
+        if (localStorage) {
+            localStorage.nice_hostname = hostname;
+        }
+        document.getElementById("login").close();
+    }
+    
+    var fitPlots = function() {
+        if (plots && plots.plotwrap) {
+            $('#plotwrap_plot').width($('#plotwrap').width() - 150);
+            if (plots.plotwrap.replot) plots.plotwrap.replot();
+            if (plots.plotwrap.plugins && plots.plotwrap.plugins.cursor.resetZoom) plots.plotwrap.plugins.cursor.resetZoom();
+            if (plots.plotwrap.autofit) plots.plotwrap.autofit();
+        }
+        if (colorbars && colorbars.plotwrap && colorbars.plotwrap.replot) colorbars.plotwrap.replot();
+        
+        var xplot_width = $('#plotwrap').width() || 100;
+        $('#xplot_plot').width(xplot_width);
+        $('#slicecontrols').width($('.ui-layout-south').width() - xplot_width - 25); 
+        if (sl_phi && sl_phi.update) sl_phi.update();
+        if (sl_r && sl_r.update) sl_r.update();
+    }
+    
+    window.onload = function() {
+        plots = {};
+        colorbars = {};
+        maskCanvas = document.createElement('canvas');
+        var dialog = document.getElementById("login");
+        if (!dialog.show) {
+            dialogPolyfill.registerDialog(dialog);
+        }
+        document.getElementById("instrument_ip").value = hostname;
+
+        $(window).on('niceServerShutdown', function(ev) {
+            $('#top_panel').removeClass('connected', 4000)
+                .find('.instrument-name').text('Server shut down: Not connected');
+        }).on('niceServerConnected', function(ev) {
+            $('#top_panel').addClass('connected')
+                .find('.instrument-name').text("Instrument connected: " + hostname);
+        });
+        
+        dialog.show();
+        logging_in = true;
+        
+        var layout = $('body').layout({
+		    east__size:			500
+	    ,	west__size:			0
+	    ,   south__size:        300
+	    ,   north_size:         "auto"
+		    // RESIZE Accordion widget when panes resize
+	    ,	west__onresize:		$.layout.callbacks.resizePaneAccordions
+	    ,	east__onresize:		$.layout.callbacks.resizePaneAccordions
+	    ,	south__onresize:    $.layout.callbacks.resizePaneAccordions
+	    ,	north__onresize:    $.layout.callbacks.resizePaneAccordions
+	    ,   center__onresize:   "fitPlots"
+	    });
+	    
+	    fitPlots();
+        //signin();
+    }
+  </script>
+  <style type="text/css">
+    @font-face {
+        font-family: xkcd;
+        src: url("xkcd.otf");
+    }
+
+    body {
+        font-family: 'Love Ya Like A Sister' !important;
+    }
+    canvas, img {
+        image-rendering: optimizeSpeed;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: optimize-contrast;
+        image-rendering: pixelated;
+        -ms-interpolation-mode: nearest-neighbor;
+    }
+    #login {
+        top: 28%;
+        position: absolute;
+        z-index: 10;
+    }
+    #plotwrap {
+        width: 100%;
+        height: 90%;
+    }
+    #top_panel {
+        background-color: LightYellow;
+        height: 30px;
+        padding-top: 0px;
+        padding-bottom: 0px;
+        font-weight: normal;
+        /* font-family: 'Open Sans' !important; */
+        /* font-family: 'Special Elite' !important; */
+        /* font-family: 'xkcd' !important; */
+        /* font-variant: small-caps; */
+    }
+    #top_panel.connected {
+        background-color: LightGreen;
+    }
+    #top_panel h3 {
+        font-size: 16pt;
+        margin-top: 6pt;
+        margin-bottom: 6pt;
+        font-weight: normal;
+    }
+    #xplot_plot {
+        width: 50%;
+        height: 100%;
+        display: inline-block;
+    }
+    #yplot_plot {
+        width: 100%;
+        height: 100%;
+    }
+    #slicecontrols {
+        width: 100%;
+        height: 100%;
+        display: inline-block;
+        text-align: center;
+    }
+    .set-new-roi {
+        background-color: #dd0000;
+        color: white;
+        margin-left: 30px;
+        font-weight: bold;
+    }
+    label.transform {
+        position: absolute;
+        bottom: 10;
+        left: 10;
+        z-index: 10;
+    }
+  </style>
+  <style type="text/css">
+
+    html, body {
+      position: relative;
+      height: 100%;
+      font-family: 'Open Sans' !important;
+    }
+
+    svg,
+    canvas {
+      position: absolute;
+      image-rendering: optimizeSpeed;
+      image-rendering: crisp-edges;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: optimize-contrast;
+      -ms-interpolation-mode: nearest-neighbor;
+    }
+
+    .axis text {
+      font: 14px 'Open Sans';
+    }
+
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+    .axis .axis-label {
+        font-size: 14px;
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+    }
+
+    .grid .tick {
+        stroke: lightgrey;
+        opacity: 0.7;
+    }
+    .grid path {
+          stroke-width: 0;
+    }
+    .line {
+        fill: none;
+        stroke-width: 1.5px;
+    }
+    
+    rect {
+      fill: #fff;
+      user-select: none; 
+      -webkit-user-select: none; 
+      -moz-user-select: none;
+    }
+
+  </style>
+  <title>Live 2d data</title>
+</head>
+<body>
+<dialog id="login">
+  <h2>Login</h2>
+  <label for="instrument_ip">Instrument address</label>
+  <input type="text" id="instrument_ip" value="happy.home">
+  <br>
+  <label for="username">Username:</label>
+  <input type="text" id="username" value="" placeholder="username">
+  <br>
+  <label for="password">Password:</label>
+  <input type="password" id="password" placeholder="password">
+  <br>
+  <input type="button" onclick="dialog_login()" value="Go">
+</dialog>
+<div id="top_panel" class="ui-layout-north">
+    <h3 class="instrument-name">Instrument: </h3>
+</div>
+<div id="xplot" class="ui-layout-south">
+    <div id="xplot_plot"></div>
+    <div id="slicecontrols" class="controls"></div>
+</div>
+<div id="yplot" class="ui-layout-east">
+    <div id="yplot_plot"></div>
+</div>
+<div id="mainplot" class="ui-layout-wrapper ui-layout-center">
+  <div id="plotwrap"></div>
+</div>
+</body>
+</html>
