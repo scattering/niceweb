@@ -336,10 +336,10 @@
             var moveToBeamCenter = function() {
                 var x = null, y = null;
                 if ('areaDetector.beamCenterX' in devicesMonitor.nodes) {
-                    x = devicesMonitor.nodes['areaDetector.beamCenterX'].currentValue.internalVal.val; 
+                    x = devicesMonitor.nodes['areaDetector.beamCenterX'].currentValue.userVal.val; 
                 }
                 if ('areaDetector.beamCenterY' in devicesMonitor.nodes) {
-                    y = devicesMonitor.nodes['areaDetector.beamCenterY'].currentValue.internalVal.val;
+                    y = devicesMonitor.nodes['areaDetector.beamCenterY'].currentValue.userVal.val;
                 }
                 if (x != null && y != null) {
                     centerxctl.update({x: x});
@@ -585,10 +585,10 @@
             window.refreshRequested = true;
         }
         if ('areaDetector.beamCenterX' in nodes) {
-            detectors.areaDetector.beamCenterX = nodes['areaDetector.beamCenterX'].currentValue.internalVal.val;
+            detectors.areaDetector.beamCenterX = nodes['areaDetector.beamCenterX'].currentValue.userVal.val;
         }
         if ('areaDetector.beamCenterY' in nodes) {
-            detectors.areaDetector.beamCenterY = nodes['areaDetector.beamCenterY'].currentValue.internalVal.val;
+            detectors.areaDetector.beamCenterY = nodes['areaDetector.beamCenterY'].currentValue.userVal.val;
         }
         
     }
@@ -599,12 +599,12 @@
         var trackBeamCenter = (trackBeamCenterSelect && trackBeamCenterSelect.checked);
         if (trackBeamCenter) {
             if ('areaDetector.beamCenterX' in nodes) {
-                x = nodes['areaDetector.beamCenterX'].currentValue.internalVal.val;
+                x = nodes['areaDetector.beamCenterX'].currentValue.userVal.val;
                 centerxctl.update({x: x});
                 centerxctl.update_external();
             }
             if ('areaDetector.beamCenterY' in nodes) {
-                y = nodes['areaDetector.beamCenterY'].currentValue.internalVal.val;
+                y = nodes['areaDetector.beamCenterY'].currentValue.userVal.val;
                 centeryctl.update({y: y});
                 centeryctl.update_external();
             }

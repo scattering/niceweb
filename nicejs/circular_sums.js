@@ -6,7 +6,7 @@
          var center_y = (dims.ymax - center_y_coord) / dypos;
          var r1 = r1_coord / dxpos; // square pixels only!
          var r2 = r2_coord / dxpos; // square pixels only!
-         
+         var PHI_STEP = (window.PHI_STEP == undefined) ? 2.0 : window.PHI_STEP;
          var ch = maskCanvas.height;
          var cw = maskCanvas.width;
          var maskCtx = maskCanvas.getContext('2d');
