@@ -363,7 +363,7 @@
                     
                     var r1 = circle1.state.rx;
                     var r2 = circle2.state.rx;
-                    var phisum = multiplySumArc(maskCanvas, data.z[0], data.dims, circle1.state.cx, circle1.state.cy, r1, r2);
+                    var phisum = multiplySumArc(maskCanvas, plot.source_data(), data.dims, circle1.state.cx, circle1.state.cy, r1, r2);
                     plottableX.data = [phisum.xy];
                     $("#xplot_plot").empty();
                     xplot = plotD3("xplot_plot", plottableX, {
@@ -388,7 +388,7 @@
                     var zislog = document.getElementById('ztransform').checked;
                     var intensity_label = (zislog) ? "(Log counts)/pixel" : "counts/pixel";
 
-                    var rsum = multiplySumRadial(maskCanvas, data.z[0], data.dims, circle1.state.cx, circle1.state.cy);
+                    var rsum = multiplySumRadial(maskCanvas, plot.source_data(), data.dims, circle1.state.cx, circle1.state.cy);
                     plottableY.data = [rsum.xy];
                     $("#yplot_plot").empty();
                     yplot = plotD3("yplot_plot", plottableY, {
