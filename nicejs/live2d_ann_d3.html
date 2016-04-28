@@ -64,6 +64,7 @@
         currently_drawing = false;
         draw_again = false;
         var doIvsQ = true; // automatically calculate I vs Q and plot
+        var updateOnData = true;
         var refreshRequested = false;
         var phisumRequested = false;
         var rsumRequested = false;
@@ -514,8 +515,8 @@
         }
         if ('areaDetector.counts' in nodes) {
             detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;
-           
-            window.refreshRequested = true;
+
+            window.refreshRequested = window.updateOnData; // trigger refresh if updateOnData is true;
         }
         if ('areaDetector.beamCenterX' in nodes) {
             detectors.areaDetector.beamCenterX = nodes['areaDetector.beamCenterX'].currentValue.userVal.val;
