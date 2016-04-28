@@ -108,10 +108,11 @@
             this.subscribed.succeed();
         },
         filesAdded: function(nodes, __current) {
-            var n, ip;
+            var n, ip, nodename;
             for (var i=0; i<nodes.length; i++) {
                 n = nodes[i];
-                ip = this._findInsertionPoint(n.name, this._root, 2);
+                nodename = (n.name.slice(-1) == this.pathseparator)? n.name.slice(0,-1) : n.name;
+                ip = this._findInsertionPoint(nodename, this._root, 2);
                 ip.children.push(n)               
             };
             refreshBoth();
@@ -150,10 +151,12 @@
         },
         // end overrides
         _findInsertionPoint: function(nodename, target, level) {
-            //console.log(nodename, target, level);
             var pathtokens = nodename.split(this.pathseparator);
+            if (pathtokens.length == 2) {
+                // then it's being added to root...
+                return this._root
+            }
             var nextpath = pathtokens.slice(0, level).join(this.pathseparator) + this.pathseparator;
-            //console.log(nextpath);
             var nexttarget = target.children.filter(function(c) { return new RegExp('\^' + nextpath).test( c.name ) })[0];
             if (level < (pathtokens.length - 1)) {
                 return this._findInsertionPoint(nodename, nexttarget, (level+1))
@@ -169,12 +172,13 @@
         onSubscribe: function(all_experiments, current_experiment, __current) {
             this.all_experiments = all_experiments;
             this.current_experiment = current_experiment;
-            this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
-            this.postChangedHooks.forEach( function(callback) { callback(current_experiment); });
+            this.postSwitchedHooks = (this.postSwitchedHooks == null) ? [] : this.postSwitchedHooks;
+            this.postSwitchedHooks.forEach( function(callback) { callback(current_experiment); });
             this.subscribed.succeed();
         },
         switchedCurrentExperiment: function(current_experiment, __current) {
             this.current_experiment = current_experiment;
+            this.postSwitchedHooks.forEach( function(callback) { callback(current_experiment); });
         },
         modifiedCurrentExperiment: function(data,  __current) {
             this._last_modified = data;
@@ -205,17 +209,18 @@
                 devicesMonitor = new DevicesMonitorI();
                 fileMonitor = new FileMonitorI();
                 experimentMonitor = new ExperimentMonitorI();
-                //devicesMonitor.postChangedHooks = [handleNodesChanged];
-                //experimentMonitor.postChangedHooks = [refreshBoth];
                 return Promise.all(
                     subscribe(devicesMonitor, 'devices'),
                     subscribe(fileMonitor, 'file'),
                     subscribe(experimentMonitor, 'experiment'),
                     fileMonitor.subscribed, // check to make sure the subscribe event is complete on this end
-                    experimentMonitor.subscribed
-                ).then(function() { refreshBoth(); experimentMonitor.postChangedHooks = [refreshBoth]; })
+                    experimentMonitor.subscribed,
+                    devicesMonitor.subscribed
+                ).then(function() { refreshBoth(); experimentMonitor.postSwitchedHooks = [refreshBoth]; })
         }).exception(
-            function(ex) {console.log(ex)}
+            function(ex) {
+                console.log(ex);
+            }
         );
         
         if (localStorage) {
