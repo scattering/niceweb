@@ -520,15 +520,15 @@ $(function() {
         var sort_files = document.getElementById('sort_files').checked;
         //var show_common = document.getElementById('show_common');
         var current_path = experimentMonitor.current_experiment.clientPath;
-        var experiment_folder = fileMonitor._root.children.filter( function(x) {
+        var experiment_folder = fileMonitor._root.children.find( function(x) {
             var re = new RegExp(current_path);
             return re.test(x.name)
         });
-        var trajectories_folder = experiment_folder[0].children.filter( function(x) { return /trajectories/.test(x.name) });
-        if (trajectories_folder.length == 0) { return }
-        var trajectory_files = trajectories_folder[0].children.map(function(x) { return (x.name) });
+        var trajectories_folder = experiment_folder.children.find( function(x) { return /trajectories/.test(x.name) });
+        if (trajectories_folder == undefined) { return }
+        var trajectory_files = trajectories_folder.children.map(function(x) { return (x.name) });
         
-        var trajectories_path = trajectories_folder[0].name;
+        var trajectories_path = trajectories_folder.name;
         var labels = trajectory_files.map(function(x) { var pel = x.split('/'); return pel[pel.length - 1]});
         updateFileList(trajectories_path, labels, true, 'ui-widget-content local-trajectories');
         
