@@ -434,6 +434,11 @@
         
     });
 
+    function padded(number) {
+        var output = number.toFixed(0);
+        if (output.length < 2) { output = "0" + output }
+        return output
+    }
     var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
         __init__: function(console_id) {
             this.console_id = console_id;
@@ -492,7 +497,15 @@
                     timestamp.low += Ice.Long.HIGH_MASK;
                 }
                 var t = new Date(event.timestamp.toNumber());
-                ts.textContent = t.toISOString().split("T")[0] + ' ' + t.toTimeString().split(" ")[0] + ' > ';
+                var year = t.getFullYear(),
+                    month = t.getMonth() + 1,
+                    day = t.getDate(),
+                    hour = t.getHours(),
+                    minute = t.getMinutes(),
+                    second = t.getSeconds(),
+                    text_date = year.toFixed() + '-' + padded(month) + '-' + padded(day) + ' ' + padded(hour) + ':' + padded(minute) + ':' + padded(second) + ' > ';
+                    
+                ts.textContent = text_date;
                 p.appendChild(ts);
                 var msg_div = document.createElement('div');
                 msg_div.classList.add('console-message');

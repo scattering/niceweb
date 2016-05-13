@@ -1,5 +1,8 @@
 (function(Ice, nice){
     DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
+         __init__: function() {
+            this.subscribed = new Promise();
+        },
         onSubscribe: function(devices, nodes, groups, __current) {
             this.devices = this.HashMapToObject(devices);
             this.nodes = this.HashMapToObject(nodes);
@@ -7,6 +10,7 @@
             this.groups = this.HashMapToObject(groups);
             this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
             this.postChangedHooks.forEach( function(callback) { callback(changed); });
+            this.subscribed.succeed();
         },
         
         changed: function(nodes, __current) {

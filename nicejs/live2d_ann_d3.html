@@ -64,6 +64,7 @@
         currently_drawing = false;
         draw_again = false;
         var doIvsQ = true; // automatically calculate I vs Q and plot
+        var updateOnData = true;
         var refreshRequested = false;
         var phisumRequested = false;
         var rsumRequested = false;
@@ -363,7 +364,7 @@
                     
                     var r1 = circle1.state.rx;
                     var r2 = circle2.state.rx;
-                    var phisum = multiplySumArc(maskCanvas, data.z[0], data.dims, circle1.state.cx, circle1.state.cy, r1, r2);
+                    var phisum = multiplySumArc(maskCanvas, plot.source_data(), data.dims, circle1.state.cx, circle1.state.cy, r1, r2);
                     plottableX.data = [phisum.xy];
                     $("#xplot_plot").empty();
                     xplot = plotD3("xplot_plot", plottableX, {
@@ -388,7 +389,7 @@
                     var zislog = document.getElementById('ztransform').checked;
                     var intensity_label = (zislog) ? "(Log counts)/pixel" : "counts/pixel";
 
-                    var rsum = multiplySumRadial(maskCanvas, data.z[0], data.dims, circle1.state.cx, circle1.state.cy);
+                    var rsum = multiplySumRadial(maskCanvas, plot.source_data(), data.dims, circle1.state.cx, circle1.state.cy);
                     plottableY.data = [rsum.xy];
                     $("#yplot_plot").empty();
                     yplot = plotD3("yplot_plot", plottableY, {
@@ -514,8 +515,8 @@
         }
         if ('areaDetector.counts' in nodes) {
             detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;
-           
-            window.refreshRequested = true;
+
+            window.refreshRequested = window.updateOnData; // trigger refresh if updateOnData is true;
         }
         if ('areaDetector.beamCenterX' in nodes) {
             detectors.areaDetector.beamCenterX = nodes['areaDetector.beamCenterX'].currentValue.userVal.val;
@@ -723,8 +724,8 @@
 
     .axis path,
     .axis line {
+      stroke: black;
       fill: none;
-      stroke: #000;
       shape-rendering: crispEdges;
     }
     .axis .axis-label {
@@ -734,7 +735,7 @@
         -moz-user-select: none;
     }
 
-    .grid .tick {
+    .axis .tick line, .grid .tick {
         stroke: lightgrey;
         opacity: 0.7;
     }
