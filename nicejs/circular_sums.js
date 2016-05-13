@@ -56,15 +56,16 @@
             normalize = 0;
             
             if (dx > 0 && dy > 0) {                
-                maskData = maskCtx.getImageData(min_x,min_y,dx,dy).data;
+                var maskData = maskCtx.getImageData(min_x,min_y,dx,dy).data;
                 //data = imgCtx.getImageData(min_x,min_y,dx,dy).data;
                 
                 for (var i=0; i<dx; i++) {
                     for (var j=0; j<dy; j++) {
-                        var mi = (i*dy + j) * 4;
-                        normalize += maskData[mi];
+                        var mi = (j*dx + i) * 4;
+                        var n = maskData[mi];
+                        normalize += n;
                         //sum += maskData[mi] * data[min_y + j][min_x + i];
-                        sum += maskData[mi] * data[max_y - 1 - j][min_x + i];
+                        sum += n * data[ch - min_y - j -1][min_x + i];
                     }
                 }
             }
@@ -132,15 +133,16 @@
             normalize = 0;
             
             if (dx > 0 && dy > 0) {                
-                maskData = maskCtx.getImageData(min_x,min_y,dx,dy).data;
+                var maskData = maskCtx.getImageData(min_x,min_y,dx,dy).data;
                 //data = imgCtx.getImageData(min_x,min_y,dx,dy).data;
                 
                 for (var i=0; i<dx; i++) {
                     for (var j=0; j<dy; j++) {
-                        var mi = (i*dy + j) * 4;
-                        normalize += maskData[mi];
+                        var mi = (j*dx + i) * 4;
+                        var n = maskData[mi];
+                        normalize += n;
                         //sum += maskData[mi] * data[min_y + j][min_x + i];
-                        sum += maskData[mi] * data[max_y - 1 - j][min_x + i];
+                        sum += n * data[ch - min_y - j - 1][min_x + i];
                     }
                 }
             }
