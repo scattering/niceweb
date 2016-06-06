@@ -56,42 +56,25 @@
             function(r)
             {
                 router = r;
-                return router.createSession(username, password);
+                return Promise.all(
+                    router.createSession(username, password),
+                    router.getACMTimeout(),
+                    communicator.createObjectAdapterWithRouter("", router)
+                )
             }
         ).then(
-            function(s)
+            function(s,acmT,a)
             {   
-                session = s;
-                return router.getSessionTimeout();
-            }
-        ).then(
-            function(timeout) {
-                var refreshSession = function()
-                {
-                    if (communicator.isShutdown()) {
-                        // we're done...
-                        return 
+                session = s[0];
+                var acmTimeout = acmT[0];
+                adapter = a[0];
+        
+                if(acmTimeout > 0)
+                    {
+                        var connection = router.ice_getCachedConnection();
+                        connection.setACM(acmTimeout, Ice.ACMClose.CloseOff, Ice.ACMHeartbeat.HeartbeatAlways);
                     }
-                    router.refreshSession().exception(
-                        function(ex) 
-                        {
-                            //console.log("refresh failed: ", ex);
-                            alert('Sesssion refresh failed' + ex);
-                        }
-                    ).delay(timeout.toNumber() * 500).then(
-                        function()
-                        {
-                            //console.log('refreshing session... ' + (new Date()));
-                            refreshSession();
-                        });
-                };
-                refreshSession();
-                //window.setInterval(router.refreshSession, timeout.toNumber() * 0.7 * 1000);
-                return communicator.createObjectAdapterWithRouter("", router);
-            }
-        ).then(
-            function(a) {
-                adapter = a;
+
                 
                 // disconnect on page unload
                 window.addEventListener("beforeunload", disconnect);
