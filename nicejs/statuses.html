@@ -1,0 +1,101 @@
+<html>
+<head>
+  <title>Status of NICE servers at NCNR</title>
+  <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
+  <script src="icejs/Ice.js"></script>
+  <script src="icejs/Glacier2.js"></script>
+  <script type="text/javascript">
+    window.onload = function() {
+      communicator = Ice.initialize();
+      var polling_interval = 1000; // 1 second
+      var instruments = {
+        "Magik": "129.6.120.90",
+        "MagikVM": "129.6.123.62",
+        "Spin Echo": "129.6.120.247",
+        "10m SANS": "129.6.120.121",
+        "NGB30 SANS": "129.6.120.18",
+        "BT4": "129.6.120.94",
+        "PBR": "129.6.120.84",
+        "NG7R": "129.6.120.111",
+        "Test Station": "129.6.120.98",
+        "NG7 SANS": "129.6.120.19"
+      };
+      var instrument_names = Object.keys(instruments)
+      var wasAlive = {};
+          proxies = {};
+          status_elements = {};
+      for (var i=0; i<instrument_names.length; i++) {
+        var instrument_name = instrument_names[i],
+            ip = instruments[instrument_name];
+        wasAlive[instrument_name] = false;
+        proxies[instrument_name] = communicator.stringToProxy('NiceGlacier2/router:ws -h ' + ip + ' -p 9999');
+        var el = document.createElement("tr");
+        var label = document.createElement("td");
+        label.classList.add("instrument");
+        label.innerHTML = instrument_name + ":";
+        var value = document.createElement("td");
+        value.classList.add("value");
+        value.classList.add("stopped");
+        value.innerHTML = "STOPPED";
+        el.appendChild(label);
+        el.appendChild(value)
+        status_elements[instrument_name] = el;
+        document.getElementById("status").appendChild(el);
+        
+      }
+      
+      function isAlive(instrument_name) {
+        return proxies[instrument_name].ice_ping()
+      }
+      
+      function checkAll() {
+        instrument_names.forEach(function(n) {
+          var el = status_elements[n];
+          isAlive(n)
+            .then(function() {
+              var value = el.getElementsByClassName("value")[0]
+              value.innerHTML = "RUNNING";
+              value.classList.remove("stopped")
+              value.classList.add("running")
+            })
+          .exception(function(e) {
+            //console.log(n, e);
+            var value = el.getElementsByClassName("value")[0]
+            value.innerHTML = "STOPPED";
+            value.classList.add("stopped")
+            value.classList.remove("running")
+          })
+        })
+        document.getElementById("timestamp").innerHTML = "last checked: " + (new Date()).toString();
+      }
+      
+      window.setInterval(checkAll, 1000);
+    }
+  </script>
+  <style type="text/css">
+    body {
+        font-family: 'Open Sans' !important;
+    }
+    table tr td {
+      padding-right: 10px;
+    }
+    .stopped {
+      color: red;
+      font-weight: bold;
+    }
+    .running {
+      color: green;
+      font-weight: bold;
+    }
+    
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>NICE servers at NCNR</h1>
+    <h4 id="timestamp"></h4>
+  </div>
+  <table id="status"></div>
+</body>
+</html>
+    
