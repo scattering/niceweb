@@ -526,7 +526,9 @@ $(function() {
         });
         var trajectories_folder = experiment_folder.children.find( function(x) { return /trajectories/.test(x.name) });
         if (trajectories_folder == undefined) { return }
-        var trajectory_files = trajectories_folder.children.map(function(x) { return (x.name) });
+        var trajectory_files = trajectories_folder.children
+          .filter(function(x) {return x.isFile})
+          .map(function(x) { return (x.name) });
         
         var trajectories_path = trajectories_folder.name;
         var labels = trajectory_files.map(function(x) { var pel = x.split('/'); return pel[pel.length - 1]});

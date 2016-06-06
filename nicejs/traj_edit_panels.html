@@ -3,13 +3,13 @@
   <meta charset="utf-8" />
   <title>NICE Trajectory Editor</title>
   <link rel="icon" type="image/png" href="css/appicon.png" />
-    <link rel="stylesheet" type="text/css" href="../../niceclient/static/css/layout-default-latest.css" />
+    <link rel="stylesheet" type="text/css" href="css/layout-default-latest.css" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Special+Elite" />
     <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css" />
     <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script>
     <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
-    <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
+    <script type="text/javascript" src="jquery.layout-latest.js"></script>
     <script type="text/javascript" src="tv4.js"></script>
     <script type="text/javascript" src="tv4.async-jquery.js"></script>
   <!--<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />-->
@@ -201,7 +201,7 @@
         var username = document.getElementById("username").value;
         var password = document.getElementById("password").value;
         
-        signin(router_spec.replace(/<host>/, nice_hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+        signin(router_spec.replace(/<host>/, nice_hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
             function(api_object) {
                 // globals:
                 logging_in = false;
