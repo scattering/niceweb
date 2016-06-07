@@ -56,16 +56,20 @@
             function(r)
             {
                 router = r;
+                return router.createSession(username, password);
+            }
+        ).then(
+            function(s)
+            {
+                session = s;
                 return Promise.all(
-                    router.createSession(username, password),
                     router.getACMTimeout(),
                     communicator.createObjectAdapterWithRouter("", router)
                 )
             }
         ).then(
-            function(s,acmT,a)
+            function(acmT,a)
             {   
-                session = s[0];
                 var acmTimeout = acmT[0];
                 adapter = a[0];
         
