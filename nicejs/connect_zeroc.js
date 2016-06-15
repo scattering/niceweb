@@ -40,6 +40,9 @@
                 id.properties = Ice.createProperties();
                 id.properties.setProperty("Ice.Default.Router", routerEndpoint);
                 id.properties.setProperty("Ice.MessageSizeMax", "100000");
+                id.properties.setProperty("Ice.ACM.Close", "0");
+                id.properties.setProperty("Ice.ACM.Heartbeat", "3");
+                //id.properties.setProperty("Ice.ACM.Timeout", "120");
                 if (encoding != null) {
                     id.properties.setProperty("Ice.Default.EncodingVersion", encoding);
                 }
@@ -72,11 +75,20 @@
             {   
                 var acmTimeout = acmT[0];
                 adapter = a[0];
+                console.log("acm timeout:", acmTimeout);
         
                 if(acmTimeout > 0)
                     {
                         var connection = router.ice_getCachedConnection();
                         connection.setACM(acmTimeout, Ice.ACMClose.CloseOff, Ice.ACMHeartbeat.HeartbeatAlways);
+                        connection.setCallback({
+                            "closed": function(c) {
+                                alert("connection lost: ", String(c))
+                            },
+                            "heartbeat": function(hb) {
+                                console.log('server heartbeat');
+                            }
+                        });
                     }
 
                 
@@ -110,7 +122,7 @@
             }
         ).then(
             function() {
-                signinPromise.succeed(api);
+                signinPromise.succeed(api, communicator, router, session, adapter);
             }
         ).exception(
             function(ex)

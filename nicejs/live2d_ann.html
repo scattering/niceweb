@@ -42,10 +42,10 @@
     <link rel="stylesheet" href="../static/dialog-polyfill.css" />
     <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
     
-    <script src="icejs/Ice.js"></script>
-    <script src="icejs/Glacier2.js"></script>
-    <script src="icejs/IceStorm.js"></script>
-    <script src="icejs/IceGrid.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceGrid.min.js"></script>
 
     <script src="generated/data.js"></script>
     <script src="generated/devices.js"></script>
@@ -617,7 +617,7 @@
         var username = document.getElementById("username").value;
         var password = document.getElementById("password").value;
         
-        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, true, username, password).then(
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
             function(api_object) {
                 // globals:
                 logging_in = false;

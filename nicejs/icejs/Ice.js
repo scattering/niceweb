@@ -19656,7 +19656,7 @@
             {
                 try
                 {          
-                    this.connection.monitor(Date.now(), this._config);
+                    this._connection.monitor(Date.now(), this._config);
                 }
                 catch(ex)
                 {   
