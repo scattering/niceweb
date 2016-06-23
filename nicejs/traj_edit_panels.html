@@ -71,7 +71,20 @@
     var ice_protocol_version = "1.1";
             
     var logging_in = false;
-
+    
+    var INSTRUMENT_LOGOS = {
+        'pbr': 'pbr_logo_main.svg',
+        'pbr.ncnr.nist.gov': 'pbr_logo_main.svg',
+        'magik': 'magik_logo_red.svg', 
+        'magik.ncnr.nist.gov': 'magik_logo_red.svg',
+        'sans:ngb': 'nSoftlogo_mission.png',
+        'ngbsans.ncnr.nist.gov': 'nSoftlogo_mission.png',
+        'cts.ncnr.nist.gov': 'phades_logo.svg',
+        'phades': 'phades_logo.svg',
+        'bt4.ncnr.nist.gov': 'wurtzite_trans.gif',
+        'bt4': 'wurtzite_trans.gif',
+        'default': 'appicon.png'
+    }
     var nice_hostname = "h123062.ncnr.nist.gov"; // default NICE host
     var port = '9999';
     if (localStorage && localStorage.nice_hostname) {
@@ -241,9 +254,21 @@
                 .find('#status')
                 .find('.instrument-name').text('Server shut down: Not connected');
         }).on('niceServerConnected', function(ev) {
+            var logopath = 'css/';
+            var instrumentID = ev.originalEvent.detail.instrumentID.toLowerCase();
+            var virtual = ev.originalEvent.detail.testDeployment;
+            if (instrumentID in INSTRUMENT_LOGOS) {
+              logopath += INSTRUMENT_LOGOS[instrumentID];
+            } else {
+              logopath += INSTRUMENT_LOGOS['default'];
+            }
             $('#top_panel').addClass('connected')
-                .find('#status')
-                .find('.instrument-name').text("Instrument connected: " + nice_hostname);
+              .find('.instrument-name').text("Instrument connected: " + ((virtual)? "VIRTUAL " : "") + instrumentID)
+              .parent().find('.instrument-logo').attr("src", logopath);
+              
+            //$('#top_panel').addClass('connected')
+            //    .find('#status')
+            //    .find('.instrument-name').text("Instrument connected: " + nice_hostname);
         });
 	    
 	    dialog.show();
@@ -284,20 +309,29 @@
   <style type="text/css">
     #top_panel {
         background-color: LightYellow;
-        /* height: 30px; */
-        /* padding-top: 0px; */
-        /* padding-bottom: 0px; */
-        font-weight: bold;
-        font-family: 'Open Sans' !important;
-        /* font-family: 'Special Elite' !important; */
-        /* font-family: 'xkcd' !important; */
+        height: 30px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-weight: normal;
+        /* font-family: 'Open Sans'; */
         /* font-variant: small-caps; */
     }
     #top_panel.connected {
         background-color: LightGreen;
     }
+    #top_panel h3 {
+        display: inline-block;
+        margin: 0px;
+    }
     .instrument-name {
         color: DarkGreen;
+    }
+    .instrument-logo {
+        height: 3em;
+        padding-left: 1em;
+        padding-right: 1em;
+        border: 0px;
+        vertical-align: middle;
     }
     #login {
         top: 28%;
@@ -345,7 +379,8 @@
 <div id="top_panel" class="ui-layout-north">
     <div id="status">
         <span id="statusline">Trajectory Editor</span>
-        <span id="instrument_name" class="instrument-name"></span>
+        <h3 class="instrument-name">Instrument: </h3>
+        <img src="css/appicon.png" class="instrument-logo">
     </div>
 </div>
  
