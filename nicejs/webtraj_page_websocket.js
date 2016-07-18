@@ -1,15 +1,19 @@
+"use strict";
+
+var trajectory_editor = window.trajectory_editor || {};
+
 $(function() {
     
-    TRAJECTORY_PATH = "trajectories";
-    COMMON_PATH = "../../common/trajectories";
-    NICE_HOST = window.NICE_HOST ? window.NICE_HOST : "h123062.ncnr.nist.gov";
+    var TRAJECTORY_PATH = "trajectories";
+    var COMMON_PATH = "../../common/trajectories";
+    var NICE_HOST = window.NICE_HOST ? window.NICE_HOST : "h123062.ncnr.nist.gov";
     
     var EMPTY_TRAJ = "{'init': {}, 'loops': [{'vary': []}]}";
     var MONITOR_RATE_ESTIMATE_EXPRESSION = 'slitAperture1.softPosition / 1000.0 * <cached_monitor>';
     var device_list;
     
     // add buttons for functionality
-    buttons = {};
+    var buttons = {};
     
     var bd = $('#buttons');
     bd.append($('<span />', {'text': 'Load (*.json): '}));
@@ -21,7 +25,7 @@ $(function() {
         'onchange': 'loadLocalFile()'}));
     buttons['refresh'] = bd.append($('<button />', {
         'text': 'Refresh files',
-        'onclick': 'refreshFileSystem()'}));
+        'onclick': 'trajectory_editor.refreshFileSystem()'}));
     bd.append($('<label />', {'text': 'Sort files', 'for': 'sort_files'}));
     buttons['sort'] = bd.append($('<input />', {
         'type': 'checkbox', 
@@ -76,9 +80,9 @@ $(function() {
     bb.hide();
     
     //var eb = $('#catalog');
-    wt = {'variable_names': {}}; // global
+    var wt = {'variable_names': {}}; // global
     
-    update_interactiveness = function() {
+    var update_interactiveness = function() {
         var interactive = document.getElementById('interactive').checked;
 //        if (!(interactive)) { 
 //            eb.hide(); 
@@ -105,13 +109,13 @@ $(function() {
         .each(resizeInput);
     
     
-    set_data = function(raw) {
-        parsed_data = eval('(function(){ var result =' + raw + '; return result})();')
+    var set_data = function(raw) {
+        var parsed_data = eval('(function(){ var result =' + raw + '; return result})();')
         $("#editor").empty();
         //loops = loopsList(parsed_data.loops);
         var interactive = document.getElementById('interactive').checked;
         wt = interactive ? new webtraj_interactive() : new webtraj();
-        editor = wt.mainList(parsed_data);
+        var editor = wt.mainList(parsed_data);
         wt.variable_names['devices'] = (devicesMonitor && devicesMonitor.devices)? Object.keys(devicesMonitor.devices).sort() : [];
         wt.variable_names['init'] = init_keywords;
         wt.source_trajectory = parsed_data;
@@ -125,7 +129,7 @@ $(function() {
         return wt;     
     }
     
-    loadLocalFile = function() {
+    var loadLocalFile = function() {
         var file = document.getElementById('trajfile').files[0]; // only one file allowed
         var datafilename = file.name;
         var result = null;
@@ -142,7 +146,7 @@ $(function() {
     //var fileinput = document.getElementById('trajfile');
     //fileinput.onchange = loadData;  
     
-    show_traj = function() {
+    var show_traj = function() {
         var traj_obj = editor.getValue();
         var traj = JSON.stringify(traj_obj, null, "  ");
         scriptwin = window.open("", "_blank");
@@ -163,7 +167,7 @@ $(function() {
     
     
     
-    loadFile = function(path, filename) {
+    var loadFile = function(path, filename) {
         return api.readFileAsText(path + '/' + filename).then(
             function (data) {
                 wt = set_data(data);
@@ -180,7 +184,7 @@ $(function() {
         );
     }
     
-    saveFile = function(filename, overWrite) {
+    var saveFile = function(filename, overWrite) {
         if (filename == null || filename == '') {
             var filename = wt.filename;
         }
@@ -196,7 +200,7 @@ $(function() {
         return api.writeFileFromText(path, filecontents, ov, ap);   
     }
     
-    saveAs = function(checkExisting, filename) {
+    var saveAs = function(checkExisting, filename) {
         if (filename == null) {
             var prompt_file = "";
             if (wt && wt.filename) { prompt_file = wt.filename }; 
@@ -217,17 +221,17 @@ $(function() {
         });
     }
     
-    save = function() {
+    var save = function() {
         saveAs(false, wt.filename);
     }
     
-    deleteFilesConfirm = function(filenames) {
+    var deleteFilesConfirm = function(filenames) {
         var yn = confirm("Delete: \n" + filenames.join('\n') + "\n\nAre you sure?");
         if (yn == true) { deleteFiles(filenames); }
         else {} // do nothing
     }
     
-    deleteFiles = function(filenames) {
+    var deleteFiles = function(filenames) {
         return api.deleteFiles(filenames).then(
             function() {
                 //refreshBoth();
@@ -239,7 +243,7 @@ $(function() {
         );
     }
     
-    deleteFile = function(path) {
+    var deleteFile = function(path) {
         if (path == null || path == '') {
             //var filename = wt.filename;
             //var path = TRAJECTORY_PATH + '/' + filename;
@@ -256,7 +260,7 @@ $(function() {
         }
     }
     
-    enqueue = function() {
+    var enqueue = function() {
         var selected = $('#filelist ol .ui-selected');
         var promises = [], filename;
         for (var i=0; i<selected.length; i++) {
@@ -268,7 +272,7 @@ $(function() {
         //return api.runJsonTrajectoryFile(filename);
     }
     
-    server_dry_run = function() {
+    var server_dry_run = function() {
         var filename = wt.filename;
         return api.console("dryRunTrajectory " + filename).then(
             function(data) {
@@ -277,7 +281,7 @@ $(function() {
         );
     }
     
-    getPrimaryNodeIDMap = function() {
+    var getPrimaryNodeIDMap = function() {
         var output = {};
         var devices = devicesMonitor.getAllDeviceNames();
         devices.forEach(function (item, i) {
@@ -319,7 +323,7 @@ $(function() {
         return output_value;
     }
     
-    getLiveState = function(strict) {
+    var getLiveState = function(strict) {
         // if strict is true: don't allow bare device names.
         var live = {};
         var device_ids = Object.keys(devicesMonitor.devices);
@@ -358,7 +362,7 @@ $(function() {
     }
 
     
-    getFastTimeEstimate_old = function(path, filename, live_state, primaryNodeIDMap, callback) {
+    var getFastTimeEstimate_old = function(path, filename, live_state, primaryNodeIDMap, callback) {
         if (filename == null || filename == '') {
             var filename = wt.filename;
         }
@@ -392,7 +396,7 @@ $(function() {
         )
     }
     
-    getFastTimeEstimate = function(path, filename, live_state, primaryNodeIDMap, callback) {
+    var getFastTimeEstimate = function(path, filename, live_state, primaryNodeIDMap, callback) {
         if (filename == null || filename == '') {
             var filename = wt.filename;
         }
@@ -405,7 +409,6 @@ $(function() {
                 var parsed_data = eval('(function(){ var result =' + data + '; return result})();')
                 traj_obj = parsed_data;
                 //traj_obj = expandDevices(parsed_data);
-                my_traj_obj = traj_obj;
                 return api.getPersistentValue('estimatedMonitorRate')
             }
         ).then(
@@ -433,10 +436,10 @@ $(function() {
                 //var timeEstimate = fastTimeEstimate(traj_obj, ctx);
                 //callback(timeEstimate, path, filename);
             }
-        );
+        )
     }
     
-    getFiles = function(path, sort_files, callback) {
+    var getFiles = function(path, sort_files, callback) {
         //var wildcard = '*.json';
         var wildcard = '*';
         var fullPath = false;
@@ -448,7 +451,7 @@ $(function() {
         );
     }
     
-    arrowKeyNav = function(e){
+    var arrowKeyNav = function(e){
         var ol = $(e.target).children('ol');
         var selected = ol.find('.ui-selected');
         if (selected.length == 0) { e.preventDefault(); return }
@@ -498,7 +501,7 @@ $(function() {
         e.preventDefault();
     };
     
-    getTrajectoriesPath = function() {
+    var getTrajectoriesPath = function() {
         var current_path = experimentMonitor.current_experiment.clientPath;
         var experiment_folder = fileMonitor._root.children.filter( function(x) {
             var re = new RegExp(current_path);
@@ -509,14 +512,14 @@ $(function() {
         return trajectories_path;
     }
     
-    refreshFileSystem = function() {
+    function refreshFileSystem() {
         var current_path = experimentMonitor.current_experiment.clientPath;
         return api.refreshFileSystem(current_path + '/trajectories/').then(function() {
             refreshBoth()
         });
     }
     
-    refreshBoth = function() {
+    function refreshBoth() {
         var sort_files = document.getElementById('sort_files').checked;
         //var show_common = document.getElementById('show_common');
         var current_path = experimentMonitor.current_experiment.clientPath;
@@ -710,7 +713,7 @@ $(function() {
     }
     */
     
-    updateTimeEstimate = function(t, n, path, filename) {
+    var updateTimeEstimate = function(t, n, path, filename) {
         var totalTime = t; //.totalTime;
         var numPoints = n;
         var hours = Math.floor(totalTime/3600.0);
@@ -722,7 +725,7 @@ $(function() {
           .html('#' + numPoints.toFixed(0));
     }
     
-    updateFileList = function(path, filenames, emptyFirst, listclass, contentGenerator) {
+    var updateFileList = function(path, filenames, emptyFirst, listclass, contentGenerator) {
         var filelist = $('#filelist');
         var ol = $('#filelist ol');
         var defaultContentGenerator = function(path, filename) {
@@ -748,7 +751,7 @@ $(function() {
         filelist.height( $('#files').innerHeight() - $('#files h3').outerHeight() - 10 ); // padding is 5
     }
     
-    HashMapToObject = function(m) {
+    function HashMapToObject(m) {
         var obj={}; 
         m.forEach( function(dn) {
             obj[dn]=m.get(dn);           
@@ -756,11 +759,11 @@ $(function() {
         return obj
     } 
     
-    getDevices = function() {
+    var getDevices = function() {
         return
     }
     
-    updateDeviceSelect = function(devices) {
+    var updateDeviceSelect = function(devices) {
         var deviceSelect = $('.device-select');
         deviceSelect.empty();
         var sortedDevices = Object.keys(devices).sort();
@@ -821,5 +824,9 @@ $(function() {
     });
     
     $('#filelist').keydown(arrowKeyNav);
+    
+    // exports:
+    trajectory_editor.refreshBoth = refreshBoth;
+    trajectory_editor.refreshFileSystem = refreshFileSystem;
     
 });

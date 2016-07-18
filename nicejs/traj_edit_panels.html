@@ -85,7 +85,8 @@
         'bt4': 'wurtzite_trans.gif',
         'default': 'appicon.png'
     }
-    var nice_hostname = "h123062.ncnr.nist.gov"; // default NICE host
+    var nice_hostname = "nice04.ncnr.nist.gov"; // default NICE host
+    var instrument_id; // will be set on login
     var port = '9999';
     if (localStorage && localStorage.nice_hostname) {
         nice_hostname = localStorage.nice_hostname
@@ -128,7 +129,7 @@
                 ip = this._findInsertionPoint(nodename, this._root, 2);
                 ip.children.push(n)               
             };
-            refreshBoth();
+            trajectory_editor.refreshBoth();
             this.added.push([nodes]);
         },
         filesRemoved: function(nodes,  __current) {
@@ -153,7 +154,7 @@
                     alert("can't delete " + n.name + ": file not found");
                 } 
             };
-            refreshBoth();
+            trajectory_editor.refreshBoth();
             this.removed.push([nodes]);
         },
         filesUpdated: function(nodes, contents, __current) {
@@ -215,10 +216,11 @@
         var password = document.getElementById("password").value;
         
         signin(router_spec.replace(/<host>/, nice_hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
-            function(api_object) {
+            function(api_object, communicator, router, session, adapter, server_state) {
                 // globals:
                 logging_in = false;
                 api = api_object;
+                instrument_id = server_state.instrumentID;
                 devicesMonitor = new DevicesMonitorI();
                 fileMonitor = new FileMonitorI();
                 experimentMonitor = new ExperimentMonitorI();
@@ -229,7 +231,7 @@
                     fileMonitor.subscribed, // check to make sure the subscribe event is complete on this end
                     experimentMonitor.subscribed,
                     devicesMonitor.subscribed
-                ).then(function() { refreshBoth(); experimentMonitor.postSwitchedHooks = [refreshBoth]; })
+                ).then(function() { trajectory_editor.refreshBoth(); experimentMonitor.postSwitchedHooks = [trajectory_editor.refreshBoth]; })
         }).exception(
             function(ex) {
                 console.log(ex);

@@ -20,7 +20,7 @@
     var state = State.Disconnected;
     var hasError = false;
     active = false;
-    var api, communicator, router, session, adapter;
+    var api, communicator, router, session, adapter, server_state;
     var systemMonitor; // watch for shutdown
     var shutdown_event = new Event("niceServerShutdown");
 
@@ -115,6 +115,7 @@
                 var connection_event = new CustomEvent("niceServerConnected", {
                     'detail': state // {'instrumentID': state.instrumentID}
                 }); 
+                server_state = state;
                 window.dispatchEvent(connection_event);
                 
                 systemMonitor = new SystemMonitorI();
@@ -122,7 +123,7 @@
             }
         ).then(
             function() {
-                signinPromise.succeed(api, communicator, router, session, adapter);
+                signinPromise.succeed(api, communicator, router, session, adapter, server_state);
             }
         ).exception(
             function(ex)
