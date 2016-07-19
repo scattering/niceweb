@@ -32,23 +32,23 @@ $(function() {
         'id':'sort_files',
         'checked': true}));
     buttons['showtraj'] = bd.append($('<button />', {
-        'text': 'Show trajectory',
-        'onclick': 'show_traj();'}));
+        'text': 'Show trajectory'})
+        .click(show_traj));
     buttons['dryrun'] = bd.append($('<button />', {
-        'text': 'Dry run',
-        'onclick': 'server_dry_run();'}));
+        'text': 'Dry run'})
+        .click(function() {server_dry_run()}));
     buttons['enqueue'] = bd.append($('<button />', {
-        'text': 'Enqueue', 
-        'onclick': 'enqueue();'}));
+        'text': 'Enqueue'})
+        .click(function() {enqueue()}));
     buttons['save'] = bd.append($('<button />', {
-        'text': 'Save',
-        'onclick': 'save();'}));
+        'text': 'Save'})
+        .click(function() {save()}));
     buttons['delete'] = bd.append($('<button />', {
-        'text': 'Delete',
-        'onclick': 'deleteFile();'}));
+        'text': 'Delete'})
+        .click(function() {deleteFile()}));
     buttons['saveAs'] = bd.append($('<button />', {
-        'text': 'Save as',
-        'onclick': 'saveAs(true);'}));
+        'text': 'Save as'})
+        .click(function() {saveAs()}));
     //bd.append($('<label />', {'text': 'Show common', 'for': 'show_common'}));
     //buttons['show_common'] = bd.append($('<input />', {
     //    'type': 'checkbox', 
@@ -81,6 +81,7 @@ $(function() {
     
     //var eb = $('#catalog');
     var wt = {'variable_names': {}}; // global
+    var editor; // to be used later
     
     var update_interactiveness = function() {
         var interactive = document.getElementById('interactive').checked;
@@ -115,7 +116,7 @@ $(function() {
         //loops = loopsList(parsed_data.loops);
         var interactive = document.getElementById('interactive').checked;
         wt = interactive ? new webtraj_interactive() : new webtraj();
-        var editor = wt.mainList(parsed_data);
+        editor = wt.mainList(parsed_data);
         wt.variable_names['devices'] = (devicesMonitor && devicesMonitor.devices)? Object.keys(devicesMonitor.devices).sort() : [];
         wt.variable_names['init'] = init_keywords;
         wt.source_trajectory = parsed_data;
@@ -146,7 +147,7 @@ $(function() {
     //var fileinput = document.getElementById('trajfile');
     //fileinput.onchange = loadData;  
     
-    var show_traj = function() {
+    function show_traj() {
         var traj_obj = editor.getValue();
         var traj = JSON.stringify(traj_obj, null, "  ");
         scriptwin = window.open("", "_blank");
@@ -200,7 +201,8 @@ $(function() {
         return api.writeFileFromText(path, filecontents, ov, ap);   
     }
     
-    var saveAs = function(checkExisting, filename) {
+    function saveAs(checkExisting, filename) {
+        var checkExisting = (checkExisting == null) ? true : false;
         if (filename == null) {
             var prompt_file = "";
             if (wt && wt.filename) { prompt_file = wt.filename }; 
@@ -221,7 +223,7 @@ $(function() {
         });
     }
     
-    var save = function() {
+    function save() {
         saveAs(false, wt.filename);
     }
     
@@ -243,7 +245,7 @@ $(function() {
         );
     }
     
-    var deleteFile = function(path) {
+    function deleteFile(path) {
         if (path == null || path == '') {
             //var filename = wt.filename;
             //var path = TRAJECTORY_PATH + '/' + filename;
@@ -260,7 +262,7 @@ $(function() {
         }
     }
     
-    var enqueue = function() {
+    function enqueue() {
         var selected = $('#filelist ol .ui-selected');
         var promises = [], filename;
         for (var i=0; i<selected.length; i++) {
@@ -272,7 +274,7 @@ $(function() {
         //return api.runJsonTrajectoryFile(filename);
     }
     
-    var server_dry_run = function() {
+    function server_dry_run() {
         var filename = wt.filename;
         return api.console("dryRunTrajectory " + filename).then(
             function(data) {
@@ -828,5 +830,7 @@ $(function() {
     // exports:
     trajectory_editor.refreshBoth = refreshBoth;
     trajectory_editor.refreshFileSystem = refreshFileSystem;
+    trajectory_editor.save = save;
+    trajectory_editor.saveAs = saveAs;
     
 });
