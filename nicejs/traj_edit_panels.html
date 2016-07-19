@@ -287,25 +287,7 @@
 		});
 		
 		var eb = $('#catalog');
-    
-        update_interactiveness = function() {
-            var interactive = document.getElementById('interactive').checked;
-            if (!(interactive)) { 
-                eb.hide(); 
-            } else {
-                eb.show();
-            }
-            if (wt.raw) { // && wt.filename) {
-                var filename = wt.filename;
-                var new_editor = set_data(wt.raw);
-                new_editor.filename = filename;
-            }
-            layout.resizeAll();
-        }
-       
-        //getDevices().then(refreshBoth);
-        //refreshBoth();
-    
+
     };
   </script>
   <style type="text/css">

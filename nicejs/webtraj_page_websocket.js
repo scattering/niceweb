@@ -59,8 +59,8 @@ $(function() {
     buttons['interactive'] = bd.append($('<input />', {
         'type': 'checkbox', 
         'id':'interactive',
-        'checked': false,
-        'onchange': 'update_interactiveness()'}));
+        'checked': false})
+        .change(function() {update_interactiveness()}));
     /*
     bd.append($('<label />', {'text': 'Instrument:', 'for': 'nice_host'}));
     buttons['nice_host'] = bd.append($('<input />', {
@@ -83,7 +83,7 @@ $(function() {
     var wt = {'variable_names': {}}; // global
     var editor; // to be used later
     
-    var update_interactiveness = function() {
+    function update_interactiveness() {
         var interactive = document.getElementById('interactive').checked;
 //        if (!(interactive)) { 
 //            eb.hide(); 
