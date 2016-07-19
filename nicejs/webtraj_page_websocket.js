@@ -150,12 +150,13 @@ $(function() {
     function show_traj() {
         var traj_obj = editor.getValue();
         var traj = JSON.stringify(traj_obj, null, "  ");
-        scriptwin = window.open("", "_blank");
+        var scriptwin = window.open("", "_blank");
         scriptwin.traj_obj = traj_obj;
         scriptwin.document.title = "Trajectory: ";
         var code = scriptwin.document.createElement('pre');
         scriptwin.document.body.appendChild(code);
         code.innerHTML = traj;
+        return scriptwin
     }
     
     set_data(EMPTY_TRAJ);
