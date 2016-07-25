@@ -21,8 +21,9 @@ $(function() {
         'type': 'file', 
         'multiple':'false', 
         'id':'trajfile', 
-        'name':'trajfile',
-        'onchange': 'loadLocalFile()'}));
+        'name':'trajfile'})
+        .change(loadLocalFile));
+        //'onchange': 'loadLocalFile()'}));
     buttons['refresh'] = bd.append($('<button />', {
         'text': 'Refresh files',
         'onclick': 'trajectory_editor.refreshFileSystem()'}));
@@ -130,7 +131,7 @@ $(function() {
         return wt;     
     }
     
-    var loadLocalFile = function() {
+    function loadLocalFile() {
         var file = document.getElementById('trajfile').files[0]; // only one file allowed
         var datafilename = file.name;
         var result = null;
