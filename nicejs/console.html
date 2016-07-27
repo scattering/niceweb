@@ -345,6 +345,9 @@
             this.state = queueState;
             this._update_controls(queueState);
         },
+        setQueueDryrunTime(timeLeft, __current) {
+            this.timeLeft = timeLeft.toNumber();
+        },
         ////////////////////////////////////////////////////////////////////
         // END OF API IMPLEMENTATION OVERRIDES
         ////////////////////////////////////////////////////////////////////
