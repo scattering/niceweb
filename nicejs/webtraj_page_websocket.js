@@ -23,10 +23,9 @@ $(function() {
         'id':'trajfile', 
         'name':'trajfile'})
         .change(loadLocalFile));
-        //'onchange': 'loadLocalFile()'}));
     buttons['refresh'] = bd.append($('<button />', {
-        'text': 'Refresh files',
-        'onclick': 'trajectory_editor.refreshFileSystem()'}));
+        'text': 'Refresh files'})
+        .click(refreshFileSystem));
     bd.append($('<label />', {'text': 'Sort files', 'for': 'sort_files'}));
     buttons['sort'] = bd.append($('<input />', {
         'type': 'checkbox', 
