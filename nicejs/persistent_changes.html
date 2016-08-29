@@ -38,6 +38,7 @@
     var RouterPrx = Glacier2.RouterPrx;
     var logging_in = false;
     var abort = false;
+    var current_request;
     
     var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
     var ice_protocol_version = "1.1";
@@ -263,25 +264,35 @@
         var lower = 0;
         var upper = $("#changes").val();
         var step = 1;
-        getValue(lower, step, upper, $("#devicenode").val(), now);
+        $("#start").prop("disabled", true);
+        getValue(lower, step, upper, $("#devicenode").val(), now)
     });
     
-    $("#stop").click(function() { abort=true });
+    $("#stop").click(function() { 
+        abort=true;
+        if (current_request && current_request.cancel) {
+            console.log("cancelling...");
+            current_request.cancel();
+        }
+        $("#start").prop("disabled", false);
+    });
     
     function getValue(lower, step, upper, devicename, current) {
         console.log(lower, step, upper, devicename, current);
-        if (lower > upper || abort == true) {
-            return
+        if (lower >= upper || abort == true) {
             abort = false;
+            $("#start").prop("disabled", false);
+            return 
         }
         else {
-            return api.getHistoricValue([devicename], toLong(current), false).then(
+            current_request = api.getHistoricValue([devicename], toLong(current), false)
+            return current_request.then(
                 function(v) {
                     var last_changed = v[0].timeStampAfter; // Ice.Long;
                     var new_current = last_changed.toNumber() - 1000;
                     console.log((new Date(current)), v[0].userVal.val, v[0].userUnit);
                     $("#console").append($("<div/>", {text: (new Date(last_changed.toNumber())).toLocaleString() + " " + v[0].userVal.val + " " + v[0].userUnit + "\n"}));
-                    getValue(lower + step, step, upper, devicename, new_current);
+                    return getValue(lower + step, step, upper, devicename, new_current);
                 }
             );
         }
