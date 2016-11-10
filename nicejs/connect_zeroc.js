@@ -39,6 +39,12 @@
                 var id = new Ice.InitializationData();
                 id.properties = Ice.createProperties();
                 id.properties.setProperty("Ice.Default.Router", routerEndpoint);
+                //id.properties.setProperty("Ice.Plugin.IceSSL", "IceSSL:createIceSSL");
+                //id.properties.setProperty("IceSSL.DefaultDir", "certs");
+                //id.properties.setProperty("IceSSL.CAs", "cacert.pem");
+                //id.properties.setProperty("IceSSL.Password", "iceicebaby");
+                //id.properties.setProperty("IceSSL.TrustOnly=CN="Server"
+                
                 id.properties.setProperty("Ice.MessageSizeMax", "100000");
                 id.properties.setProperty("Ice.ACM.Close", "0");
                 id.properties.setProperty("Ice.ACM.Heartbeat", "3");
