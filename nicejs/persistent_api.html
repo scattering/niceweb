@@ -219,23 +219,8 @@
                 api = api_object;
                 persistMonitor = new PersistMonitorI();
                 persistMonitor.postChangedHooks = [];
-                return Promise.all(
-                router.getSessionTimeout(),
-                router.getCategoryForClient()
-            ).then(
-                function(timeoutArgs, categoryArgs) {
-                    var timeout = timeoutArgs[0];
-                    var category = categoryArgs[0];
-                    //
-                    // Create the  servant and add it to the
-                    // ObjectAdapter.
-                    //
-                    var proxyClass = nice.api.persist.PersistMonitorPrx;
-                    var preProxy = adapter.add(persistMonitor, new Ice.Identity("persistMonitor", category));
-                    var monitorProxy = proxyClass.uncheckedCast(preProxy);
-                    return api.subscribeToPeristentConfig(monitorProxy);
-                })
-        })
+                return subscribe(persistMonitor, 'persist');
+            })
         if (localStorage) {
             localStorage.nice_hostname = hostname;
         }
