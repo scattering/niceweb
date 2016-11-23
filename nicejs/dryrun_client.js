@@ -204,13 +204,19 @@ var range_fill = function(params) {
     
     if (!('step' in params && 'numPoints' in params)) {
         // fill in missing one:
-        if ('step' in params) { 
+        if ('step' in params) {
+            // flip the sign of step if it doesn't match range:
+            if (Math.sign(params.step) != Math.sign(params.range)) {
+                params.step *= -1.0;
+                console.log("flipping the sign on the step: ", params.step, params.range);
+            } 
             params.numPoints = (params.range / parseFloat(params.step)) + 1 
         }
         else { // 'step' is missing
             params.step = params.range / (params.numPoints - 1);
         }
     }
+    
     return params;
 }
 
