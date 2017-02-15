@@ -3,11 +3,12 @@
          __init__: function() {
             this.subscribed = new Promise();
         },
-        onSubscribe: function(devices, nodes, groups, __current) {
+        onSubscribe: function(devices, nodes, staticNodeData, groups, __current) {
             this.devices = this.HashMapToObject(devices);
             this.nodes = this.HashMapToObject(nodes);
             var changed = this.nodes;
             this.groups = this.HashMapToObject(groups);
+            this.staticNodeData = this.HashMapToObject(staticNodeData);
             this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
             this.postChangedHooks.forEach( function(callback) { callback(changed); });
             this.subscribed.succeed();
