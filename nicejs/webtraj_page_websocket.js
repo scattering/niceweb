@@ -510,7 +510,7 @@ $(function() {
             var re = new RegExp(current_path);
             return re.test(x.name)
         });
-        var trajectories_folder = experiment_folder[0].children.filter( function(x) { return /^trajectories$/.test(x.name) });
+        var trajectories_folder = experiment_folder[0].children.filter( function(x) { return /\/trajectories\//.test(x.name) });
         var trajectories_path = trajectories_folder[0].name;
         return trajectories_path;
     }
@@ -530,7 +530,7 @@ $(function() {
             var re = new RegExp(current_path);
             return re.test(x.name)
         });
-        var trajectories_folder = experiment_folder.children.find( function(x) { return /^trajectories$/.test(x.name) });
+        var trajectories_folder = experiment_folder.children.find( function(x) { return /\/trajectories\//.test(x.name) });
         if (trajectories_folder == undefined) { return }
         var trajectory_files = trajectories_folder.children
           .filter(function(x) {return x.isFile})
