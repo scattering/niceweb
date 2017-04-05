@@ -641,10 +641,10 @@
     $(document)
         .on('mouseenter.queue2console', '#queue_panel ul li', function(ev) {
             var uuid = this.id; //getAttribute('command_uuid');
-            $('#console .console-item[command_uuid="'+uuid+'"] .console-message').addClass('command-highlight', 0) })
+            $('#console .console-item[command_uuid="'+uuid+'"] .console-message').addClass('command-highlight') })
         .on('mouseleave.queue2console', '#queue_panel ul li', function(ev) {
             var uuid = this.id; //getAttribute('command_uuid');
-            $('#console .console-item[command_uuid="'+uuid+'"] .console-message').removeClass('command-highlight', 0) });
+            $('#console .console-item[command_uuid="'+uuid+'"] .console-message').removeClass('command-highlight') });
     
     $(document).on("dnd_outside_finish.vakata.jstree", function(e, data) {
         console.log('e: ', e, '\ndata: ', data);
