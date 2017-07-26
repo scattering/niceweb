@@ -338,20 +338,24 @@ var __fastTimeEstimate = (function() {
     function loopsRunWithTimeEstimate(loops, depth, context, counterstring, npstring, targetlist, entry_expr, timelist) {
         eval('var entry_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.counters) with(namespace.moving) return (' + entry_expr + ')};');
         //eval ('var entry_func = function(counters) { return ' + entry_expr + ' }');
-        loops.forEach( function(loop, index, array) {
+        for (var index=0; index<loops.length; index++) {
+            var loop = loops[index];
             if (loop.vary && loop.vary.length > 0) {               
                 var cstr = counterstring + '_' + index.toString();
                 var nstr = npstring + '_' + index.toString();
                 var items = [];
-                loop.vary.forEach( function(item) { items = items.concat(parseVaryItemF(item, cstr, context)); });
+                for (var i=0; i<loop.vary.length; i++) {
+                    var item = loop.vary[i];
+                    items[i] = parseVaryItemF(item, cstr, context);
+                }
+                //loop.vary.forEach( function(item) { items = items.concat(parseVaryItemF(item, cstr, context)); });
                 //context.assign(nstr, items[0].numPoints)
                 context.counters[nstr] = items[0].numPoints;
                 for (context.counters[cstr] = 0; context.counters[cstr] < context.counters[nstr]; context.counters[cstr]++) {
-                    items.forEach( function(item) {
-                        //context.moving[item.lhs] = context.eval(item.expression);
-                        //console.log(item.lhs, context.eval(item.expression));
+                    for (var i=0; i<items.length; i++) {
+                        var item = items[i];
                         context.assign(item.lhs, context.eval(item.expression), context.moving); //, context.inits);
-                    });
+                    }
                     if (loop.loops) { loopsRunWithTimeEstimate(loop.loops, depth, context, cstr, nstr, targetlist, entry_expr, timelist); }
                     else {
                         var entry_str = context.eval(entry_func);
@@ -367,7 +371,7 @@ var __fastTimeEstimate = (function() {
                     }
                 } 
             }
-        });
+        }
         return {targetlist: targetlist, names: context.keys(), timelist: timelist};
     }
     
