@@ -9,7 +9,12 @@ $(function() {
     var NICE_HOST = window.NICE_HOST ? window.NICE_HOST : "h123062.ncnr.nist.gov";
     
     var EMPTY_TRAJ = "{'init': {}, 'loops': [{'vary': []}]}";
-    var MONITOR_RATE_ESTIMATE_EXPRESSION = 'slitAperture1.softPosition / 1000.0 * <cached_monitor>';
+    var MONITOR_RATE_ESTIMATE_EXPRESSION = {
+        "PBR": '((slitAperture1.softPosition != null) ? slitAperture1.softPosition : live.slitAperture1.softPosition) / 1000.0 * <cached_monitor>',
+        "MAGIK": '((slitAperture1.softPosition != null) ? slitAperture1.softPosition : live.slitAperture1.softPosition) / 1000.0 * <cached_monitor>',
+        "NG7:HGR": '<cached_monitor>'
+    }
+        
     var device_list;
     
     // add buttons for functionality
@@ -384,7 +389,7 @@ $(function() {
         ).then(
             function(c) {
                 cached_monitor = c;
-                var expression_str = MONITOR_RATE_ESTIMATE_EXPRESSION.replace('<cached_monitor>', cached_monitor.toString());
+                var expression_str = (MONITOR_RATE_ESTIMATE_EXPRESSION[instrument_id] || "").replace('<cached_monitor>', cached_monitor.toString());
                 console.log('expr:', expression_str);
                 eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.inits) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
                 myEF = monitorEstimateExpressionFunc;
@@ -417,12 +422,12 @@ $(function() {
         ).then(
             function(c) {
                 cached_monitor = c;
-                var expression_str = MONITOR_RATE_ESTIMATE_EXPRESSION.replace('<cached_monitor>', cached_monitor.toString());
+                var expression_str = (MONITOR_RATE_ESTIMATE_EXPRESSION[instrument_id] || "").replace('<cached_monitor>', cached_monitor.toString());
                 //eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.inits) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
                 //myEF = monitorEstimateExpressionFunc;
                 //var ctx = newContext(live_state, monitorEstimateExpressionFunc, primaryNodeIDMap);
                 if (!window.webworker) {
-                    window.webworker = new Worker('dryrun_client_worker.js');
+                    window.webworker = new Worker('dryrun_client_worker4.js');
                     window.webworker.onerror = function(e) { console.log('error in fastTimeEstimate:', e) };
                     window.webworker.onmessage = function(msg) { callback(msg.data.totalTime, msg.data.numPoints, msg.data.path, msg.data.filename); } 
                 }

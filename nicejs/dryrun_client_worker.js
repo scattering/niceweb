@@ -265,7 +265,7 @@ var __fastTimeEstimate = (function() {
             }
             return output;
         }
-        eval('var expression_func = function(namespace) { with(Math) with(namespace.live_state) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
+        eval('var expression_func = function(namespace) { with(namespace.live_state) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
         return [{lhs: lhs, numPoints: numPoints, expression: expression_func}];
     }
     
@@ -346,7 +346,7 @@ var __fastTimeEstimate = (function() {
                 var items = [];
                 for (var i=0; i<loop.vary.length; i++) {
                     var item = loop.vary[i];
-                    items[i] = parseVaryItemF(item, cstr, context);
+                    items = items.concat(parseVaryItemF(item, cstr, context));
                 }
                 //loop.vary.forEach( function(item) { items = items.concat(parseVaryItemF(item, cstr, context)); });
                 //context.assign(nstr, items[0].numPoints)
