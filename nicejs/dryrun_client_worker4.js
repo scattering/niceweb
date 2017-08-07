@@ -486,7 +486,7 @@ function __range_fill(params) {
             var step = parseFloat(params.step);
             var numPoints;
             if (step == 0) {
-                numPoinst = 1;
+                numPoints = 1;
             } else {
                 numPoints = (params.range /step) + 1;
                 if (Math.abs(Math.round(numPoints) - numPoints) <= Math.abs(Number.EPSILON / step)) {
