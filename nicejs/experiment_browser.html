@@ -15,6 +15,8 @@
   <link rel="stylesheet" href="../static/dialog-polyfill.css" />
   <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
   
+  <script type="text/javascript" src="//ncnr.nist.gov/instruments/magik/js/ims_fullcal.js"></script>
+  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Ice.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Glacier2.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceStorm.min.js"></script>
@@ -44,6 +46,7 @@
     var mainTable;
 
     var hostname = "nice04.ncnr.nist.gov"; // default NICE host
+    var instrument_name;
     var port = '9999';
     if (localStorage && localStorage.nice_hostname) {
         hostname = localStorage.nice_hostname
@@ -116,12 +119,34 @@
                 experimentMonitor.postSwitchedHooks = [postSwitched];
                 // call this from the context of the experimentMonitor:
                 var updateTable = function(all, curr) {
-                    var t = makeExperimentsTable(all);
-                    t.id = "myTable";
-                    t.classList.add('stripe');
-                    t.classList.add('cell-border');
-                    $('#all_experiments').empty().append(t); 
-                    mainTable = $(t).dataTable();
+		    var data = Object.keys(all).map(function(a) { return all[a] });
+		    if (mainTable == null) {
+		      mainTable = $("table#experiments").dataTable({
+			data: data,
+			columns: [
+			  { data: 'id', title: 'id', render: renderID, width: '9em' },
+			  { data: 'creationTimeStamp', title: 'Creation Timestamp', render: renderTimestamps },
+			  { data: 'participants', title: 'Participants' },
+			  { data: 'localContact', title: 'Local Contact' },
+			  {
+			      data: 'title',
+			      title: 'Title',
+			      render: $.fn.dataTable.render.ellipsis( 80 )
+			  },
+			  {
+			      data: 'description',
+			      title: 'Description',
+			      render: $.fn.dataTable.render.ellipsis( 80 )
+			  }
+			]
+		      });
+		    }
+		    else {
+		      mainTable.api().clear();
+		      mainTable.api().rows.add(data);
+		    }
+		    mainTable.api().order([[1, "desc"]]).draw(); // sort by date, descending;
+                    //mainTable = $(t).dataTable();
                 }
                 experimentMonitor.postSubscribeHooks = [ updateTable, postSwitched ];
                 experimentMonitor.postCreatedHooks = [ updateTable ];
@@ -138,51 +163,141 @@
         document.getElementById("login").close();
     }
     
-    makeExperimentsTable = function(experiments) {
-        var headers = ["id", "creationDate", "creationTimeStamp", "isIMS", "description", "participants", "title"];
-        // populate the creationDate of each entry from the creationTimeStamp
-        for (var expkey in experiments) {
-            var experiment = experiments[expkey];
-            var creationDate = "";
-            if ("creationTimeStamp" in experiment) {
-                var d = new Date(experiment.creationTimeStamp.toNumber());
-                var year = d.getFullYear().toFixed(0);
-                var month = (d.getMonth() + 1).toFixed(0);
-                var day = d.getDate().toFixed(0);
-                month = (month.length < 2) ? "0" + month : month;
-                day = (day.length < 2) ? "0" + day : day;
-                experiment.creationDate = year + "-" + month + "-" + day;
-            }
+    function renderTimestamps(data, type, row) {
+	var data = data.toNumber();
+        if ( type !== 'display' ) {
+            return data;
         }
-        var table = document.createElement('table');
-        var thead = table.createTHead();
-        var theadrow = thead.insertRow();
-        headers.forEach(function(h) { 
-            //var th = document.createElement('th');
-            var th = theadrow.insertCell();
-            th.textContent = h
-        });
-        var tbody = table.createTBody();
-        for (var expkey in experiments) {
-            var experiment = experiments[expkey];
-            var row = tbody.insertRow();
-            headers.forEach(function(h) {
-                var cell = row.insertCell();
-                if (h in experiment) {
-                    var content = experiment[h]
-                    if (content.toNumber) { content = content.toNumber() }
-                    cell.textContent = content;
-                }
-            });
-        }
-        return table;
+        
+        var d = new Date(data);
+        var year = d.getFullYear().toFixed(0);
+        var month = (d.getMonth() + 1).toFixed(0);
+        var day = d.getDate().toFixed(0);
+        month = (month.length < 2) ? "0" + month : month;
+        day = (day.length < 2) ? "0" + day : day;
+        return year + "-" + month + "-" + day;
     }
     
+    function renderID(data, type, row) {
+      if ( type !== 'display' ) {
+	return data;
+      }      
+      var id_disp = String(data) + "<button class=\"switch-button\" onclick=\"switchTo('" + String(data) + "')\">switchTo</button>";
+      return id_disp;
+    }
+    
+    $.fn.dataTable.render.ellipsis = function ( cutoff, wordbreak, escapeHtml ) {
+	var esc = function ( t ) {
+	    return t
+		.replace( /&/g, '&amp;' )
+		.replace( /</g, '&lt;' )
+		.replace( />/g, '&gt;' )
+		.replace( /"/g, '&quot;' );
+	};
+     
+	return function ( d, type, row ) {
+	    // Order, search and type get the original data
+	    if ( type !== 'display' ) {
+		return d;
+	    }
+     
+	    if ( typeof d !== 'number' && typeof d !== 'string' ) {
+		return d;
+	    }
+     
+	    d = d.toString(); // cast numbers
+     
+	    if ( d.length <= cutoff ) {
+		return d;
+	    }
+     
+	    var shortened = d.substr(0, cutoff-1);
+     
+	    // Find the last white space character in the string
+	    if ( wordbreak ) {
+		shortened = shortened.replace(/\s([^\s]*)$/, '');
+	    }
+     
+	    // Protect against uncontrolled HTML input
+	    if ( escapeHtml ) {
+		shortened = esc( shortened );
+	    }
+     
+	    return '<span class="ellipsis" title="'+esc(d)+'">'+shortened+'&#8230;</span>';
+	};
+    };
+    
+    
+    function switchTo(id) {
+      if (confirm("switch to " + String(id) + "?")) {
+	//alert(`switching to ${id}`);
+	switched = api.switchCurrentExperiment(id);
+      }
+    }
+    
+    function toLong(number) {
+      // only works for positive numbers.
+      var high = parseInt(Math.floor(number / Ice.Long.HIGH_MASK));
+      var low = parseInt(number % Ice.Long.HIGH_MASK);
+      return new Ice.Long(high, low);
+    }
+    
+    function createNewExperiment() {
+      // get experiment info from online calendar, if possible...
+      var dialog = $("dialog#new_experiment");
+      var title = dialog.find("input#new_title").val();
+      var isIMS = dialog.find("input#new_isIMS").prop('checked');
+      var imsID = toLong((isIMS) ? parseInt(dialog.find("input#new_IMS").val() || 0) : 0);
+      var description = dialog.find("textarea#new_description").val();
+      var participants = dialog.find("input#new_participants").val();
+      var emails_string = dialog.find("input#new_emails").val();
+      var emails = emails_string.split(",");
+      var local_contact = dialog.find("input#new_local_contact").val();
+      var publishing_mode = dialog.find("input#new_data_publishing:checked").val().toUpperCase();
+      //console.log([isIMS, imsID, "", title, description, participants, emails, local_contact, publishing_mode]);
+      api.createExperiment(isIMS, imsID, "", title, description, participants, emails, local_contact, publishing_mode)
+	.exception(function(e) { alert(e.reason) });
+      dialog[0].close();
+    }
+    
+    function pullFromIMS() {
+      console.log(instrument_name);
+      var now = new Date();
+      get_items(instrument_name).then(function(items) { 
+	items.forEach(function(item) {
+	  item._start_time = new Date(item["Start Date"]); 
+	  item._start_time.setHours(0); 
+	  item._end_time = new Date(item._start_time);
+	  item._end_time.setDate(item._start_time.getDate() + parseInt(item["# of Days"]));
+	});
+	var matching = items.find(function(item) { return item._start_time < now && item._end_time >= now });
+	if (matching) {
+	  var dialog = $("dialog#new_experiment");
+	  if (matching["Title"]) dialog.find("input#new_title").val(matching["Title"]);
+	  if (matching["ID"]) dialog.find("input#new_IMS").val(matching["ID"]);
+	  if (matching["Participants"]) dialog.find("input#new_participants").val(matching["Participants"].map(p => p.name).join(" "));
+	  if (matching["Contact"]) dialog.find("input#new_local_contact").val(matching["Contact"]);
+	}
+	console.log("match!", matching)
+	console.log(items) });
+    }
+      
+    
     window.onload = function() {
-        var dialog = document.getElementById("login");
-        if (!dialog.show) {
-            dialogPolyfill.registerDialog(dialog);
+        var login_dialog = document.getElementById("login");
+        if (!login_dialog.show) {
+            dialogPolyfill.registerDialog(login_dialog);
         }
+	var new_experiment_dialog = document.getElementById("new_experiment");
+        if (!new_experiment_dialog.show) {
+            dialogPolyfill.registerDialog(new_experiment_dialog);
+        }
+	$("button#create_new_experiment").button();
+	$("button#create_new_experiment").click(function() {	  
+	  new_experiment_dialog.show();
+	  //$("dialog input#new_experiment_cancel").click(function() { this.close() });
+	});
+	
         document.getElementById("instrument_ip").value = hostname;
         $('.current-experiment-id').click( function() {
             if (mainTable && mainTable.api) {
@@ -193,25 +308,28 @@
         $(window).on('niceServerShutdown', function(ev) {
             $('#north_panel').removeClass('connected', 4000)
                 .find('.instrument-name').text('Server shut down: Not connected');
-        }).on('niceServerConnected', function(ev) {
+        }).on('niceServerConnected', function(ev, a, b, c) {
+	    //console.log(ev.originalEvent.detail, a, b, c);
+	    instrument_name = ev.originalEvent.detail.instrumentID;
             $('#north_panel').addClass('connected')
                 .find('.instrument-name').text("Instrument connected: " + hostname);
         });
     
-        dialog.show();
+        login_dialog.show();
         logging_in = true;
     
         myLayout = $('body').layout({
-		    east__size:			0
-	    ,	west__size:			300
-	    ,   south__size:        "auto"
-	    ,   north_size:         "auto"
-		    // RESIZE Accordion widget when panes resize
-	    ,	west__onresize:		$.layout.callbacks.resizePaneAccordions
-	    ,	east__onresize:		$.layout.callbacks.resizePaneAccordions
-	    ,	south__onresize:    $.layout.callbacks.resizePaneAccordions
-	    ,	north__onresize:    $.layout.callbacks.resizePaneAccordions
-	    });
+                    east__size:                 null
+            ,   west__size:                     300
+            ,   south__size:        "auto"
+            ,   north_size:         "auto"
+                    // RESIZE Accordion widget when panes resize
+            ,   west__onresize:         $.layout.callbacks.resizePaneAccordions
+            ,   east__onresize:         $.layout.callbacks.resizePaneAccordions
+            ,   south__onresize:    $.layout.callbacks.resizePaneAccordions
+            ,   north__onresize:    $.layout.callbacks.resizePaneAccordions
+            ,   center__onresize:   function() { mainTable.width(mainTable.parent().width()); }
+	});
     
     }
   </script>
@@ -219,11 +337,20 @@
     body {
         font-family: 'Open Sans' !important;
     }
-    #login {
-        top: 28%;
+    dialog {
+        top: 20%;
         position: absolute;
         z-index: 10;
+	text-align: center;
     }
+    dialog input[type="text"], dialog textarea {
+      float: right;
+      width: 45em;
+    }
+    
+    dialog input[type="button"] {
+    }
+    
     #north_panel {
         background-color: LightYellow;
         height: 30px;
@@ -261,6 +388,13 @@
         text-decoration: underline !important;
         
     }
+    
+    .switch-button {
+      float: right;
+    }
+    label.disabled {
+      color: #c0c0c0;
+    }
   </style>
   <title>Experiments</title>
 </head>
@@ -279,16 +413,60 @@
   <input type="button" onclick="dialog_login()" value="Go">
 </dialog>
 
+<dialog id="new_experiment">
+  <h2>New Experiment</h2>
+  <table>
+    <tr>
+      <td><label for="new_title">Title:</label></td>
+      <td><input type="text" id="new_title"></td>
+    </tr>
+    <tr>
+      <td><input type="checkbox" id="new_isIMS" checked />
+	  <label for="new_isIMS">Has Proposal ID:</label></td>
+      <td><input type="text" id="new_IMS" value="" placeholder="IMS id"></td>
+    </tr>
+    <tr>
+      <td><label for="new_description">Description:</label></td>
+      <td><textarea id="new_description" rows="15"></textarea></td>
+    </tr>
+    <tr>
+      <td><label for="new_participants">Participants:</label></td>
+      <td><input type="text" id="new_participants"></td>
+    </tr>
+    <tr>
+      <td><label for="new_emails">Emails:</label></td>
+      <td><input type="text" id="new_emails"></td>
+    </tr>
+    <tr>
+      <td><label for="new_local_contact">Local Contact:</label></td>
+      <td><input type="text" id="new_local_contact"></td>
+    </tr>
+    <tr>
+      <td><label>Data Publishing:</label></td>
+      <td>
+	<label><input type="radio" name="new_data_publishing" id="new_data_publishing" value="normal" checked>normal</label>
+	<label><input type="radio" name="new_data_publishing" id="new_data_publishing" value="normal">deferred</label>
+	<label class="disabled"><input type="radio" name="new_data_publishing" id="new_data_publishing" value="normal" disabled>proprietary</label>
+      </td>
+    </tr>
+  </table>
+  <input type="button" onclick="pullFromIMS()" value="Get values from IMS">
+  <input type="button" onclick="createNewExperiment()" value="Create">
+  <input type="button" id="new_experiment_cancel" onclick="this.parentElement.close()" value="Cancel">
+</dialog>
+
 <div id="north_panel" class="ui-layout-north">
     <h3 class="instrument-name">Instrument: </h3>
     <h3>Current experiment: <a href="#" class="current-experiment-id"></a></h3>
+    <button id="create_new_experiment">Create New Experiment</button>
     <div id="control_buttons" class="control-buttons">
     <span id="queue_state"></span>
     </div>
 </div>
-<div id="east_panel" class="ui-layout-east">
+<div id="east_panel" class="ui-layout-east-no">
 </div>
 <div id="center_panel" class="ui-layout-wrapper ui-layout-center">
+    <table id="experiments" class="stripe cell-border compact hover order-column"></table>
     <div id="all_experiments"></div>
 </div>
 <div id="south_panel" class="ui-layout-south">

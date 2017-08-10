@@ -342,7 +342,7 @@ var trajCompiler = (function () {
             {
               "range": {
                 "start": "_qstart",
-                "numPoints": 1e7,
+                "numPoints": 1e4,
                 "stop": 0.25
               }
             }
@@ -385,9 +385,12 @@ var trajCompiler = (function () {
   }
   
   function test_run() {
+    var start = new Date();
     var a = this.compile(test_traj);
     trfunc = eval(a);
     trfunc({wavelength: {wavelength: 5.0}});
+    var end = new Date();
+    return (end - start);
   }
 
   function test_compile() {
@@ -479,7 +482,7 @@ function __range_fill(params) {
         // fill in missing one:
         if ('step' in params) {
             // flip the sign of step if it doesn't match range:
-            if (Math.sign(params.step) != Math.sign(params.range)) {
+            if (params.step != 0 && Math.sign(params.step) != Math.sign(params.range)) {
                 params.step *= -1.0;
                 console.log("flipping the sign on the step: ", params.step, params.range);
             }
