@@ -275,7 +275,7 @@
 	  var dialog = $("dialog#new_experiment");
 	  if (matching["Title"]) dialog.find("input#new_title").val(matching["Title"]);
 	  if (matching["ID"]) dialog.find("input#new_IMS").val(matching["ID"]);
-	  if (matching["Participants"]) dialog.find("input#new_participants").val(matching["Participants"].map(p => p.name).join(" "));
+	  if (matching["Participants"]) dialog.find("input#new_participants").val(matching["Participants"].map(p => p.name).join(", "));
 	  if (matching["Contact"]) dialog.find("input#new_local_contact").val(matching["Contact"]);
 	}
 	console.log("match!", matching)
