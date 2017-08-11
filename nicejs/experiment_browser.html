@@ -37,7 +37,7 @@
   <script src="generated/clientapi.js"></script>
   <script src="connect_zeroc.js"></script>
   <script type="text/javascript">
-    var Promise = Ice.Promise;
+    //var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
     var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
     var ice_protocol_version = "1.1";
@@ -153,7 +153,7 @@
 
                 // the subscribe function won't work until the connection is 
                 // complete, which is why it's in the "then" block here
-                return Promise.all(
+                return Ice.Promise.all(
                     subscribe(experimentMonitor, 'experiment')
                 )
         });
@@ -261,9 +261,8 @@
     }
     
     function pullFromIMS() {
-      console.log(instrument_name);
       var now = new Date();
-      get_items(instrument_name).then(function(items) { 
+      get_items(instrument_name).then(function(items) {
 	items.forEach(function(item) {
 	  item._start_time = new Date(item["Start Date"]); 
 	  item._start_time.setHours(0); 
@@ -275,27 +274,61 @@
 	  var dialog = $("dialog#new_experiment");
 	  if (matching["Title"]) dialog.find("input#new_title").val(matching["Title"]);
 	  if (matching["ID"]) dialog.find("input#new_IMS").val(matching["ID"]);
-	  if (matching["Participants"]) dialog.find("input#new_participants").val(matching["Participants"].map(p => p.name).join(", "));
 	  if (matching["Contact"]) dialog.find("input#new_local_contact").val(matching["Contact"]);
+	  if (matching["Participants"]) {
+	    var potential_participants = matching["Participants"].map(p => p.name);
+	    confirm_participants(potential_participants)
+	      .then(function(participants) {
+		  dialog.find("input#new_participants").val(participants.join(", "));
+	        })
+	  }
 	}
-	console.log("match!", matching)
-	console.log(items) });
+      });
     }
+    
+    function confirm_participants(potential_participants) {
+      // using builtin Promise function...
+      var p = Promise.resolve();
+      var dialog = $("dialog#new_experiment");
+      var confirm_dialog = $("dialog#new_confirm_participant");
+      var skip_all = false;
+      var participants = [];
+      confirm_dialog[0].showModal();
+      for (var pi=0; pi<potential_participants.length; pi++) {
+	let pp = potential_participants[pi];
+	p = p.then(function() {
+	  var promise = new Promise(function(resolve, reject) {
+	    if (skip_all) { resolve() }
+	    confirm_dialog.find("span.user-name").text(pp);
+	    confirm_dialog.find("input#confirm_present")
+	      .off('click')
+	      .on('click', function() { participants.push(pp); resolve()});
+	    confirm_dialog.find("input#skip_confirm")
+	      .off('click')
+	      .on('click', function() { resolve() });
+	    confirm_dialog.find("input#skip_all_confirm")
+	      .off('click')
+	      .on('click', function() { skip_all = true; resolve() });
+	  })
+	  return promise
+	});
+      }
+      p = p.then(function() { confirm_dialog[0].close(); return participants });
+      return p
+    } 
       
     
     window.onload = function() {
-        var login_dialog = document.getElementById("login");
-        if (!login_dialog.show) {
-            dialogPolyfill.registerDialog(login_dialog);
-        }
-	var new_experiment_dialog = document.getElementById("new_experiment");
-        if (!new_experiment_dialog.show) {
-            dialogPolyfill.registerDialog(new_experiment_dialog);
-        }
+        var dialogs = document.getElementsByTagName("dialog");
+	for (var di = 0; di<dialogs.length; di++) {
+	  var d = dialogs[di];
+	  if (!d.show) { dialogPolyFill.registerDialog(d); }
+	}
+        
+	
 	$("button#create_new_experiment").button();
 	$("button#create_new_experiment").click(function() {	  
-	  new_experiment_dialog.show();
-	  //$("dialog input#new_experiment_cancel").click(function() { this.close() });
+	  $("dialog#new_experiment")[0].show();
 	});
 	
         document.getElementById("instrument_ip").value = hostname;
@@ -308,14 +341,13 @@
         $(window).on('niceServerShutdown', function(ev) {
             $('#north_panel').removeClass('connected', 4000)
                 .find('.instrument-name').text('Server shut down: Not connected');
-        }).on('niceServerConnected', function(ev, a, b, c) {
-	    //console.log(ev.originalEvent.detail, a, b, c);
+        }).on('niceServerConnected', function(ev) {
 	    instrument_name = ev.originalEvent.detail.instrumentID;
             $('#north_panel').addClass('connected')
                 .find('.instrument-name').text("Instrument connected: " + hostname);
         });
     
-        login_dialog.show();
+        document.getElementById('login').show();
         logging_in = true;
     
         myLayout = $('body').layout({
@@ -335,7 +367,7 @@
   </script>
   <style type="text/css">
     body {
-        font-family: 'Open Sans' !important;
+        /*font-family: 'Open Sans' !important;*/
     }
     dialog {
         top: 20%;
@@ -343,12 +375,15 @@
         z-index: 10;
 	text-align: center;
     }
+    
     dialog input[type="text"], dialog textarea {
       float: right;
       width: 45em;
     }
-    
-    dialog input[type="button"] {
+
+    dialog#new_confirm_participant {
+      background-color: yellow;
+      top: 50%
     }
     
     #north_panel {
@@ -401,16 +436,21 @@
 <body>
 <dialog id="login">
   <h2>Login</h2>
-  <label for="instrument_ip">Instrument address</label>
-  <input type="text" id="instrument_ip" value="happy.home">
-  <br>
-  <label for="username">Username:</label>
-  <input type="text" id="username" value="" placeholder="username">
-  <br>
-  <label for="password">Password:</label>
-  <input type="password" id="password" placeholder="password">
-  <br>
-  <input type="button" onclick="dialog_login()" value="Go">
+  <table>
+    <tr>
+      <td><label for="instrument_ip">Instrument address</label></td>
+      <td><input type="text" id="instrument_ip" value="happy.home"></td>
+    </tr>
+    <tr>
+      <td><label for="username">Username:</label></td>
+      <td><input type="text" id="username" value="" placeholder="username"></td>
+    </tr>
+    <tr>
+      <td><label for="password">Password:</label></td>
+      <td><input type="password" id="password" placeholder="password"></td>
+    </tr>
+  </table>
+  <input type="button" onclick="dialog_login()" value="Connect">
 </dialog>
 
 <dialog id="new_experiment">
@@ -454,7 +494,16 @@
   <input type="button" onclick="createNewExperiment()" value="Create">
   <input type="button" id="new_experiment_cancel" onclick="this.parentElement.close()" value="Cancel">
 </dialog>
-
+<dialog id="new_confirm_participant">
+  <div>
+    Please confirm that <b><span class="user-name"></span></b>
+    is physically present
+  </div>
+  <input type="button" id="confirm_present" value="Confirm Participant">
+  <input type="button" id="skip_confirm" value="Skip">
+  <input type="button" id="skip_all_confirm" value="Skip All">
+</dialog>
+<div id="confirm_participant" style="display:none"></div>
 <div id="north_panel" class="ui-layout-north">
     <h3 class="instrument-name">Instrument: </h3>
     <h3>Current experiment: <a href="#" class="current-experiment-id"></a></h3>
