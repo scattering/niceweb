@@ -124,7 +124,7 @@
 		      mainTable = $("table#experiments").dataTable({
 			data: data,
 			columns: [
-			  { data: 'id', title: 'id', render: renderID, width: '9em' },
+			  { data: 'id', title: 'id', width: '6em'},//   render: renderID, width: '9em' },
 			  { data: 'creationTimeStamp', title: 'Creation Timestamp', render: renderTimestamps },
 			  { data: 'participants', title: 'Participants' },
 			  { data: 'localContact', title: 'Local Contact' },
@@ -230,7 +230,6 @@
     
     function switchTo(id) {
       if (confirm("switch to " + String(id) + "?")) {
-	//alert(`switching to ${id}`);
 	switched = api.switchCurrentExperiment(id);
       }
     }
@@ -315,8 +314,33 @@
       }
       p = p.then(function() { confirm_dialog[0].close(); return participants });
       return p
-    } 
-      
+    }
+    
+    function copyFrom(path, folder) {
+      // copy all the files (prompt for overwrite) from the source directory to the
+      // current directory.
+      var current_path = experimentMonitor.current_experiment.clientPath;
+      var target_path = current_path + "/" + folder;
+      var source_path = path + "/" + folder;
+      var source_files, target_files;
+      var p = new Ice.Promise().succeed();
+      api.ls(source_path, "*", false).then(function(f) {
+	source_files = f;
+	api.ls(target_path, "*", false).then(function(f) {
+	  target_files = f;
+	  source_files.forEach(function(s) {
+	    p = p.then(function() { 
+	      if (target_files.indexOf(s) > -1 && ! confirm("Filename: " + s +" exists in " + current_path + "\nOverwrite?")) {
+		  return
+	      }
+	      else {
+		return api.readFileAsText(source_path + "/" + s).then(function(t) { return api.writeFileFromText(target_path + "/" + s, t, true, false) });
+	      }
+	    });
+	  })
+	})
+      });
+    }
     
     window.onload = function() {
         var dialogs = document.getElementsByTagName("dialog");
@@ -330,6 +354,46 @@
 	$("button#create_new_experiment").click(function() {	  
 	  $("dialog#new_experiment")[0].show();
 	});
+	
+	$("button#switch_to").button().click(function() {
+	  if (mainTable && mainTable.api) {
+	    var data = mainTable.api().row('.selected').data();
+	    if (data && data.id) {
+	      if (confirm("switch to " + String(data.id) + "?")) {
+		var switched = api.switchCurrentExperiment(data.id);
+	      }
+	    }
+	  }
+	});
+	
+	$("button#copy_sequences").button().click(function() {
+	  if (mainTable && mainTable.api) {
+	    var data = mainTable.api().row('.selected').data();
+	    if (data && data.clientPath) {
+	      copyFrom(data.clientPath, "sequences");
+	    }
+	  }
+	});
+	
+	$("button#copy_trajectories").button().click(function() {
+	  if (mainTable && mainTable.api) {
+	    var data = mainTable.api().row('.selected').data();
+	    if (data && data.clientPath) {
+	      copyFrom(data.clientPath, "trajectories");
+	    }
+	  }
+	});
+	
+	
+	$("table#experiments").on('click', 'tr',  function () {
+	    if ( $(this).hasClass('selected') ) {
+		$(this).removeClass('selected');
+	    }
+	    else {
+		$(this).parent().find('tr.selected').removeClass('selected');
+		$(this).addClass('selected');
+	    }
+	} );
 	
         document.getElementById("instrument_ip").value = hostname;
         $('.current-experiment-id').click( function() {
@@ -402,14 +466,8 @@
         display: inline-block;
     }
     
-    .control-buttons {
+    .selected-buttons {
         float: right;
-        font-size: 14pt;
-        font-weight: bold;
-    }
-    .control-buttons .stop-button {
-        background-color: red;
-        color: white;
     }
     
     table.dataTable thead tr {
@@ -417,7 +475,7 @@
     }
     
     .ui-layout-north h3 {
-        padding-right: 4em;
+        padding-right: 1em;
     }
     .current-experiment-id {
         text-decoration: underline !important;
@@ -508,7 +566,11 @@
     <h3 class="instrument-name">Instrument: </h3>
     <h3>Current experiment: <a href="#" class="current-experiment-id"></a></h3>
     <button id="create_new_experiment">Create New Experiment</button>
-    <div id="control_buttons" class="control-buttons">
+    <div id="selected_controls" class="selected-buttons">
+      <h3>Selected:</h3>
+      <button id="switch_to">Switch To</button>
+      <button id="copy_trajectories">Copy Trajectories From</button>
+      <button id="copy_sequences">Copy Sequences From</button>
     <span id="queue_state"></span>
     </div>
 </div>
