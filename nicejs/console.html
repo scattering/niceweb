@@ -36,6 +36,7 @@
   <script src="generated/sampleAlignment.js"></script>
   <script src="generated/clientapi.js"></script>
   <script src="connect_zeroc.js"></script>
+  <script type="text/javascript" src="servers_available.js"></script>
   <script type="text/javascript">
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
@@ -58,10 +59,10 @@
         'bt4': 'wurtzite_trans.gif',
         'default': 'appicon.png'
     }
-    var hostname = "nice04.ncnr.nist.gov"; // default NICE host
+    var instrument_name = "local"; // default NICE host
     var port = '9999';
-    if (localStorage && localStorage.nice_hostname) {
-        hostname = localStorage.nice_hostname
+    if (localStorage && localStorage.instrument_name) {
+        instrument_name = localStorage.instrument_name
     }
     
     var command_history = [];
@@ -537,9 +538,12 @@
 
     dialog_login = function() {
         // set the global hostname
-        hostname = document.getElementById("instrument_ip").value;
-        var username = document.getElementById("username").value;
-        var password = document.getElementById("password").value;
+        var hostname = document.getElementById("instrument_ip").value;
+        // ok we're just going to put this here.
+        //var username = document.getElementById("username").value;
+        //var password = document.getElementById("password").value;
+        var username = "user",
+            password = "";
         
         signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
             function(api_obj, comm_obj, router_obj) {
@@ -556,17 +560,28 @@
                 )
         });
         if (localStorage) {
-            localStorage.nice_hostname = hostname;
+            localStorage.instrument_name = $("select#instrument_selector option:selected").text();
         }
         document.getElementById("login").close();
     }
       
   window.onload = function() {
+    var servers = Object.keys(servers_available);
+	var instrument_selector = $("select#instrument_selector");
+	servers.forEach(function(s) { 
+	  instrument_selector.append($("<option />", {value: servers_available[s], name: s, text: s}));
+	});
+	var change_instrument = function() {
+	  $("input#instrument_ip").val(this.value);
+	}
+	instrument_selector.on("change", change_instrument);
+	instrument_selector.find('option[name="'+instrument_name+'"]').prop('selected', 'selected');
+	$("input#instrument_ip")[0].value = servers_available[instrument_name];
+    
     var dialog = document.getElementById("login");
     if (!dialog.show) {
         dialogPolyfill.registerDialog(dialog);
     }
-    document.getElementById("instrument_ip").value = hostname;
     
     $(window).on('niceServerShutdown', function(ev) {
         $('#top_panel').removeClass('connected', 4000)
@@ -813,16 +828,13 @@
 <body>
 <dialog id="login">
   <h2>Login</h2>
-  <label for="instrument_ip">Instrument address</label>
-  <input type="text" id="instrument_ip" value="happy.home">
-  <br>
-  <label for="username">Username:</label>
-  <input type="text" id="username" value="" placeholder="username">
-  <br>
-  <label for="password">Password:</label>
-  <input type="password" id="password" placeholder="password">
-  <br>
-  <input type="button" onclick="dialog_login()" value="Go">
+  <table>
+    <tr>
+      <td><label for="instrument_ip">Instrument address</label></td>
+      <td><select id="instrument_selector"></select><input type="text" id="instrument_ip"></td>
+    </tr>
+  </table>
+  <input type="button" onclick="dialog_login()" value="Connect">
 </dialog>
 
 <div id="top_panel" class="ui-layout-north">

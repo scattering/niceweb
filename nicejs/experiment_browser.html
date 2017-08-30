@@ -36,6 +36,7 @@
   <script src="generated/sampleAlignment.js"></script>
   <script src="generated/clientapi.js"></script>
   <script src="connect_zeroc.js"></script>
+  <script type="text/javascript" src="servers_available.js"></script>
   <script type="text/javascript">
     //var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
@@ -45,11 +46,10 @@
     var logging_in = false;
     var mainTable;
 
-    var hostname = "nice04.ncnr.nist.gov"; // default NICE host
-    var instrument_name;
+    var instrument_name = "local"; // default NICE host
     var port = '9999';
-    if (localStorage && localStorage.nice_hostname) {
-        hostname = localStorage.nice_hostname
+    if (localStorage && localStorage.instrument_name) {
+        instrument_name = localStorage.instrument_name
     }
     
     function getEnumValues(ice_enum) {
@@ -96,9 +96,12 @@
     
     dialog_login = function() {
         // set the global hostname
-        hostname = document.getElementById("instrument_ip").value;
-        var username = document.getElementById("username").value;
-        var password = document.getElementById("password").value;
+        var hostname = document.getElementById("instrument_ip").value;
+	// ok we're just going to put this here.
+        //var username = document.getElementById("username").value;
+        //var password = document.getElementById("password").value;
+	var username = "user",
+	    password = "";
         
         signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
             function(api_obj, comm_obj, router_obj, session_obj, adapter_obj) {
@@ -158,7 +161,7 @@
                 )
         });
         if (localStorage) {
-            localStorage.nice_hostname = hostname;
+            localStorage.instrument_name = $("select#instrument_selector option:selected").text();
         }
         document.getElementById("login").close();
     }
@@ -343,12 +346,23 @@
     }
     
     window.onload = function() {
+	var servers = Object.keys(servers_available);
+	var instrument_selector = $("select#instrument_selector");
+	servers.forEach(function(s) { 
+	  instrument_selector.append($("<option />", {value: servers_available[s], name: s, text: s}));
+	});
+	var change_instrument = function() {
+	  $("input#instrument_ip").val(this.value);
+	}
+	instrument_selector.on("change", change_instrument);
+	instrument_selector.find('option[name="'+instrument_name+'"]').prop('selected', 'selected');
+	$("input#instrument_ip")[0].value = servers_available[instrument_name];
+	
         var dialogs = document.getElementsByTagName("dialog");
 	for (var di = 0; di<dialogs.length; di++) {
 	  var d = dialogs[di];
 	  if (!d.show) { dialogPolyfill.registerDialog(d); }
 	}
-        
 	
 	$("button#create_new_experiment").button();
 	$("button#create_new_experiment").click(function() {	  
@@ -395,7 +409,6 @@
 	    }
 	} );
 	
-        document.getElementById("instrument_ip").value = hostname;
         $('.current-experiment-id').click( function() {
             if (mainTable && mainTable.api) {
                 mainTable.api().search(this.textContent).draw();
@@ -406,9 +419,9 @@
             $('#north_panel').removeClass('connected', 4000)
                 .find('.instrument-name').text('Server shut down: Not connected');
         }).on('niceServerConnected', function(ev) {
-	    instrument_name = ev.originalEvent.detail.instrumentID;
+	    instrument_canonical_name = ev.originalEvent.detail.instrumentID;
             $('#north_panel').addClass('connected')
-                .find('.instrument-name').text("Instrument connected: " + hostname);
+                .find('.instrument-name').text("Instrument connected: " + instrument_canonical_name);
         });
     
         document.getElementById('login').show();
@@ -497,15 +510,7 @@
   <table>
     <tr>
       <td><label for="instrument_ip">Instrument address</label></td>
-      <td><input type="text" id="instrument_ip" value="happy.home"></td>
-    </tr>
-    <tr>
-      <td><label for="username">Username:</label></td>
-      <td><input type="text" id="username" value="" placeholder="username"></td>
-    </tr>
-    <tr>
-      <td><label for="password">Password:</label></td>
-      <td><input type="password" id="password" placeholder="password"></td>
+      <td><select id="instrument_selector"></select><input type="text" id="instrument_ip"></td>
     </tr>
   </table>
   <input type="button" onclick="dialog_login()" value="Connect">
