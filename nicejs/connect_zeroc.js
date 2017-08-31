@@ -26,7 +26,7 @@
 
     signin = function(routerEndpoint, encoding, disableACM, username, password)
     {
-        var signinPromise = new Promise();
+        var signinPromise = Promise.resolve();
         
         var username = (username == null) ? "" : username;
         var password = (password == null) ? "" : password;
@@ -71,10 +71,10 @@
             function(s)
             {
                 session = s;
-                return Promise.all(
+                return Promise.all([
                     router.getACMTimeout(),
                     communicator.createObjectAdapterWithRouter("", router)
-                )
+                ])
             }
         ).then(
             function(acmT,a)
@@ -131,7 +131,7 @@
             function() {
                 signinPromise.succeed(api, communicator, router, session, adapter, server_state);
             }
-        ).exception(
+        ).catch(
             function(ex)
             {
                 //
@@ -184,12 +184,12 @@
     }
     
     // basic system monitor to watch for server shutdowns
-    var SystemMonitorI = Ice.Class(nice.api.system.SystemMonitor, {
-        onSubscribe: function(state, __current) {},
-        stateChanged: function(state, __current) {},
-        serverShutdown: function( __current) {
+    var SystemMonitorI = class extends nice.api.system.SystemMonitor {
+        onSubscribe(state, __current) {};
+        stateChanged(state, __current) {};
+        serverShutdown( __current) {
             disconnect();
             window.dispatchEvent(shutdown_event);
         }
-    });
+    }
 })(Ice, Glacier2, nice);
