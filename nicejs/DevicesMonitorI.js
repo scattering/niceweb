@@ -1,53 +1,68 @@
 (function(Ice, nice){
-    DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
-         __init__: function() {
-            this.subscribed = new Promise();
-        },
-        onSubscribe: function(devices, nodes, staticNodeData, groups, __current) {
-            this.devices = this.HashMapToObject(devices);
-            this.nodes = this.HashMapToObject(nodes);
-            var changed = this.nodes;
-            this.groups = this.HashMapToObject(groups);
-            this.staticNodeData = this.HashMapToObject(staticNodeData);
-            this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
-            this.postChangedHooks.forEach( function(callback) { callback(changed); });
-            this.subscribed.succeed();
-        },
+    DevicesMonitorI = class extends nice.api.devices.DevicesMonitor {
+        constructor() {
+            super();
+            var _resolve, _reject;
+            this.subscribed = new Promise(function(resolve, reject) {
+                _resolve = resolve;
+                _reject = reject;
+            })
+            this.postSubscribeHooks = [function() { _resolve(); }]                
+        }
         
-        changed: function(nodes, __current) {
-            var changed = this.HashMapToObject(nodes);
-            jQuery.extend(this.nodes, changed);
-            this._lastChanged = changed;
-            this.postChangedHooks.forEach( function(callback) { callback(changed); });
-        },
-        dynamicDevicesAdded: function(addRemoveID, childDeviceIDs, __current) {
+        onSubscribe(devices, nodes, staticNodeData, groups, __current) {
+            this.devices = devices;
+            this.nodes = nodes;
+            var changed = this.nodes;
+            this.groups = groups;
+            this.staticNodeData = staticNodeData;
+            this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
+            this.postChangedHooks.forEach( function(callback) { callback(changed) });
+            (this.postSubscribeHooks || []).forEach(function(callback) { callback(changed) });
+        }
+        
+        changed(nodes, __current) {
+            var these_nodes = this.nodes;
+            nodes.forEach(function(node, nodename) {
+                these_nodes.set(nodename, node);
+            })
+            this._lastChanged = nodes;
+            this.postChangedHooks.forEach( function(callback) { callback(nodes); });
+        }
+        
+        dynamicDevicesAdded(addRemoveID, childDeviceIDs, __current) {
             //alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
-        },
-        dynamicDevicesRemoved: function(addRemoveID, __current) {
+        }
+        
+        dynamicDevicesRemoved(addRemoveID, __current) {
             //alert('device removed: ' + addRemoveID);
-        },
-        removed: function(devices, nodes, __current) {
-            this._lastDevicesRemoved = this.HashMapToObject(devices);
-            this._lastNodesRemoved = this.HashMapToObject(nodes);
-        },
-        added: function(devices, nodes, __current) {
-            this._lastDevicesAdded = this.HashMapToObject(devices);
-            this._lastNodesAdded = this.HashMapToObject(nodes);
-        },
-        getAllDeviceNames: function() {
+        }
+        
+        removed(devices, nodes, __current) {
+            this._lastDevicesRemoved = devices;
+            this._lastNodesRemoved = nodes;
+        }
+        
+        added(devices, nodes, __current) {
+            this._lastDevicesAdded = devices;
+            this._lastNodesAdded = nodes;
+        }
+        
+        getAllDeviceNames() {
             var devices = [];
             for (var d in this.devices) {
                 devices.push(d); 
             }
             return devices;
-        },
-        HashMapToObject: function(m) {
+        }
+        
+        HashMapToObject(m) {
             var obj={}; 
             m.forEach( function(dn) { 
                 obj[dn]=m.get(dn);
             }); 
             return obj
         } 
-    });
+    };
 })(Ice, nice);
 

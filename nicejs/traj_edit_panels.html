@@ -34,10 +34,10 @@
   <!--  <script src="jsondiff.js"></script> -->
   <!--  <script src="//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.20/require.min.js"></script>-->
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Ice.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Glacier2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceStorm.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceGrid.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/IceGrid.min.js"></script>
 
   <script src="generated/data.js"></script>
   <script src="generated/devices.js"></script>
@@ -58,7 +58,7 @@
   <script type="text/javascript" src="servers_available.js"></script>
   <link rel="stylesheet" href="css/webtraj.css" />
   <script type="text/javascript">
-    var Promise = Ice.Promise;
+
     var RouterPrx = Glacier2.RouterPrx;
     var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
     var ice_protocol_version = "1.1";
@@ -98,20 +98,26 @@
     }
   </style>
   <script type="text/javascript">
-    var FileMonitorI = Ice.Class(nice.api.file.FileMonitor, {
-      __init__: function() {
+    var FileMonitorI = class extends nice.api.file.FileMonitor {
+      constructor() {
+        super();
         this.pathseparator = '/';
-        this.subscribed = new Promise();
-      },
-      onSubscribe: function(root, __current) {
+        var _resolve, _reject;
+        this.subscribed = new Promise(function(resolve, reject) {
+            _resolve = resolve;
+            _reject = reject;
+        })
+        this.postSubscribeHooks = [function() { _resolve(); }]               
+      }
+      onSubscribe(root, __current) {
         this._root = root;
         this.added = [];
         this.removed = [];
         this.updated = [];
         this.contents = [];
-        this.subscribed.succeed();
-      },
-      filesAdded: function(nodes, __current) {
+        (this.postSubscribeHooks || []).forEach(function(callback) { callback(root) });
+      }
+      filesAdded(nodes, __current) {
         var n, ip, nodename;
         for (var i = 0; i < nodes.length; i++) {
           n = nodes[i];
@@ -121,8 +127,8 @@
         };
         trajectory_editor.refreshBoth();
         this.added.push([nodes]);
-      },
-      filesRemoved: function(nodes, __current) {
+      }
+      filesRemoved(nodes, __current) {
         //if (nodes.length != contents.length) {
         //    console.log('error! lengths of added nodes doesn\'t match contents');
         //    return
@@ -146,15 +152,15 @@
         };
         trajectory_editor.refreshBoth();
         this.removed.push([nodes]);
-      },
-      filesUpdated: function(nodes, contents, __current) {
+      }
+      filesUpdated(nodes, contents, __current) {
         this.updated.push([nodes, contents]);
-      },
-      filesContents: function(nodes, contents, __current) {
+      }
+      filesContents(nodes, contents, __current) {
         this.contents.push([nodes, contents]);
-      },
+      }
       // end overrides
-      _findInsertionPoint: function(nodename, target, level) {
+      _findInsertionPoint(nodename, target, level) {
         var pathtokens = nodename.split(this.pathseparator);
         if (pathtokens.length == 2) {
           // then it's being added to root...
@@ -170,40 +176,46 @@
           return nexttarget
         }
       }
-    });
-    var ExperimentMonitorI = Ice.Class(nice.api.experiment.ExperimentMonitor, {
-      __init__: function() {
-        this.subscribed = new Promise();
-      },
-      onSubscribe: function(all_experiments, current_experiment, __current) {
+    };
+    var ExperimentMonitorI = class extends nice.api.experiment.ExperimentMonitor {
+      constructor() {
+        super();
+        var _resolve, _reject;
+        this.subscribed = new Promise(function(resolve, reject) {
+            _resolve = resolve;
+            _reject = reject;
+        })
+        this.postSubscribeHooks = [function() { _resolve() }];
+      }
+      onSubscribe(all_experiments, current_experiment, __current) {
         this.all_experiments = all_experiments;
         this.current_experiment = current_experiment;
         this.postSwitchedHooks = (this.postSwitchedHooks == null) ? [] : this.postSwitchedHooks;
         this.postSwitchedHooks.forEach(function(callback) {
           callback(current_experiment);
         });
-        this.subscribed.succeed();
-      },
-      switchedCurrentExperiment: function(current_experiment, __current) {
+        (this.postSubscribeHooks || []).forEach(function(callback) { callback(current_experiment) });
+      }
+      switchedCurrentExperiment(current_experiment, __current) {
         this.current_experiment = current_experiment;
         this.postSwitchedHooks.forEach(function(callback) {
           callback(current_experiment);
         });
-      },
-      modifiedCurrentExperiment: function(data, __current) {
+      }
+      modifiedCurrentExperiment(data, __current) {
         this._last_modified = data;
-      },
-      createdExperiment: function(data, __current) {
+      }
+      createdExperiment(data, __current) {
         this._last_created = data;
-      },
-      HashMapToObject: function(m) {
+      }
+      HashMapToObject(m) {
         var obj = {};
         m.forEach(function(dn) {
           obj[dn] = m.get(dn);
         });
         return obj
       }
-    });
+    };
     dialog_login = function() {
       // set the global hostname
       var hostname = document.getElementById("instrument_ip").value;
@@ -214,26 +226,28 @@
         password = "";
 
       signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
-        function(api_object, communicator, router, session, adapter, server_state) {
+        function(signin_objs) {
+          //api_obj, comm_obj, router_obj, session_obj, adapter_obj) {
           // globals:
           logging_in = false;
-          api = api_object;
+          api = signin_objs[0];
+          server_state = signin_objs[5];
           instrument_id = server_state.instrumentID;
           devicesMonitor = new DevicesMonitorI();
           fileMonitor = new FileMonitorI();
           experimentMonitor = new ExperimentMonitorI();
-          return Promise.all(
+          return Promise.all([
             subscribe(devicesMonitor, 'devices'),
             subscribe(fileMonitor, 'file'),
             subscribe(experimentMonitor, 'experiment'),
             fileMonitor.subscribed, // check to make sure the subscribe event is complete on this end
             experimentMonitor.subscribed,
             devicesMonitor.subscribed
-          ).then(function() {
+          ]).then(function() {
             trajectory_editor.refreshBoth();
             experimentMonitor.postSwitchedHooks = [trajectory_editor.refreshBoth];
           })
-        }).exception(
+        }).catch(
         function(ex) {
           console.log(ex);
         }
