@@ -8,7 +8,7 @@
     // and a new event 'niceServerShutdown' that is 
     // triggered on the window when the nice server shuts down.
     
-    var Promise = Ice.Promise;
+    //var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
         
     var State = {
@@ -30,7 +30,8 @@
         
         var username = (username == null) ? "" : username;
         var password = (password == null) ? "" : password;
-        Promise.try (
+        return signinPromise.then(
+        //Promise.try (
             function()
             {              
                 //
@@ -77,24 +78,18 @@
                 ])
             }
         ).then(
-            function(acmT,a)
+            function(aa)
             {   
-                var acmTimeout = acmT[0];
-                adapter = a[0];
+                var acmTimeout = aa[0];
+                adapter = aa[1];
                 console.log("acm timeout:", acmTimeout);
         
                 if(acmTimeout > 0)
                     {
                         var connection = router.ice_getCachedConnection();
                         connection.setACM(acmTimeout, Ice.ACMClose.CloseOff, Ice.ACMHeartbeat.HeartbeatAlways);
-                        connection.setCallback({
-                            "closed": function(c) {
-                                alert("connection lost: ", String(c))
-                            },
-                            "heartbeat": function(hb) {
-                                console.log('server heartbeat');
-                            }
-                        });
+                        connection.setCloseCallback(function(c) { alert("connection lost: ", String(c)) });
+                        connection.setHeartbeatCallback(function(hb) { console.log('server heartbeat') });
                     }
 
                 
@@ -129,7 +124,7 @@
             }
         ).then(
             function() {
-                signinPromise.succeed(api, communicator, router, session, adapter, server_state);
+                return [api, communicator, router, session, adapter, server_state];
             }
         ).catch(
             function(ex)
@@ -143,10 +138,9 @@
                 {
                     communicator.destroy();
                 }
-                signinPromise.fail(ex.toString());
+                throw ex.toString();
             }
         );
-        return signinPromise; 
     }
 
     disconnect = function(event) {
@@ -163,14 +157,14 @@
     }
 
     subscribe = function(servant, stream) {
-        return Promise.all(
+        return Promise.all([
             router.getSessionTimeout(),
             router.getCategoryForClient()
-        ).then(
-            function(timeoutArgs, categoryArgs)
+        ]).then(
+            function(tc) //timeoutArgs, categoryArgs)
             {
-                var timeout = timeoutArgs[0];
-                var category = categoryArgs[0];
+                var timeout = tc[0];
+                var category = tc[1];
                 //
                 // Create the  servant and add it to the
                 // ObjectAdapter.
