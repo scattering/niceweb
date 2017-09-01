@@ -46,6 +46,7 @@
     var logging_in = false;
     var mainTable;
 
+    var instrument_canonical_name;
     var instrument_name = "local"; // default NICE host
     var port = '9999';
     if (localStorage && localStorage.instrument_name) {
@@ -97,11 +98,11 @@
     dialog_login = function() {
         // set the global hostname
         var hostname = document.getElementById("instrument_ip").value;
-	// ok we're just going to put this here.
+        // ok we're just going to put this here.
         //var username = document.getElementById("username").value;
         //var password = document.getElementById("password").value;
-	var username = "user",
-	    password = "";
+        var username = "user",
+            password = "";
         
         signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
             function(api_obj, comm_obj, router_obj, session_obj, adapter_obj) {
@@ -110,7 +111,7 @@
                 api = api_obj;
                 communicator = comm_obj;
                 router = router_obj;
-		adapter = adapter_obj;
+                adapter = adapter_obj;
                 experimentMonitor = new ExperimentMonitorI();
                 var postSwitched = function() {
                     // if called with 2 arguments, current is the second.
@@ -264,7 +265,7 @@
     
     function pullFromIMS() {
       var now = new Date();
-      get_items(instrument_name).then(function(items) {
+      get_items(instrument_canonical_name).then(function(items) {
 	items.forEach(function(item) {
 	  item._start_time = new Date(item["Start Date"]); 
 	  item._start_time.setHours(0); 
@@ -419,7 +420,7 @@
             $('#north_panel').removeClass('connected', 4000)
                 .find('.instrument-name').text('Server shut down: Not connected');
         }).on('niceServerConnected', function(ev) {
-	    instrument_canonical_name = ev.originalEvent.detail.instrumentID;
+          instrument_canonical_name = ev.originalEvent.detail.instrumentID;
             $('#north_panel').addClass('connected')
                 .find('.instrument-name').text("Instrument connected: " + instrument_canonical_name);
         });
