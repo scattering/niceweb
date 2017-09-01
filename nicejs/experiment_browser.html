@@ -1,12 +1,12 @@
 <html>
+
 <head>
   <link rel="icon" type="image/png" href="css/appicon.png" />
   <link rel="stylesheet" href="css/layout-default-latest.css" />
   <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
-  <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
-            type="text/css" rel="Stylesheet" />
+  <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css" type="text/css" rel="Stylesheet" />
   <link href="//cdn.datatables.net/1.10.7/css/jquery.dataTables.min.css" type="text/css" rel="Stylesheet" />
-  <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
+  <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
   <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
   <script src="jquery.layout-latest.js"></script>
   <script src="//cdn.datatables.net/1.10.7/js/jquery.dataTables.min.js" type="text/javascript"></script>
@@ -14,9 +14,9 @@
   <!-- dialog support -->
   <link rel="stylesheet" href="../static/dialog-polyfill.css" />
   <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
-  
+
   <script type="text/javascript" src="//ncnr.nist.gov/instruments/magik/js/ims_fullcal.js"></script>
-  
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Ice.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Glacier2.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/IceStorm.min.js"></script>
@@ -42,215 +42,235 @@
     var RouterPrx = Glacier2.RouterPrx;
     var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
     var ice_protocol_version = "1.1";
-            
+
     var logging_in = false;
     var mainTable;
 
     var instrument_name = "local"; // default NICE host
     var port = '9999';
     if (localStorage && localStorage.instrument_name) {
-        instrument_name = localStorage.instrument_name
+      instrument_name = localStorage.instrument_name
     }
-    
+
     function getEnumValues(ice_enum) {
-        var enumVals = [];
-        for (var i=0; i<=ice_enum.maxValue; i++) {
-            enumVals[i] = ice_enum.valueOf(i)._name;
-        }
-        return enumVals;
+      var enumVals = [];
+      for (var i = 0; i <= ice_enum.maxValue; i++) {
+        enumVals[i] = ice_enum.valueOf(i)._name;
+      }
+      return enumVals;
     }
 
     var ExperimentMonitorI = class extends nice.api.experiment.ExperimentMonitor {
-        __init__(postSubscribeHooks, postSwitchedHooks, postCreatedHooks) {
-            this.postSubscribeHooks = (postSubscribeHooks == null) ? [] : postSubscribeHooks;
-            this.postSwitchedHooks = (postSwitchedHooks == null) ? [] : postSwitchedHooks;
-            this.postCreatedHooks = (postCreatedHooks == null) ? [] : postCreatedHooks;
-        }
-  
-        onSubscribe(all_experiments, current_experiment, __current) {
-            //var all_experiments = this.HashMapToObject(all_experiments);
-            this.all_experiments = all_experiments;
-            this.current_experiment = current_experiment;
-            this.postSubscribeHooks.forEach(function(callback) { callback(all_experiments, current_experiment); });
-        }
-  
-        switchedCurrentExperiment(current_experiment, __current) {
-            this.current_experiment = current_experiment;
-            this.postSwitchedHooks.forEach(function(callback) { callback(current_experiment); });
-        }
-  
-        modifiedCurrentExperiment(data,  __current) {
-            this._last_modified = data;
-        }
-  
-        createdExperiment(new_experiment,  __current) {
-            this._last_created = new_experiment;
-            this.all_experiments.set(new_experiment.id, new_experiment);
-            var all = this.all_experiments;
-            this.postCreatedHooks.forEach(function(callback) { callback(all, new_experiment); });
-        }
-  
-        HashMapToObject(m) {
-            var obj={}; 
-            m.forEach( function(dn) { 
-                obj[dn]=m.get(dn);
-            }); 
-            return obj
-        } 
-    };
-    
-    dialog_login = function() {
-        // set the global hostname
-        var hostname = document.getElementById("instrument_ip").value;
-        // ok we're just going to put this here.
-        //var username = document.getElementById("username").value;
-        //var password = document.getElementById("password").value;
-        var username = "user",
-            password = "";
-        
-        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
-            function(signin_objs) {
-                //api_obj, comm_obj, router_obj, session_obj, adapter_obj) {
-                // globals:
-                logging_in = false;
-                api = signin_objs[0];
-                communicator = signin_objs[1];
-                router = signin_objs[2];
-                adapter = signin_objs[4];
-                experimentMonitor = new ExperimentMonitorI();
-                var postSwitched = function() {
-                    // if called with 2 arguments, current is the second.
-                    // if called with 1 argument, it is just the current experiment.
-                    var curr = arguments[arguments.length - 1];
-                    var currentDisplayed = $('.current-experiment-id');
-                    currentDisplayed.text(curr.id.toString());
-                }
-                experimentMonitor.postSwitchedHooks = [postSwitched];
-                // call this from the context of the experimentMonitor:
-                var updateTable = function(all, curr) {
-                  //var data = Object.keys(all).map(function(a) { return all[a] });
-                  var data = Array.from(all.values());
-                  if (mainTable == null) {
-                    mainTable = $("table#experiments").dataTable({
-                      data: data,
-                      columns: [
-                        { data: 'id', title: 'id', width: '6em'},//   render: renderID, width: '9em' },
-                        { data: 'creationTimeStamp', title: 'Creation Timestamp', render: renderTimestamps },
-                        { data: 'participants', title: 'Participants' },
-                        { data: 'localContact', title: 'Local Contact' },
-                        {
-                            data: 'title',
-                            title: 'Title',
-                            render: $.fn.dataTable.render.ellipsis( 80 )
-                        },
-                        {
-                            data: 'description',
-                            title: 'Description',
-                            render: $.fn.dataTable.render.ellipsis( 80 )
-                        }
-                      ]
-                    });
-                  }
-                  else {
-                    mainTable.api().clear();
-                    mainTable.api().rows.add(data);
-                  }
-                  mainTable.api().order([[1, "desc"]]).draw(); // sort by date, descending;
-                //mainTable = $(t).dataTable();
-              }
-              experimentMonitor.postSubscribeHooks = [ updateTable, postSwitched ];
-              experimentMonitor.postCreatedHooks = [ updateTable ];
+      __init__(postSubscribeHooks, postSwitchedHooks, postCreatedHooks) {
+        this.postSubscribeHooks = (postSubscribeHooks == null) ? [] : postSubscribeHooks;
+        this.postSwitchedHooks = (postSwitchedHooks == null) ? [] : postSwitchedHooks;
+        this.postCreatedHooks = (postCreatedHooks == null) ? [] : postCreatedHooks;
+      }
 
-              // the subscribe function won't work until the connection is 
-              // complete, which is why it's in the "then" block here
-              return Promise.all([
-                  subscribe(experimentMonitor, 'experiment')
-              ])
+      onSubscribe(all_experiments, current_experiment, __current) {
+        //var all_experiments = this.HashMapToObject(all_experiments);
+        this.all_experiments = all_experiments;
+        this.current_experiment = current_experiment;
+        this.postSubscribeHooks.forEach(function(callback) {
+          callback(all_experiments, current_experiment);
         });
-        if (localStorage) {
-            localStorage.instrument_name = $("select#instrument_selector option:selected").text();
-        }
-        document.getElementById("login").close();
+      }
+
+      switchedCurrentExperiment(current_experiment, __current) {
+        this.current_experiment = current_experiment;
+        this.postSwitchedHooks.forEach(function(callback) {
+          callback(current_experiment);
+        });
+      }
+
+      modifiedCurrentExperiment(data, __current) {
+        this._last_modified = data;
+      }
+
+      createdExperiment(new_experiment, __current) {
+        this._last_created = new_experiment;
+        this.all_experiments.set(new_experiment.id, new_experiment);
+        var all = this.all_experiments;
+        this.postCreatedHooks.forEach(function(callback) {
+          callback(all, new_experiment);
+        });
+      }
+
+      HashMapToObject(m) {
+        var obj = {};
+        m.forEach(function(dn) {
+          obj[dn] = m.get(dn);
+        });
+        return obj
+      }
+    };
+
+    dialog_login = function() {
+      // set the global hostname
+      var hostname = document.getElementById("instrument_ip").value;
+      // ok we're just going to put this here.
+      //var username = document.getElementById("username").value;
+      //var password = document.getElementById("password").value;
+      var username = "user",
+        password = "";
+
+      signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
+        function(signin_objs) {
+          //api_obj, comm_obj, router_obj, session_obj, adapter_obj) {
+          // globals:
+          logging_in = false;
+          api = signin_objs[0];
+          communicator = signin_objs[1];
+          router = signin_objs[2];
+          adapter = signin_objs[4];
+          experimentMonitor = new ExperimentMonitorI();
+          var postSwitched = function() {
+            // if called with 2 arguments, current is the second.
+            // if called with 1 argument, it is just the current experiment.
+            var curr = arguments[arguments.length - 1];
+            var currentDisplayed = $('.current-experiment-id');
+            currentDisplayed.text(curr.id.toString());
+          }
+          experimentMonitor.postSwitchedHooks = [postSwitched];
+          // call this from the context of the experimentMonitor:
+          var updateTable = function(all, curr) {
+            //var data = Object.keys(all).map(function(a) { return all[a] });
+            var data = Array.from(all.values());
+            if (mainTable == null) {
+              mainTable = $("table#experiments").dataTable({
+                data: data,
+                columns: [{
+                    data: 'id',
+                    title: 'id',
+                    width: '6em'
+                  }, //   render: renderID, width: '9em' },
+                  {
+                    data: 'creationTimeStamp',
+                    title: 'Creation Timestamp',
+                    render: renderTimestamps
+                  },
+                  {
+                    data: 'participants',
+                    title: 'Participants'
+                  },
+                  {
+                    data: 'localContact',
+                    title: 'Local Contact'
+                  },
+                  {
+                    data: 'title',
+                    title: 'Title',
+                    render: $.fn.dataTable.render.ellipsis(80)
+                  },
+                  {
+                    data: 'description',
+                    title: 'Description',
+                    render: $.fn.dataTable.render.ellipsis(80)
+                  }
+                ]
+              });
+            } else {
+              mainTable.api().clear();
+              mainTable.api().rows.add(data);
+            }
+            mainTable.api().order([
+              [1, "desc"]
+            ]).draw(); // sort by date, descending;
+            //mainTable = $(t).dataTable();
+          }
+          experimentMonitor.postSubscribeHooks = [updateTable, postSwitched];
+          experimentMonitor.postCreatedHooks = [updateTable];
+
+          // the subscribe function won't work until the connection is 
+          // complete, which is why it's in the "then" block here
+          return Promise.all([
+            subscribe(experimentMonitor, 'experiment')
+          ])
+        });
+      if (localStorage) {
+        localStorage.instrument_name = $("select#instrument_selector option:selected").text();
+      }
+      document.getElementById("login").close();
     }
-    
+
     function renderTimestamps(data, type, row) {
-  var data = data.toNumber();
-        if ( type !== 'display' ) {
-            return data;
-        }
-        
-        var d = new Date(data);
-        var year = d.getFullYear().toFixed(0);
-        var month = (d.getMonth() + 1).toFixed(0);
-        var day = d.getDate().toFixed(0);
-        month = (month.length < 2) ? "0" + month : month;
-        day = (day.length < 2) ? "0" + day : day;
-        return year + "-" + month + "-" + day;
+      var data = data.toNumber();
+      if (type !== 'display') {
+        return data;
+      }
+
+      var d = new Date(data);
+      var year = d.getFullYear().toFixed(0);
+      var month = (d.getMonth() + 1).toFixed(0);
+      var day = d.getDate().toFixed(0);
+      month = (month.length < 2) ? "0" + month : month;
+      day = (day.length < 2) ? "0" + day : day;
+      return year + "-" + month + "-" + day;
     }
-    
+
     function renderID(data, type, row) {
-      if ( type !== 'display' ) {
-  return data;
-      }      
+      if (type !== 'display') {
+        return data;
+      }
       var id_disp = String(data) + "<button class=\"switch-button\" onclick=\"switchTo('" + String(data) + "')\">switchTo</button>";
       return id_disp;
     }
-    
-    $.fn.dataTable.render.ellipsis = function ( cutoff, wordbreak, escapeHtml ) {
-  var esc = function ( t ) {
-      return t
-    .replace( /&/g, '&amp;' )
-    .replace( /</g, '&lt;' )
-    .replace( />/g, '&gt;' )
-    .replace( /"/g, '&quot;' );
-  };
-     
-  return function ( d, type, row ) {
-      // Order, search and type get the original data
-      if ( type !== 'display' ) {
-    return d;
-      }
-     
-      if ( typeof d !== 'number' && typeof d !== 'string' ) {
-    return d;
-      }
-     
-      d = d.toString(); // cast numbers
-     
-      if ( d.length <= cutoff ) {
-    return d;
-      }
-     
-      var shortened = d.substr(0, cutoff-1);
-     
-      // Find the last white space character in the string
-      if ( wordbreak ) {
-    shortened = shortened.replace(/\s([^\s]*)$/, '');
-      }
-     
-      // Protect against uncontrolled HTML input
-      if ( escapeHtml ) {
-    shortened = esc( shortened );
-      }
-     
-      return '<span class="ellipsis" title="'+esc(d)+'">'+shortened+'&#8230;</span>';
-  };
+
+    $.fn.dataTable.render.ellipsis = function(cutoff, wordbreak, escapeHtml) {
+      var esc = function(t) {
+        return t
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      };
+
+      return function(d, type, row) {
+        // Order, search and type get the original data
+        if (type !== 'display') {
+          return d;
+        }
+
+        if (typeof d !== 'number' && typeof d !== 'string') {
+          return d;
+        }
+
+        d = d.toString(); // cast numbers
+
+        if (d.length <= cutoff) {
+          return d;
+        }
+
+        var shortened = d.substr(0, cutoff - 1);
+
+        // Find the last white space character in the string
+        if (wordbreak) {
+          shortened = shortened.replace(/\s([^\s]*)$/, '');
+        }
+
+        // Protect against uncontrolled HTML input
+        if (escapeHtml) {
+          shortened = esc(shortened);
+        }
+
+        return '<span class="ellipsis" title="' + esc(d) + '">' + shortened + '&#8230;</span>';
+      };
     };
-    
-    
+
+
     function switchTo(id) {
       if (confirm("switch to " + String(id) + "?")) {
-  switched = api.switchCurrentExperiment(id);
+        switched = api.switchCurrentExperiment(id);
       }
     }
-    
+
     function toLong(number) {
       // only works for positive numbers.
       var high = parseInt(Math.floor(number / Ice.Long.HIGH_MASK));
       var low = parseInt(number % Ice.Long.HIGH_MASK);
       return new Ice.Long(high, low);
     }
-    
+
     function createNewExperiment() {
       // get experiment info from online calendar, if possible...
       var dialog = $("dialog#new_experiment");
@@ -265,36 +285,40 @@
       var publishing_mode = dialog.find("input#new_data_publishing:checked").val().toUpperCase();
       //console.log([isIMS, imsID, "", title, description, participants, emails, local_contact, publishing_mode]);
       api.createExperiment(isIMS, imsID, "", title, description, participants, emails, local_contact, publishing_mode)
-        .catch(function(e) { alert(e.reason) });
+        .catch(function(e) {
+          alert(e.reason)
+        });
       dialog[0].close();
     }
-    
+
     function pullFromIMS() {
       var now = new Date();
-      get_items(instrument_name).then(function(items) {
-  items.forEach(function(item) {
-    item._start_time = new Date(item["Start Date"]); 
-    item._start_time.setHours(0); 
-    item._end_time = new Date(item._start_time);
-    item._end_time.setDate(item._start_time.getDate() + parseInt(item["# of Days"]));
-  });
-  var matching = items.find(function(item) { return item._start_time < now && item._end_time >= now });
-  if (matching) {
-    var dialog = $("dialog#new_experiment");
-    if (matching["Title"]) dialog.find("input#new_title").val(matching["Title"]);
-    if (matching["ID"]) dialog.find("input#new_IMS").val(matching["ID"]);
-    if (matching["Contact"]) dialog.find("input#new_local_contact").val(matching["Contact"]);
-    if (matching["Participants"]) {
-      var potential_participants = matching["Participants"].map(p => p.name);
-      confirm_participants(potential_participants)
-        .then(function(participants) {
-      dialog.find("input#new_participants").val(participants.join(", "));
-          })
-    }
-  }
+      get_items(instrument_name.toUpperCase()).then(function(items) {
+        items.forEach(function(item) {
+          item._start_time = new Date(item["Start Date"]);
+          item._start_time.setHours(0);
+          item._end_time = new Date(item._start_time);
+          item._end_time.setDate(item._start_time.getDate() + parseInt(item["# of Days"]));
+        });
+        var matching = items.find(function(item) {
+          return item._start_time < now && item._end_time >= now
+        });
+        if (matching) {
+          var dialog = $("dialog#new_experiment");
+          if (matching["Title"]) dialog.find("input#new_title").val(matching["Title"]);
+          if (matching["ID"]) dialog.find("input#new_IMS").val(matching["ID"]);
+          if (matching["Contact"]) dialog.find("input#new_local_contact").val(matching["Contact"]);
+          if (matching["Participants"]) {
+            var potential_participants = matching["Participants"].map(p => p.name);
+            confirm_participants(potential_participants)
+              .then(function(participants) {
+                dialog.find("input#new_participants").val(participants.join(", "));
+              })
+          }
+        }
       });
     }
-    
+
     function confirm_participants(potential_participants) {
       // using builtin Promise function...
       var p = Promise.resolve();
@@ -303,29 +327,42 @@
       var skip_all = false;
       var participants = [];
       confirm_dialog[0].showModal();
-      for (var pi=0; pi<potential_participants.length; pi++) {
-  let pp = potential_participants[pi];
-  p = p.then(function() {
-    var promise = new Promise(function(resolve, reject) {
-      if (skip_all) { resolve() }
-      confirm_dialog.find("span.user-name").text(pp);
-      confirm_dialog.find("input#confirm_present")
-        .off('click')
-        .on('click', function() { participants.push(pp); resolve()});
-      confirm_dialog.find("input#skip_confirm")
-        .off('click')
-        .on('click', function() { resolve() });
-      confirm_dialog.find("input#skip_all_confirm")
-        .off('click')
-        .on('click', function() { skip_all = true; resolve() });
-    })
-    return promise
-  });
+      for (var pi = 0; pi < potential_participants.length; pi++) {
+        let pp = potential_participants[pi];
+        p = p.then(function() {
+          var promise = new Promise(function(resolve, reject) {
+            if (skip_all) {
+              resolve()
+            }
+            confirm_dialog.find("span.user-name").text(pp);
+            confirm_dialog.find("input#confirm_present")
+              .off('click')
+              .on('click', function() {
+                participants.push(pp);
+                resolve()
+              });
+            confirm_dialog.find("input#skip_confirm")
+              .off('click')
+              .on('click', function() {
+                resolve()
+              });
+            confirm_dialog.find("input#skip_all_confirm")
+              .off('click')
+              .on('click', function() {
+                skip_all = true;
+                resolve()
+              });
+          })
+          return promise
+        });
       }
-      p = p.then(function() { confirm_dialog[0].close(); return participants });
+      p = p.then(function() {
+        confirm_dialog[0].close();
+        return participants
+      });
       return p
     }
-    
+
     function copyFrom(path, folder) {
       // copy all the files (prompt for overwrite) from the source directory to the
       // current directory.
@@ -335,132 +372,144 @@
       var source_files, target_files;
       var p = new Ice.Promise().succeed();
       api.ls(source_path, "*", false).then(function(f) {
-  source_files = f;
-  api.ls(target_path, "*", false).then(function(f) {
-    target_files = f;
-    source_files.forEach(function(s) {
-      p = p.then(function() { 
-        if (target_files.indexOf(s) > -1 && ! confirm("Filename: " + s +" exists in " + current_path + "\nOverwrite?")) {
-      return
-        }
-        else {
-    return api.readFileAsText(source_path + "/" + s).then(function(t) { return api.writeFileFromText(target_path + "/" + s, t, true, false) });
-        }
-      });
-    })
-  })
+        source_files = f;
+        api.ls(target_path, "*", false).then(function(f) {
+          target_files = f;
+          source_files.forEach(function(s) {
+            p = p.then(function() {
+              if (target_files.indexOf(s) > -1 && !confirm("Filename: " + s + " exists in " + current_path + "\nOverwrite?")) {
+                return
+              } else {
+                return api.readFileAsText(source_path + "/" + s).then(function(t) {
+                  return api.writeFileFromText(target_path + "/" + s, t, true, false)
+                });
+              }
+            });
+          })
+        })
       });
     }
-    
+
     window.onload = function() {
-  var servers = Object.keys(servers_available);
-  var instrument_selector = $("select#instrument_selector");
-  servers.forEach(function(s) { 
-    instrument_selector.append($("<option />", {value: servers_available[s], name: s, text: s}));
-  });
-  var change_instrument = function() {
-    $("input#instrument_ip").val(this.value);
-  }
-  instrument_selector.on("change", change_instrument);
-  instrument_selector.find('option[name="'+instrument_name+'"]').prop('selected', 'selected');
-  $("input#instrument_ip")[0].value = servers_available[instrument_name];
-  
-        var dialogs = document.getElementsByTagName("dialog");
-  for (var di = 0; di<dialogs.length; di++) {
-    var d = dialogs[di];
-    if (!d.show) { dialogPolyfill.registerDialog(d); }
-  }
-  
-  $("button#create_new_experiment").button();
-  $("button#create_new_experiment").click(function() {    
-    $("dialog#new_experiment")[0].show();
-  });
-  
-  $("button#switch_to").button().click(function() {
-    if (mainTable && mainTable.api) {
-      var data = mainTable.api().row('.selected').data();
-      if (data && data.id) {
-        if (confirm("switch to " + String(data.id) + "?")) {
-    var switched = api.switchCurrentExperiment(data.id);
+      var servers = Object.keys(servers_available);
+      var instrument_selector = $("select#instrument_selector");
+      servers.forEach(function(s) {
+        instrument_selector.append($("<option />", {
+          value: servers_available[s],
+          name: s,
+          text: s
+        }));
+      });
+      var change_instrument = function() {
+        $("input#instrument_ip").val(this.value);
+        instrument_name = $(this).text();
+      }
+      instrument_selector.on("change", change_instrument);
+      instrument_selector.find('option[name="' + instrument_name + '"]').prop('selected', 'selected');
+      $("input#instrument_ip")[0].value = servers_available[instrument_name];
+
+      var dialogs = document.getElementsByTagName("dialog");
+      for (var di = 0; di < dialogs.length; di++) {
+        var d = dialogs[di];
+        if (!d.show) {
+          dialogPolyfill.registerDialog(d);
         }
       }
-    }
-  });
-  
-  $("button#copy_sequences").button().click(function() {
-    if (mainTable && mainTable.api) {
-      var data = mainTable.api().row('.selected').data();
-      if (data && data.clientPath) {
-        copyFrom(data.clientPath, "sequences");
-      }
-    }
-  });
-  
-  $("button#copy_trajectories").button().click(function() {
-    if (mainTable && mainTable.api) {
-      var data = mainTable.api().row('.selected').data();
-      if (data && data.clientPath) {
-        copyFrom(data.clientPath, "trajectories");
-      }
-    }
-  });
-  
-  
-  $("table#experiments").on('click', 'tr',  function () {
-      if ( $(this).hasClass('selected') ) {
-    $(this).removeClass('selected');
-      }
-      else {
-    $(this).parent().find('tr.selected').removeClass('selected');
-    $(this).addClass('selected');
-      }
-  } );
-  
-        $('.current-experiment-id').click( function() {
-            if (mainTable && mainTable.api) {
-                mainTable.api().search(this.textContent).draw();
+
+      $("button#create_new_experiment").button();
+      $("button#create_new_experiment").click(function() {
+        $("dialog#new_experiment")[0].show();
+      });
+
+      $("button#switch_to").button().click(function() {
+        if (mainTable && mainTable.api) {
+          var data = mainTable.api().row('.selected').data();
+          if (data && data.id) {
+            if (confirm("switch to " + String(data.id) + "?")) {
+              var switched = api.switchCurrentExperiment(data.id);
             }
-        });
-        
-        $(window).on('niceServerShutdown', function(ev) {
-            $('#north_panel').removeClass('connected', 4000)
-                .find('.instrument-name').text('Server shut down: Not connected');
-        }).on('niceServerConnected', function(ev) {
-      instrument_canonical_name = ev.originalEvent.detail.instrumentID;
-            $('#north_panel').addClass('connected')
-                .find('.instrument-name').text("Instrument connected: " + instrument_canonical_name);
-        });
-    
-        document.getElementById('login').show();
-        logging_in = true;
-    
-        myLayout = $('body').layout({
-                    east__size:                 null
-            ,   west__size:                     300
-            ,   south__size:        "auto"
-            ,   north_size:         "auto"
-                    // RESIZE Accordion widget when panes resize
-            ,   west__onresize:         $.layout.callbacks.resizePaneAccordions
-            ,   east__onresize:         $.layout.callbacks.resizePaneAccordions
-            ,   south__onresize:    $.layout.callbacks.resizePaneAccordions
-            ,   north__onresize:    $.layout.callbacks.resizePaneAccordions
-            ,   center__onresize:   function() { mainTable.width(mainTable.parent().width()); }
-  });
-    
+          }
+        }
+      });
+
+      $("button#copy_sequences").button().click(function() {
+        if (mainTable && mainTable.api) {
+          var data = mainTable.api().row('.selected').data();
+          if (data && data.clientPath) {
+            copyFrom(data.clientPath, "sequences");
+          }
+        }
+      });
+
+      $("button#copy_trajectories").button().click(function() {
+        if (mainTable && mainTable.api) {
+          var data = mainTable.api().row('.selected').data();
+          if (data && data.clientPath) {
+            copyFrom(data.clientPath, "trajectories");
+          }
+        }
+      });
+
+
+      $("table#experiments").on('click', 'tr', function() {
+        if ($(this).hasClass('selected')) {
+          $(this).removeClass('selected');
+        } else {
+          $(this).parent().find('tr.selected').removeClass('selected');
+          $(this).addClass('selected');
+        }
+      });
+
+      $('.current-experiment-id').click(function() {
+        if (mainTable && mainTable.api) {
+          mainTable.api().search(this.textContent).draw();
+        }
+      });
+
+      $(window).on('niceServerShutdown', function(ev) {
+        $('#north_panel').removeClass('connected', 4000)
+          .find('.instrument-name').text('Server shut down: Not connected');
+      }).on('niceServerConnected', function(ev) {
+        instrument_canonical_name = ev.originalEvent.detail.instrumentID;
+        $('#north_panel').addClass('connected')
+          .find('.instrument-name').text("Instrument connected: " + instrument_canonical_name);
+      });
+
+      document.getElementById('login').show();
+      logging_in = true;
+
+      myLayout = $('body').layout({
+        east__size: null,
+        west__size: 300,
+        south__size: "auto",
+        north_size: "auto"
+          // RESIZE Accordion widget when panes resize
+          ,
+        west__onresize: $.layout.callbacks.resizePaneAccordions,
+        east__onresize: $.layout.callbacks.resizePaneAccordions,
+        south__onresize: $.layout.callbacks.resizePaneAccordions,
+        north__onresize: $.layout.callbacks.resizePaneAccordions,
+        center__onresize: function() {
+          mainTable.width(mainTable.parent().width());
+        }
+      });
+
     }
   </script>
   <style type="text/css">
     body {
-        /*font-family: 'Open Sans' !important;*/
+      /*font-family: 'Open Sans' !important;*/
     }
+
     dialog {
-        top: 20%;
-        position: absolute;
-        z-index: 10;
-  text-align: center;
+      top: 20%;
+      position: absolute;
+      z-index: 10;
+      text-align: center;
     }
-    
-    dialog input[type="text"], dialog textarea {
+
+    dialog input[type="text"],
+    dialog textarea {
       float: right;
       width: 45em;
     }
@@ -469,112 +518,115 @@
       background-color: yellow;
       top: 50%
     }
-    
+
     #north_panel {
-        background-color: LightYellow;
-        height: 30px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        font-weight: normal;
-        /* font-family: 'Open Sans'; */
-        /* font-variant: small-caps; */
+      background-color: LightYellow;
+      height: 30px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+      font-weight: normal;
+      /* font-family: 'Open Sans'; */
+      /* font-variant: small-caps; */
     }
+
     #north_panel.connected {
-        background-color: LightGreen;
+      background-color: LightGreen;
     }
+
     #north_panel h3 {
-        display: inline-block;
+      display: inline-block;
     }
-    
+
     .selected-buttons {
-        float: right;
+      float: right;
     }
-    
+
     table.dataTable thead tr {
-        font-weight: bold;
+      font-weight: bold;
     }
-    
+
     .ui-layout-north h3 {
-        padding-right: 1em;
+      padding-right: 1em;
     }
+
     .current-experiment-id {
-        text-decoration: underline !important;
-        
+      text-decoration: underline !important;
     }
-    
+
     .switch-button {
       float: right;
     }
+
     label.disabled {
       color: #c0c0c0;
     }
   </style>
   <title>Experiments</title>
 </head>
-<body>
-<dialog id="login">
-  <h2>Login</h2>
-  <table>
-    <tr>
-      <td><label for="instrument_ip">Instrument address</label></td>
-      <td><select id="instrument_selector"></select><input type="text" id="instrument_ip"></td>
-    </tr>
-  </table>
-  <input type="button" onclick="dialog_login()" value="Connect">
-</dialog>
 
-<dialog id="new_experiment">
-  <h2>New Experiment</h2>
-  <table>
-    <tr>
-      <td><label for="new_title">Title:</label></td>
-      <td><input type="text" id="new_title"></td>
-    </tr>
-    <tr>
-      <td><input type="checkbox" id="new_isIMS" checked />
-    <label for="new_isIMS">Has Proposal ID:</label></td>
-      <td><input type="text" id="new_IMS" value="" placeholder="IMS id"></td>
-    </tr>
-    <tr>
-      <td><label for="new_description">Description:</label></td>
-      <td><textarea id="new_description" rows="15"></textarea></td>
-    </tr>
-    <tr>
-      <td><label for="new_participants">Participants:</label></td>
-      <td><input type="text" id="new_participants"></td>
-    </tr>
-    <tr>
-      <td><label for="new_emails">Emails:</label></td>
-      <td><input type="text" id="new_emails"></td>
-    </tr>
-    <tr>
-      <td><label for="new_local_contact">Local Contact:</label></td>
-      <td><input type="text" id="new_local_contact"></td>
-    </tr>
-    <tr>
-      <td><label>Data Publishing:</label></td>
-      <td>
-  <label><input type="radio" name="new_data_publishing" id="new_data_publishing" value="normal" checked>normal</label>
-  <label><input type="radio" name="new_data_publishing" id="new_data_publishing" value="normal">deferred</label>
-  <label class="disabled"><input type="radio" name="new_data_publishing" id="new_data_publishing" value="normal" disabled>proprietary</label>
-      </td>
-    </tr>
-  </table>
-  <input type="button" onclick="pullFromIMS()" value="Get values from IMS">
-  <input type="button" onclick="createNewExperiment()" value="Create">
-  <input type="button" id="new_experiment_cancel" onclick="this.parentElement.close()" value="Cancel">
-</dialog>
-<dialog id="new_confirm_participant">
-  <div>
-    Please confirm that <b><span class="user-name"></span></b>
-    is physically present
-  </div>
-  <input type="button" id="confirm_present" value="Confirm Participant">
-  <input type="button" id="skip_confirm" value="Skip">
-  <input type="button" id="skip_all_confirm" value="Skip All">
-</dialog>
-<div id="confirm_participant" style="display:none"></div>
-<div id="north_panel" class="ui-layout-north">
+<body>
+  <dialog id="login">
+    <h2>Login</h2>
+    <table>
+      <tr>
+        <td><label for="instrument_ip">Instrument address</label></td>
+        <td><select id="instrument_selector"></select><input type="text" id="instrument_ip"></td>
+      </tr>
+    </table>
+    <input type="button" onclick="dialog_login()" value="Connect">
+  </dialog>
+
+  <dialog id="new_experiment">
+    <h2>New Experiment</h2>
+    <table>
+      <tr>
+        <td><label for="new_title">Title:</label></td>
+        <td><input type="text" id="new_title"></td>
+      </tr>
+      <tr>
+        <td><input type="checkbox" id="new_isIMS" checked />
+          <label for="new_isIMS">Has Proposal ID:</label></td>
+        <td><input type="text" id="new_IMS" value="" placeholder="IMS id"></td>
+      </tr>
+      <tr>
+        <td><label for="new_description">Description:</label></td>
+        <td><textarea id="new_description" rows="15"></textarea></td>
+      </tr>
+      <tr>
+        <td><label for="new_participants">Participants:</label></td>
+        <td><input type="text" id="new_participants"></td>
+      </tr>
+      <tr>
+        <td><label for="new_emails">Emails:</label></td>
+        <td><input type="text" id="new_emails"></td>
+      </tr>
+      <tr>
+        <td><label for="new_local_contact">Local Contact:</label></td>
+        <td><input type="text" id="new_local_contact"></td>
+      </tr>
+      <tr>
+        <td><label>Data Publishing:</label></td>
+        <td>
+          <label><input type="radio" name="new_data_publishing" id="new_data_publishing" value="normal" checked>normal</label>
+          <label><input type="radio" name="new_data_publishing" id="new_data_publishing" value="normal">deferred</label>
+          <label class="disabled"><input type="radio" name="new_data_publishing" id="new_data_publishing" value="normal" disabled>proprietary</label>
+        </td>
+      </tr>
+    </table>
+    <input type="button" onclick="pullFromIMS()" value="Get values from IMS">
+    <input type="button" onclick="createNewExperiment()" value="Create">
+    <input type="button" id="new_experiment_cancel" onclick="this.parentElement.close()" value="Cancel">
+  </dialog>
+  <dialog id="new_confirm_participant">
+    <div>
+      Please confirm that <b><span class="user-name"></span></b> is physically present
+    </div>
+    <input type="button" id="confirm_present" value="Confirm Participant">
+    <input type="button" id="skip_confirm" value="Skip">
+    <input type="button" id="skip_all_confirm" value="Skip All">
+  </dialog>
+  <div id="confirm_participant" style="display:none"></div>
+  <div id="north_panel" class="ui-layout-north">
     <h3 class="instrument-name">Instrument: </h3>
     <h3>Current experiment: <a href="#" class="current-experiment-id"></a></h3>
     <button id="create_new_experiment">Create New Experiment</button>
@@ -583,16 +635,17 @@
       <button id="switch_to">Switch To</button>
       <button id="copy_trajectories">Copy Trajectories From</button>
       <button id="copy_sequences">Copy Sequences From</button>
-    <span id="queue_state"></span>
+      <span id="queue_state"></span>
     </div>
-</div>
-<div id="east_panel" class="ui-layout-east-no">
-</div>
-<div id="center_panel" class="ui-layout-wrapper ui-layout-center">
+  </div>
+  <div id="east_panel" class="ui-layout-east-no">
+  </div>
+  <div id="center_panel" class="ui-layout-wrapper ui-layout-center">
     <table id="experiments" class="stripe cell-border compact hover order-column"></table>
     <div id="all_experiments"></div>
-</div>
-<div id="south_panel" class="ui-layout-south">
-</div>
+  </div>
+  <div id="south_panel" class="ui-layout-south">
+  </div>
 </body>
+
 </html>
