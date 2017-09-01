@@ -38,7 +38,6 @@
   <script src="connect_zeroc.js"></script>
   <script type="text/javascript" src="servers_available.js"></script>
   <script type="text/javascript">
-    //var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
     var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
     var ice_protocol_version = "1.1";
@@ -46,6 +45,7 @@
     var logging_in = false;
     var mainTable;
 
+    var instrument_canonical_name;
     var instrument_name = "local"; // default NICE host
     var port = '9999';
     if (localStorage && localStorage.instrument_name) {
@@ -293,7 +293,7 @@
 
     function pullFromIMS() {
       var now = new Date();
-      get_items(instrument_name.toUpperCase()).then(function(items) {
+      get_items(instrument_canonical_name.toUpperCase()).then(function(items) {
         items.forEach(function(item) {
           item._start_time = new Date(item["Start Date"]);
           item._start_time.setHours(0);
