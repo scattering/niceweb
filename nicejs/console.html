@@ -638,7 +638,6 @@
             submitCommand();
         }
         else if (keyCode == 9) {
-            console.log(this.value);
             $(this).autocomplete("enable")
                 .autocomplete("search", this.value);
             ev.preventDefault();

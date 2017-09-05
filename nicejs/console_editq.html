@@ -17,10 +17,10 @@
   <link rel="stylesheet" href="../static/dialog-polyfill.css" />
   <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Ice.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Glacier2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceStorm.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceGrid.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/IceGrid.min.js"></script>
 
   <script src="generated/data.js"></script>
   <script src="generated/file.js"></script>
@@ -41,6 +41,7 @@
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
     var logging_in = false;
+    var api;
     
     var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
     var ice_protocol_version = "1.1";
@@ -326,19 +327,20 @@
     // END JSTREE
     ////////////////////////////////////////////////////////////////////////////
 
-    var QueueMonitorI = Ice.Class(nice.api.queue.QueueMonitor, {
-        __init__: function(jstree_target) {
+    var QueueMonitorI = class extends nice.api.queue.QueueMonitor {
+        constructor(jstree_target) {
+            super();
             this.jstree_target = jstree_target;
             var target = $(jstree_target);
             this._copy_buffer = null; // for copy/paste operations.
             target.on('ready.jstree', function(e, data) { e.currentTarget.scrollTop = e.currentTarget.scrollHeight });
             //target.bind("select_node.jstree", function (e, data) { return data.instance.toggle_node(data.node); });
-        },
-        onSubscribe_old: function(state, root, __current) {
+        }
+        onSubscribe_old(state, root, __current) {
             this.state = state;
             this.root = root;
-        },
-        onSubscribe: function(queueState, root, __current) {
+        }
+        onSubscribe(queueState, root, __current) {
             // Called when we initially subscribe to the queue topic
             this.state = queueState;
             this._update_controls(queueState);
@@ -347,8 +349,8 @@
             this._addToNodeTable(this, root);
             this._addToCommandHistory(this, root);
             this.jstree = $(this.jstree_target).jstree(q2jstree(this)).jstree(true);
-        },
-        nodesAdded: function(path, node, __current) {
+        }
+        nodesAdded(path, node, __current) {
             // Called when a command node is added to the queue
             this._addToNodeTable(this, node);
             this._addToCommandHistory(this, node);
@@ -358,8 +360,8 @@
             if (newNode && newNode.scrollIntoView) {
                 newNode.scrollIntoView(true);
             }
-        },
-        nodesRemoved: function(path, node, __current) {
+        }
+        nodesRemoved(path, node, __current) {
             /*
             Called when a command node is removed from the queue.
             Handles removal of nodes. We remove the corresponding nodes
@@ -367,8 +369,8 @@
             */
             this._removeFromNodeTable(this, node);
             this.jstree.delete_node(node.UUID);
-        },
-        nodeStatusChanged: function(path, nodeID, status, __current) {
+        }
+        nodeStatusChanged(path, nodeID, status, __current) {
             // Called when an individual command's state changes
             if (nodeID in this._commands) {
                 this._commands[nodeID].status = status;        
@@ -376,19 +378,19 @@
                 $.extend(node, command_to_node(this._commands[nodeID]), true);
                 this.jstree.redraw_node(nodeID);
             }
-        },
-        stateChanged: function(queueState, __current) {
+        }
+        stateChanged(queueState, __current) {
             //console.log('stateChanged:', queueState);
             this.state = queueState;
             this._update_controls(queueState);
-        },
+        }
         setQueueDryrunTime(timeLeft, __current) {
             this.timeLeft = timeLeft.toNumber();
-        },
+        }
         ////////////////////////////////////////////////////////////////////
         // END OF API IMPLEMENTATION OVERRIDES
         ////////////////////////////////////////////////////////////////////
-        _update_controls: function(queueState) {
+        _update_controls(queueState) {
             var name = queueState._name;
             if (name == 'SUSPENDED') {
                 $('.pause-button').hide();
@@ -398,8 +400,8 @@
                 $('.resume-button').hide();
             }
             $('#queue_state').text(name);
-        },
-        _removeFromNodeTable: function(ctx, node) {
+        }
+        _removeFromNodeTable(ctx, node) {
             /*
             Removes a node from the id->node map. This is done recursively for all the node's children.
             Each node that is removed has its id added to the set of removed command IDs.
@@ -409,8 +411,8 @@
                 ctx._removeFromNodeTable(ctx, child);
             }
             delete ctx._commands[node.UUID];
-        },
-        _addToNodeTable: function(ctx, node) {
+        }
+        _addToNodeTable(ctx, node) {
             /*
             Adds a node to the id->node map. This is done recursively for all the node's
             children.
@@ -421,8 +423,8 @@
                 ctx._addToNodeTable(ctx, child);
             }
             
-        },
-        _addToCommandHistory: function(ctx, node) {
+        }
+        _addToCommandHistory(ctx, node) {
             /*
             Adds a command string to the history list. This is done recursively for all the node's
             children.
@@ -436,18 +438,19 @@
             }
         }
         
-    });
+    };
 
     function padded(number) {
         var output = number.toFixed(0);
         if (output.length < 2) { output = "0" + output }
         return output
     }
-    var ConsoleMonitorI = Ice.Class(nice.api.console.ConsoleMonitor, {
-        __init__: function(console_id) {
+    var ConsoleMonitorI = class extends nice.api.console.ConsoleMonitor {
+        constructor(console_id) {
+            super();
             this.console_id = console_id;
-        },
-        onSubscribe: function(history, __current) {
+        }
+        onSubscribe(history, __current) {
             this._history = history;
             var last_visible_p;
             var html = "", h, p, msg, msg_span, ts, t;
@@ -463,20 +466,20 @@
             if (last_visible_p != null && last_visible_p.scrollIntoView) {
                 last_visible_p.scrollIntoView(true);
             }
-        },
-        switchedCurrentExperiment: function(history, __current) {
+        }
+        switchedCurrentExperiment(history, __current) {
             this.onSubscribe(history, __current);
-        },
-        report: function(event, __current) {
+        }
+        report(event, __current) {
             this._lastEvent = event;
             var p = this._format_event(event);
             if (p != null) {
                 document.getElementById(this.console_id).appendChild(p);
                 p.scrollIntoView(true);
             }
-        },
+        }
 
-        _format_event: function(event) {
+        _format_event(event) {
             var p = null;
             var level = event.level._name;
             if ( 
@@ -527,7 +530,7 @@
             }
             return p
         }
-    });
+    };
 
     function editCommand(commandStr, uuid) {
         $('#command_line').val(commandStr);
@@ -568,7 +571,7 @@
             return api.insertQueueCommand(uuid, [command]).then(function(s) {
                 console.log('successful edit: ', s);
                 api.deleteQueueCommand(uuid);
-            }).exception(function(e) {
+            }).catch(function(e) {
                 alert('adding edited command failed:\n' + e.reason);
             });
         }
@@ -576,12 +579,12 @@
 
     function getCommandCompletion(command_stub, callback) {
         var command_stub = (command_stub.term) ? command_stub.term : command_stub;
-        var tokens = command_stub.split(/\s+/);
+        var tokens = command_stub.split(/\s+(--|-)?/);
         var last_length = tokens[tokens.length - 1].length;
         var root = command_stub.slice(0, (command_stub.length - last_length));
         api.complete(command_stub).then(function(result) {
             var completions = [];
-            sorted = result.fullCompletions.sort(
+            sorted = (result.fullCompletions || []).sort(
                 function(a,b) { 
                     return ((a.relevance > b.relevance) || 
                              ((a.relevance == b.relevance) && (a.replacementText < b.replacementText))) ? -1 : 1
@@ -618,16 +621,18 @@
             password = "";
         
         signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
-            function(api_object) {
-                // globals:
+            function(signin_objs) {
                 logging_in = false;
-                api = api_object;
+                api = signin_objs[0];
+                //communicator = signin_objs[1];
+                //router = signin_objs[2];
+                //adapter = signin_objs[4];
                 queueMonitor = new QueueMonitorI("#queue_panel");
                 consoleMonitor = new ConsoleMonitorI("console");
-                return Promise.all(
+                return Promise.all([
                     subscribe(queueMonitor, 'queue'),
                     subscribe(consoleMonitor, 'console')
-                )
+                ])
         });
         if (localStorage) {
             localStorage.instrument_name = $("select#instrument_selector option:selected").text();
