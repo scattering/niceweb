@@ -50,7 +50,7 @@
         
         getAllDeviceNames() {
             var devices = [];
-            for (var d in this.devices) {
+            for (var d of this.devices.keys()) {
                 devices.push(d); 
             }
             return devices;

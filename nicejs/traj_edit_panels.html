@@ -107,14 +107,15 @@
             _resolve = resolve;
             _reject = reject;
         })
-        this.postSubscribeHooks = [function() { _resolve(); }]               
+        this.postSubscribeHooks = [function() { _resolve(); }];
+        this.postContentsHooks = [];
       }
       onSubscribe(root, __current) {
         this._root = root;
         this.added = [];
         this.removed = [];
         this.updated = [];
-        this.contents = [];
+        this.contents = {};
         (this.postSubscribeHooks || []).forEach(function(callback) { callback(root) });
       }
       filesAdded(nodes, __current) {
@@ -155,9 +156,17 @@
       }
       filesUpdated(nodes, contents, __current) {
         this.updated.push([nodes, contents]);
+        let n = nodes.length;
+        for (var i=0; i<n; i++) {
+          this.contents[nodes[i].name] = contents[i];
+        }
       }
       filesContents(nodes, contents, __current) {
-        this.contents.push([nodes, contents]);
+        let n = nodes.length;
+        for (var i=0; i<n; i++) {
+          this.contents[nodes[i].name] = contents[i];
+        }
+        (this.postContentsHooks || []).forEach(function(h) { h(nodes, contents) }, this);
       }
       // end overrides
       _findInsertionPoint(nodename, target, level) {
@@ -177,6 +186,7 @@
         }
       }
     };
+    
     var ExperimentMonitorI = class extends nice.api.experiment.ExperimentMonitor {
       constructor() {
         super();
