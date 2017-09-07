@@ -85,7 +85,7 @@ $(function() {
     bb.hide();
     
     //var eb = $('#catalog');
-    var wt = {'variable_names': {}}; // global
+    var wt = {"instance": {}}; // global
     var editor; // to be used later
     
     function update_interactiveness() {
@@ -95,7 +95,7 @@ $(function() {
 //        } else {
 //            eb.show();
 //        }
-        if (wt.raw) { // && wt.filename) {
+        if (wt.instance.raw) { // && wt.filename) {
             var filename = wt.filename;
             var new_editor = set_data(wt.raw);
             new_editor.filename = filename;
@@ -120,12 +120,12 @@ $(function() {
         $("#editor").empty();
         //loops = loopsList(parsed_data.loops);
         var interactive = document.getElementById('interactive').checked;
-        wt = interactive ? new webtraj_interactive() : new webtraj();
-        editor = wt.mainList(parsed_data);
-        wt.variable_names['devices'] = (devicesMonitor && devicesMonitor.devices)? Object.keys(devicesMonitor.devices).sort() : [];
-        wt.variable_names['init'] = init_keywords;
-        wt.source_trajectory = parsed_data;
-        wt.raw = raw;
+        wt.instance = interactive ? new webtraj_interactive() : new webtraj();
+        editor = wt.instance.mainList(parsed_data);
+        wt.instance.variable_names['devices'] = (devicesMonitor && devicesMonitor.devices)? Object.keys(devicesMonitor.devices).sort() : [];
+        wt.instance.variable_names['init'] = init_keywords;
+        wt.instance.source_trajectory = parsed_data;
+        wt.instance.raw = raw;
         document.getElementById('editor').appendChild(editor);
         $('.text-entry input')
             // event handler
@@ -144,7 +144,7 @@ $(function() {
             $('#filelist ol li').removeClass("ui-selected");
             $('#statusline').html('<b>Editing local: ' + datafilename + '</b>');
             wt = set_data(this.result);
-            wt.filename = datafilename;
+            wt.instance.filename = datafilename;
         }
         reader.readAsText(file);
     }
@@ -175,11 +175,23 @@ $(function() {
     
     
     var loadFile = function(path, filename) {
+        var data = fileMonitor.contents[path + filename];
+        wt = set_data(data);
+        wt.instance.filename = filename;
+        wt.instance.path = path;
+        $('#statusline').html('<b>Editing: ' + path + filename + '</b>');
+        $('.lockrange').prop('checked', true).trigger('change');;
+        //document.getElementById('result').innerHTML = result.val.me;
+        //msg = null;
+        //result = null;
+        bb.hide();
+        bd.show();
+        /*
         return api.readFileAsText(path + '/' + filename).then(
             function (data) {
                 wt = set_data(data);
-                wt.filename = filename;
-                wt.path = path;
+                wt.instance.filename = filename;
+                wt.instance.path = path;
                 $('#statusline').html('<b>Editing: ' + path + filename + '</b>');
                 $('.lockrange').prop('checked', true).trigger('change');;
                 //document.getElementById('result').innerHTML = result.val.me;
@@ -189,15 +201,16 @@ $(function() {
                 bd.show();
             }
         );
+        */
     }
     
     var saveFile = function(filename, overWrite) {
         if (filename == null || filename == '') {
-            var filename = wt.filename;
+            var filename = wt.instance.filename;
         }
-        wt.filename = filename;
+        wt.instance.filename = filename;
         var trajectories_path = getTrajectoriesPath();
-        wt.path = trajectories_path;
+        wt.instance.path = trajectories_path;
         $('#statusline').html('<b>Editing: ' + filename + '</b>');
         var traj_obj = editor.getValue();
         var filecontents = JSON.stringify(traj_obj, null, "  ");
@@ -211,7 +224,7 @@ $(function() {
         var checkExisting = (checkExisting == null) ? true : false;
         if (filename == null) {
             var prompt_file = "";
-            if (wt && wt.filename) { prompt_file = wt.filename }; 
+            if (wt.instance && wt.instance.filename) { prompt_file = wt.instance.filename }; 
             var filename = prompt("Save file as:", prompt_file);
         }
         var trajectories_path = getTrajectoriesPath();
@@ -230,7 +243,7 @@ $(function() {
     }
     
     function save() {
-        saveAs(false, wt.filename);
+        saveAs(false, wt.instance.filename);
     }
     
     var deleteFilesConfirm = function(filenames) {
@@ -253,7 +266,7 @@ $(function() {
     
     function deleteFile(path) {
         if (path == null || path == '') {
-            //var filename = wt.filename;
+            //var filename = wt.instance.filename;
             //var path = TRAJECTORY_PATH + '/' + filename;
             var selected = $('#filelist ol li.ui-selected');
             var paths = [];
@@ -276,12 +289,12 @@ $(function() {
             promises[i] = api.runJsonTrajectoryFile(filename);
         }
         return Promise.all(promises);
-        //var filename = wt.filename;
+        //var filename = wt.instance.filename;
         //return api.runJsonTrajectoryFile(filename);
     }
     
     function server_dry_run() {
-        var filename = wt.filename;
+        var filename = wt.instance.filename;
         return api.console("dryRunTrajectory " + filename).then(
             function(data) {
                 alert("result:" + JSON.stringify(data));
@@ -293,8 +306,8 @@ $(function() {
         var output = {};
         var devices = devicesMonitor.getAllDeviceNames();
         devices.forEach(function (item, i) {
-            if ('primaryNodeID' in devicesMonitor.devices[item]) {
-                output[item] = devicesMonitor.devices[item]['primaryNodeID'].split('.')[1];
+            if ('primaryNodeID' in devicesMonitor.devices.get(item)) {
+                output[item] = devicesMonitor.devices.get(item)['primaryNodeID'].split('.')[1];
             }
         });
         return output;
@@ -334,15 +347,13 @@ $(function() {
     var getLiveState = function(strict) {
         // if strict is true: don't allow bare device names.
         var live = {};
-        var device_ids = Object.keys(devicesMonitor.devices);
-        for (var i=0; i<device_ids.length; i++) {
-            var device_id = device_ids[i];
-            //console.log(device_id);
+        var devicemap = devicesMonitor.devices;
+        
+        for (var device of devicesMonitor.devices.values()) {
             var device_proxy = {};
-            var device = devicesMonitor.devices[device_id];
             if (!strict && 'primaryNodeID' in device && device.primaryNodeID) {
                 //console.log(device.primaryNodeID, devicesMonitor.nodes[device.primaryNodeID]);
-                var value = devicesMonitor.nodes[device.primaryNodeID].currentValue.userVal.val;
+                var value = devicesMonitor.nodes.get(device.primaryNodeID).currentValue.userVal.val;
                 device_proxy = {
                     valueOf: make_getter(value)
                 }
@@ -352,7 +363,7 @@ $(function() {
                     var node_id = device.visibleNodeIDs[j];
                     var node_name = node_id.split('.')[1];
                     //console.log(node_name);
-                    var node = devicesMonitor.nodes[node_id];
+                    var node = devicesMonitor.nodes.get(node_id);
                     if (node.currentValue && node.currentValue.userVal) {
                         var value = node.currentValue.userVal.val;
                         //Object.defineProperty(device_proxy, node_name, {get: make_getter(value)});
@@ -364,7 +375,7 @@ $(function() {
                     }
                 }
             }
-            live[device_id] = device_proxy;
+            live[device.id] = device_proxy;
         }
         return {live: live}
     }
@@ -372,23 +383,21 @@ $(function() {
     
     var getFastTimeEstimate_old = function(path, filename, live_state, primaryNodeIDMap, callback) {
         if (filename == null || filename == '') {
-            var filename = wt.filename;
+            var filename = wt.instance.filename;
         }
         //var live_state = (live) ? get_live_state(true) : {};
-        var path = (path == null) ? wt.path : path;
+        var path = (path == null) ? wt.instance.path : path;
         var traj_obj;
         var cached_monitor;
-        return api.readFileAsText(path + '/' + filename).then(
-            function (data) {
-                var parsed_data = eval('(function(){ var result =' + data + '; return result})();')
-                traj_obj = parsed_data;
-                //traj_obj = expandDevices(parsed_data);
-                my_traj_obj = traj_obj;
-                return api.getPersistentValue('estimatedMonitorRate')
-            }
-        ).then(
+        var data = fileMonitor.contents[path + '/' + filename];
+        var parsed_data = eval('(function(){ var result =' + data + '; return result})();')
+        traj_obj = parsed_data;
+        //traj_obj = expandDevices(parsed_data);
+        my_traj_obj = traj_obj;
+        return api.getPersistentValue('estimatedMonitorRate')
+          .then(
             function(c) {
-                cached_monitor = c;
+                cached_monitor = (c == "") ? NaN : c;
                 var expression_str = (MONITOR_RATE_ESTIMATE_EXPRESSION[instrument_id] || "").replace('<cached_monitor>', cached_monitor.toString());
                 console.log('expr:', expression_str);
                 eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.inits) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
@@ -399,29 +408,27 @@ $(function() {
                 var timeEstimate = __fastTimeEstimate(traj_obj, ctx);
                 callback(timeEstimate, path, filename);
             }
-        ).exception(
+          ).catch(
             function(e) {console.log('error:', e)}
-        )
+          )
     }
     
     var getFastTimeEstimate = function(path, filename, live_state, primaryNodeIDMap, callback) {
         if (filename == null || filename == '') {
-            var filename = wt.filename;
+            var filename = wt.instance.filename;
         }
         //var live_state = (live) ? get_live_state(true) : {};
-        var path = (path == null) ? wt.path : path;
+        var path = (path == null) ? wt.instance.path : path;
         var traj_obj;
         var cached_monitor;
-        return api.readFileAsText(path + '/' + filename).then(
-            function (data) {
-                var parsed_data = eval('(function(){ var result =' + data + '; return result})();')
-                traj_obj = parsed_data;
-                //traj_obj = expandDevices(parsed_data);
-                return api.getPersistentValue('estimatedMonitorRate')
-            }
-        ).then(
+        var data = fileMonitor.contents[path + filename];
+        var parsed_data = eval('(function(){ var result =' + data + '; return result})();')
+        traj_obj = parsed_data;
+        //traj_obj = expandDevices(parsed_data);
+        return api.getPersistentValue('estimatedMonitorRate')
+          .then(
             function(c) {
-                cached_monitor = c;
+                cached_monitor = (c == "") ? NaN : c;
                 var expression_str = (MONITOR_RATE_ESTIMATE_EXPRESSION[instrument_id] || "").replace('<cached_monitor>', cached_monitor.toString());
                 //eval('var monitorEstimateExpressionFunc = function(namespace) { with(Math) with(namespace.live_state.live) with(namespace.inits) with(namespace.moving) with(namespace.counters) return (' + expression_str + ')};');
                 //myEF = monitorEstimateExpressionFunc;
@@ -444,7 +451,7 @@ $(function() {
                 //var timeEstimate = fastTimeEstimate(traj_obj, ctx);
                 //callback(timeEstimate, path, filename);
             }
-        )
+          )
     }
     
     var getFiles = function(path, sort_files, callback) {
@@ -542,14 +549,38 @@ $(function() {
           .map(function(x) { return (x.name) });
         
         var trajectories_path = trajectories_folder.name;
+        // on publish, these will go into fileMonitor.contents
+        var updateTimeEstimate = function(t, n, path, filename) {
+            // filename is abs path, ignore path:
+            var totalTime = t; //.totalTime;
+            var numPoints = n;
+            var hours = Math.floor(totalTime/3600.0);
+            var minutes = Math.round((totalTime % 3600.0) / 60.0);
+            var targetItem = $('li[abspath="' + filename + '"]');
+            targetItem.children('.estimated-time')
+              .html(((hours > 0) ? (hours + 'h') : '') + minutes + 'm');
+            targetItem.children('.numPoints')
+              .html('#' + numPoints.toFixed(0));
+        }
+        var timeEstimateHook = function(nodes, contents) {
+            var live_state = getLiveState(true);
+            var primaryNodeIDMap = getPrimaryNodeIDMap();
+            for (var i=0; i<nodes.length; i++) {
+                getFastTimeEstimate("", nodes[i].name, live_state, primaryNodeIDMap, updateTimeEstimate);
+            }
+        }
+            
+        fileMonitor.postContentsHooks = [timeEstimateHook];
+         
+        api.publishContents(trajectory_files);
         var labels = trajectory_files.map(function(x) { var pel = x.split('/'); return pel[pel.length - 1]});
         updateFileList(trajectories_path, labels, true, 'ui-widget-content local-trajectories');
         
-        if (wt.filename && wt.path) {
+        if (wt.instance.filename && wt.instance.path) {
             // auto re-select currently selected file after save or refresh.
             // first, scroll the window to the desired item:
             $('#filelist ol li').removeClass("ui-selected");
-            var selection = $('#filelist ol [filename="' + wt.filename + '"][path="' + wt.path + '"]');
+            var selection = $('#filelist ol [filename="' + wt.instance.filename + '"][path="' + wt.instance.path + '"]');
             selection.addClass('ui-selected');
             
             if (selection && selection.parent && selection.position) {
@@ -615,7 +646,7 @@ $(function() {
     }
     
     commitChanges = function() {
-        var diff = JSONDiff(wt.source_trajectory, editor.getValue());
+        var diff = JSONDiff(wt.instance.source_trajectory, editor.getValue());
         var msg = ""; 
         for (var i=0; i<diff.length; i++) {
             msg += JSON.stringify(diff[i]) + '\n';
@@ -744,17 +775,18 @@ $(function() {
             ol.empty();
         }
         
-        var live_state = getLiveState(true);
-        var primaryNodeIDMap = getPrimaryNodeIDMap();
+        //var live_state = getLiveState(true);
+        //var primaryNodeIDMap = getPrimaryNodeIDMap();
         for (var i=0; i<filenames.length; i++) {
             var li = $('<li/>');
             var filename = filenames[i];
             li.addClass(listclass);
             li.attr('path', path);
             li.attr('filename', filename);
+            li.attr('abspath', path + filename);
             li.html(contentGenerator(path, filename));
             ol.append(li);
-            getFastTimeEstimate(path, filename, live_state, primaryNodeIDMap, updateTimeEstimate);
+            //getFastTimeEstimate(path, filename, live_state, primaryNodeIDMap, updateTimeEstimate);
         }
         filelist.height( $('#files').innerHeight() - $('#files h3').outerHeight() - 10 ); // padding is 5
     }
@@ -788,8 +820,8 @@ $(function() {
     //var device_list = Object.keys(getDevices()).sort();
     // add init keywords
     //device_list = init_keywords.concat(device_list);
-    wt.variable_names['devices'] = device_list;
-    wt.variable_names['init'] = init_keywords;
+    wt.instance.variable_names['devices'] = device_list;
+    wt.instance.variable_names['init'] = init_keywords;
     
     /*
     $( ".catalog-item" ).draggable({
@@ -834,6 +866,7 @@ $(function() {
     $('#filelist').keydown(arrowKeyNav);
     
     // exports:
+    trajectory_editor.wt = wt;
     trajectory_editor.refreshBoth = refreshBoth;
     trajectory_editor.refreshFileSystem = refreshFileSystem;
     trajectory_editor.save = save;

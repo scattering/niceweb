@@ -8,7 +8,7 @@
     // and a new event 'niceServerShutdown' that is 
     // triggered on the window when the nice server shuts down.
     
-    var Promise = Ice.Promise;
+    //var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
         
     var State = {
@@ -26,11 +26,12 @@
 
     signin = function(routerEndpoint, encoding, disableACM, username, password)
     {
-        var signinPromise = new Promise();
+        var signinPromise = Promise.resolve();
         
         var username = (username == null) ? "" : username;
         var password = (password == null) ? "" : password;
-        Promise.try (
+        return signinPromise.then(
+        //Promise.try (
             function()
             {              
                 //
@@ -71,30 +72,24 @@
             function(s)
             {
                 session = s;
-                return Promise.all(
+                return Promise.all([
                     router.getACMTimeout(),
                     communicator.createObjectAdapterWithRouter("", router)
-                )
+                ])
             }
         ).then(
-            function(acmT,a)
+            function(aa)
             {   
-                var acmTimeout = acmT[0];
-                adapter = a[0];
+                var acmTimeout = aa[0];
+                adapter = aa[1];
                 console.log("acm timeout:", acmTimeout);
         
                 if(acmTimeout > 0)
                     {
                         var connection = router.ice_getCachedConnection();
                         connection.setACM(acmTimeout, Ice.ACMClose.CloseOff, Ice.ACMHeartbeat.HeartbeatAlways);
-                        connection.setCallback({
-                            "closed": function(c) {
-                                alert("connection lost: ", String(c))
-                            },
-                            "heartbeat": function(hb) {
-                                console.log('server heartbeat');
-                            }
-                        });
+                        connection.setCloseCallback(function(c) { alert("connection lost: ", String(c)) });
+                        connection.setHeartbeatCallback(function(hb) { console.log('server heartbeat') });
                     }
 
                 
@@ -129,9 +124,9 @@
             }
         ).then(
             function() {
-                signinPromise.succeed(api, communicator, router, session, adapter, server_state);
+                return [api, communicator, router, session, adapter, server_state];
             }
-        ).exception(
+        ).catch(
             function(ex)
             {
                 //
@@ -143,10 +138,9 @@
                 {
                     communicator.destroy();
                 }
-                signinPromise.fail(ex.toString());
+                throw ex.toString();
             }
         );
-        return signinPromise; 
     }
 
     disconnect = function(event) {
@@ -163,14 +157,14 @@
     }
 
     subscribe = function(servant, stream) {
-        return Promise.all(
+        return Promise.all([
             router.getSessionTimeout(),
             router.getCategoryForClient()
-        ).then(
-            function(timeoutArgs, categoryArgs)
+        ]).then(
+            function(tc) //timeoutArgs, categoryArgs)
             {
-                var timeout = timeoutArgs[0];
-                var category = categoryArgs[0];
+                var timeout = tc[0];
+                var category = tc[1];
                 //
                 // Create the  servant and add it to the
                 // ObjectAdapter.
@@ -184,12 +178,12 @@
     }
     
     // basic system monitor to watch for server shutdowns
-    var SystemMonitorI = Ice.Class(nice.api.system.SystemMonitor, {
-        onSubscribe: function(state, __current) {},
-        stateChanged: function(state, __current) {},
-        serverShutdown: function( __current) {
+    var SystemMonitorI = class extends nice.api.system.SystemMonitor {
+        onSubscribe(state, __current) {};
+        stateChanged(state, __current) {};
+        serverShutdown( __current) {
             disconnect();
             window.dispatchEvent(shutdown_event);
         }
-    });
+    }
 })(Ice, Glacier2, nice);

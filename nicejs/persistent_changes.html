@@ -1,23 +1,23 @@
 <html>
 <head>
   <link rel="icon" type="image/png" href="css/appicon.png" />
-  <link rel="stylesheet" href="../../niceclient/static/css/layout-default-latest.css" />
+  <link rel="stylesheet" href="css/layout-default-latest.css" />
   <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
   <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
             type="text/css" rel="Stylesheet" />
   <script src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
   <script src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
-  <script src="../../niceclient/static/jquery.layout-latest.js"></script>
+  <script src="jquery.layout-latest.js"></script>
   <script type="text/javascript" src="d3.v3.min.js"></script>
 
   <!-- dialog support -->
   <link rel="stylesheet" href="../static/dialog-polyfill.css" />
   <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
 
-  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Ice.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Glacier2.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceStorm.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceGrid.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Ice.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Glacier2.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/IceStorm.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/IceGrid.min.js"></script>
 
   <script src="generated/data.js"></script>
   <script src="generated/file.js"></script>
@@ -33,12 +33,14 @@
   <script src="generated/sampleAlignment.js"></script>
   <script src="generated/clientapi.js"></script>
   <script src="connect_zeroc.js"></script>
+  <script type="text/javascript" src="servers_available.js"></script>
   <script type="text/javascript">
     var Promise = Ice.Promise;
     var RouterPrx = Glacier2.RouterPrx;
     var logging_in = false;
     var abort = false;
     var current_request;
+    var api;
     
     var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
     var ice_protocol_version = "1.1";
@@ -57,10 +59,10 @@
         'bt4': 'wurtzite_trans.gif',
         'default': 'appicon.png'
     }
-    var hostname = "h123062.ncnr.nist.gov"; // default NICE host
+    var instrument_name = "local"; // default NICE host
     var port = '9999';
-    if (localStorage && localStorage.nice_hostname) {
-        hostname = localStorage.nice_hostname
+    if (localStorage && localStorage.instrument_name) {
+        instrument_name = localStorage.instrument_name
     }
     
     var command_history = [];
@@ -121,12 +123,12 @@
 
     function getCommandCompletion(command_stub, callback) {
         var command_stub = (command_stub.term) ? command_stub.term : command_stub;
-        var tokens = command_stub.split(/\s+/);
+        var tokens = command_stub.split(/\s+(--|-)?/);
         var last_length = tokens[tokens.length - 1].length;
         var root = command_stub.slice(0, (command_stub.length - last_length));
         api.complete(command_stub).then(function(result) {
             var completions = [];
-            sorted = result.fullCompletions.sort(
+            sorted = (result.fullCompletions || []).sort(
                 function(a,b) { 
                     return ((a.relevance > b.relevance) || 
                              ((a.relevance == b.relevance) && (a.replacementText < b.replacementText))) ? -1 : 1
@@ -154,16 +156,21 @@
     }
 
     dialog_login = function() {
-        // set the global hostname
-        hostname = document.getElementById("instrument_ip").value;
-        var username = document.getElementById("username").value;
-        var password = document.getElementById("password").value;
-        
+        var hostname = document.getElementById("instrument_ip").value;
+        // ok we're just going to put this here.
+        //var username = document.getElementById("username").value;
+        //var password = document.getElementById("password").value;
+        var username = "user",
+            password = "";
+            
         signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
-            function(api_object) {
-                // globals:
+            function(signin_objs) {
                 logging_in = false;
-                api = api_object;
+                api = signin_objs[0];
+                //communicator = signin_objs[1];
+                //router = signin_objs[2];
+                //adapter = signin_objs[4];
+                // globals:
                 nodes = [];
                 node_ids = [];
                 return api.getAllNodes()
@@ -179,17 +186,28 @@
           }
         );
         if (localStorage) {
-            localStorage.nice_hostname = hostname;
+            localStorage.instrument_name = $("select#instrument_selector option:selected").text();
         }
         document.getElementById("login").close();
     }
       
   window.onload = function() {
+    var servers = Object.keys(servers_available);
+	var instrument_selector = $("select#instrument_selector");
+	servers.forEach(function(s) { 
+	  instrument_selector.append($("<option />", {value: servers_available[s], name: s, text: s}));
+	});
+	var change_instrument = function() {
+	  $("input#instrument_ip").val(this.value);
+	}
+	instrument_selector.on("change", change_instrument);
+	instrument_selector.find('option[name="'+instrument_name+'"]').prop('selected', 'selected');
+	$("input#instrument_ip")[0].value = servers_available[instrument_name];
+    
     var dialog = document.getElementById("login");
     if (!dialog.show) {
         dialogPolyfill.registerDialog(dialog);
     }
-    document.getElementById("instrument_ip").value = hostname;
     
     $(window).on('niceServerShutdown', function(ev) {
         $('#top_panel').removeClass('connected', 4000)
@@ -370,16 +388,13 @@
 <body>
 <dialog id="login">
   <h2>Login</h2>
-  <label for="instrument_ip">Instrument address</label>
-  <input type="text" id="instrument_ip" value="happy.home">
-  <br>
-  <label for="username">Username:</label>
-  <input type="text" id="username" value="" placeholder="username">
-  <br>
-  <label for="password">Password:</label>
-  <input type="password" id="password" placeholder="password">
-  <br>
-  <input type="button" onclick="dialog_login()" value="Go">
+  <table>
+    <tr>
+      <td><label for="instrument_ip">Instrument address</label></td>
+      <td><select id="instrument_selector"></select><input type="text" id="instrument_ip"></td>
+    </tr>
+  </table>
+  <input type="button" onclick="dialog_login()" value="Connect">
 </dialog>
 
 <div id="top_panel" class="ui-layout-north">

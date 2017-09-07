@@ -1,39 +1,31 @@
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <title>NICE Trajectory Editor</title>
   <link rel="icon" type="image/png" href="css/appicon.png" />
-    <link rel="stylesheet" type="text/css" href="css/layout-default-latest.css" />
-    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
-    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Special+Elite" />
-    <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css" />
-    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script>
-    <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
-    <script type="text/javascript" src="jquery.layout-latest.js"></script>
-    <script type="text/javascript" src="tv4.js"></script>
-    <script type="text/javascript" src="tv4.async-jquery.js"></script>
-  <!--<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css" />-->
-  <!--<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/smoothness/jquery-ui.css" />-->
-  <!--<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/redmond/jquery-ui.css" />-->
-  <!--<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>-->
-  <!--<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>-->
+  <link rel="stylesheet" type="text/css" href="css/layout-default-latest.css" />
+  <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
+  <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Special+Elite" />
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css" />
+  <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+  <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+  <script type="text/javascript" src="jquery.layout-latest.js"></script>
+  <script type="text/javascript" src="tv4.js"></script>
+  <script type="text/javascript" src="tv4.async-jquery.js"></script>
   <!-- dialog support -->
-    <link rel="stylesheet" href="../static/dialog-polyfill.css" />
-    <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
-  
+  <link rel="stylesheet" href="../static/dialog-polyfill.css" />
+  <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
+
   <script type="text/javascript">
-    if (typeof jQuery == 'undefined')
-        {
-            document.write(unescape("%3Cscript src='jquery-1.11.1.min.js' type='text/javascript'%3E%3C/script%3E"));
-        }
-        
-    if (typeof jQuery.ui == 'undefined')
-        {
-            document.write(unescape("%3Cscript src='jquery-ui.min.js' type='text/javascript'%3E%3C/script%3E"));
-        }
+    if (typeof jQuery == 'undefined') {
+      document.write(unescape("%3Cscript src='jquery-1.11.1.min.js' type='text/javascript'%3E%3C/script%3E"));
+    }
+
+    if (typeof jQuery.ui == 'undefined') {
+      document.write(unescape("%3Cscript src='jquery-ui.min.js' type='text/javascript'%3E%3C/script%3E"));
+    }
   </script>
-<!--  <script src="http://code.jquery.com/jquery-1.9.1.js"></script>-->
-<!-- <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>-->
   <script src="sprintf.js"></script>
   <script src="webtraj_base_prototype.js"></script>
   <script src="webtraj_interactive_inplace.js"></script>
@@ -42,10 +34,10 @@
 <!--  <script src="jsondiff.js"></script> -->
 <!--  <script src="//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.20/require.min.js"></script>-->
   
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Ice.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Glacier2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceStorm.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceGrid.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/IceGrid.min.js"></script>
   
     <script src="generated/data.js"></script>
     <script src="generated/devices.js"></script>
@@ -63,313 +55,368 @@
     
     <script src="DevicesMonitorI.js"></script>
     <script src="connect_zeroc.js"></script>
+    <script type="text/javascript" src="servers_available.js"></script>
   <link rel="stylesheet" href="css/webtraj.css" />
   <script type="text/javascript">
-    var Promise = Ice.Promise;
+
     var RouterPrx = Glacier2.RouterPrx;
     var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
     var ice_protocol_version = "1.1";
-            
+
     var logging_in = false;
-    
+
     var INSTRUMENT_LOGOS = {
-        'pbr': 'pbr_logo_main.svg',
-        'pbr.ncnr.nist.gov': 'pbr_logo_main.svg',
-        'magik': 'magik_logo_red.svg', 
-        'magik.ncnr.nist.gov': 'magik_logo_red.svg',
-        'sans:ngb': 'nSoftlogo_mission.png',
-        'ngbsans.ncnr.nist.gov': 'nSoftlogo_mission.png',
-        'cts.ncnr.nist.gov': 'phades_logo.svg',
-        'phades': 'phades_logo.svg',
-        'bt4.ncnr.nist.gov': 'wurtzite_trans.gif',
-        'bt4': 'wurtzite_trans.gif',
-        'default': 'appicon.png'
+      'pbr': 'pbr_logo_main.svg',
+      'pbr.ncnr.nist.gov': 'pbr_logo_main.svg',
+      'magik': 'magik_logo_red.svg',
+      'magik.ncnr.nist.gov': 'magik_logo_red.svg',
+      'sans:ngb': 'nSoftlogo_mission.png',
+      'ngbsans.ncnr.nist.gov': 'nSoftlogo_mission.png',
+      'cts.ncnr.nist.gov': 'phades_logo.svg',
+      'phades': 'phades_logo.svg',
+      'bt4.ncnr.nist.gov': 'wurtzite_trans.gif',
+      'bt4': 'wurtzite_trans.gif',
+      'default': 'appicon.png'
     }
-    var nice_hostname = "nice04.ncnr.nist.gov"; // default NICE host
     var instrument_id; // will be set on login
+    var instrument_name = "local"; // default NICE host
     var port = '9999';
-    if (localStorage && localStorage.nice_hostname) {
-        nice_hostname = localStorage.nice_hostname
+    if (localStorage && localStorage.instrument_name) {
+      instrument_name = localStorage.instrument_name
     }
-    console.log(nice_hostname);
     var api;
     var experimentMonitor, fileMonitor, devicesMonitor;
-    
+
     /* Example validation:
     tv4.validate(editor.getValue(), 'trajectory_schemas/trajectory-schema.json', function(s) {console.log(s)});
     */
-    
   </script>
   <script type="text/javascript" src="webtraj_page_websocket.js"></script>
   <style type="text/css">
     #files {
-        overflow: hidden;
+      overflow: hidden;
     }
   </style>
   <script type="text/javascript">
+    var FileMonitorI = class extends nice.api.file.FileMonitor {
+      constructor() {
+        super();
+        this.pathseparator = '/';
+        var _resolve, _reject;
+        this.subscribed = new Promise(function(resolve, reject) {
+            _resolve = resolve;
+            _reject = reject;
+        })
+        this.postSubscribeHooks = [function() { _resolve(); }];
+        this.postContentsHooks = [];
+      }
+      onSubscribe(root, __current) {
+        this._root = root;
+        this.added = [];
+        this.removed = [];
+        this.updated = [];
+        this.contents = {};
+        (this.postSubscribeHooks || []).forEach(function(callback) { callback(root) });
+      }
+      filesAdded(nodes, __current) {
+        var n, ip, nodename;
+        for (var i = 0; i < nodes.length; i++) {
+          n = nodes[i];
+          nodename = (n.name.slice(-1) == this.pathseparator) ? n.name.slice(0, -1) : n.name;
+          ip = this._findInsertionPoint(nodename, this._root, 2);
+          ip.children.push(n)
+        };
+        trajectory_editor.refreshBoth();
+        this.added.push([nodes]);
+      }
+      filesRemoved(nodes, __current) {
+        //if (nodes.length != contents.length) {
+        //    console.log('error! lengths of added nodes doesn\'t match contents');
+        //    return
+        //}
+        var n, ip;
+        for (var i = 0; i < nodes.length; i++) {
+          n = nodes[i];
+          ip = this._findInsertionPoint(n.name, this._root, 2);
+          var nn, found = false;
+          for (var j = 0; j < ip.children.length; j++) {
+            nn = ip.children[j];
+            if (nn.name == n.name) {
+              ip.children.splice(j, 1);
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            alert("can't delete " + n.name + ": file not found");
+          }
+        };
+        trajectory_editor.refreshBoth();
+        this.removed.push([nodes]);
+      }
+      filesUpdated(nodes, contents, __current) {
+        this.updated.push([nodes, contents]);
+        let n = nodes.length;
+        for (var i=0; i<n; i++) {
+          this.contents[nodes[i].name] = contents[i];
+        }
+      }
+      filesContents(nodes, contents, __current) {
+        let n = nodes.length;
+        for (var i=0; i<n; i++) {
+          this.contents[nodes[i].name] = contents[i];
+        }
+        (this.postContentsHooks || []).forEach(function(h) { h(nodes, contents) }, this);
+      }
+      // end overrides
+      _findInsertionPoint(nodename, target, level) {
+        var pathtokens = nodename.split(this.pathseparator);
+        if (pathtokens.length == 2) {
+          // then it's being added to root...
+          return this._root
+        }
+        var nextpath = pathtokens.slice(0, level).join(this.pathseparator) + this.pathseparator;
+        var nexttarget = target.children.filter(function(c) {
+          return new RegExp('\^' + nextpath).test(c.name)
+        })[0];
+        if (level < (pathtokens.length - 1)) {
+          return this._findInsertionPoint(nodename, nexttarget, (level + 1))
+        } else {
+          return nexttarget
+        }
+      }
+    };
     
-    var FileMonitorI = Ice.Class(nice.api.file.FileMonitor, {
-        __init__: function() {
-            this.pathseparator = '/';
-            this.subscribed = new Promise();
-        },
-        onSubscribe: function(root, __current) {
-            this._root = root;
-            this.added = [];
-            this.removed = [];
-            this.updated = [];
-            this.contents = [];
-            this.subscribed.succeed();
-        },
-        filesAdded: function(nodes, __current) {
-            var n, ip, nodename;
-            for (var i=0; i<nodes.length; i++) {
-                n = nodes[i];
-                nodename = (n.name.slice(-1) == this.pathseparator)? n.name.slice(0,-1) : n.name;
-                ip = this._findInsertionPoint(nodename, this._root, 2);
-                ip.children.push(n)               
-            };
-            trajectory_editor.refreshBoth();
-            this.added.push([nodes]);
-        },
-        filesRemoved: function(nodes,  __current) {
-            //if (nodes.length != contents.length) {
-            //    console.log('error! lengths of added nodes doesn\'t match contents');
-            //    return
-            //}
-            var n, ip;
-            for (var i=0; i<nodes.length; i++) {
-                n = nodes[i];
-                ip = this._findInsertionPoint(n.name, this._root, 2);
-                var nn, found = false;
-                for (var j=0; j<ip.children.length; j++) {
-                    nn = ip.children[j];
-                    if (nn.name == n.name) {
-                        ip.children.splice(j, 1);
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    alert("can't delete " + n.name + ": file not found");
-                } 
-            };
-            trajectory_editor.refreshBoth();
-            this.removed.push([nodes]);
-        },
-        filesUpdated: function(nodes, contents, __current) {
-            this.updated.push([nodes, contents]);
-        },
-        filesContents: function(nodes, contents, __current) {
-            this.contents.push([nodes, contents]);
-        },
-        // end overrides
-        _findInsertionPoint: function(nodename, target, level) {
-            var pathtokens = nodename.split(this.pathseparator);
-            if (pathtokens.length == 2) {
-                // then it's being added to root...
-                return this._root
-            }
-            var nextpath = pathtokens.slice(0, level).join(this.pathseparator) + this.pathseparator;
-            var nexttarget = target.children.filter(function(c) { return new RegExp('\^' + nextpath).test( c.name ) })[0];
-            if (level < (pathtokens.length - 1)) {
-                return this._findInsertionPoint(nodename, nexttarget, (level+1))
-            } else {
-                return nexttarget
-            }
-        }
-    });
-    var ExperimentMonitorI = Ice.Class(nice.api.experiment.ExperimentMonitor, {
-        __init__: function() {
-            this.subscribed = new Promise();
-        },
-        onSubscribe: function(all_experiments, current_experiment, __current) {
-            this.all_experiments = all_experiments;
-            this.current_experiment = current_experiment;
-            this.postSwitchedHooks = (this.postSwitchedHooks == null) ? [] : this.postSwitchedHooks;
-            this.postSwitchedHooks.forEach( function(callback) { callback(current_experiment); });
-            this.subscribed.succeed();
-        },
-        switchedCurrentExperiment: function(current_experiment, __current) {
-            this.current_experiment = current_experiment;
-            this.postSwitchedHooks.forEach( function(callback) { callback(current_experiment); });
-        },
-        modifiedCurrentExperiment: function(data,  __current) {
-            this._last_modified = data;
-        },
-        createdExperiment: function(data,  __current) {
-            this._last_created = data;
-        },
-        HashMapToObject: function(m) {
-            var obj={}; 
-            m.forEach( function(dn) { 
-                obj[dn]=m.get(dn);
-            }); 
-            return obj
-        } 
-    });
-    dialog_login = function() {
-        
-        // set the global hostname
-        nice_hostname = document.getElementById("instrument_ip").value;
-        var username = document.getElementById("username").value;
-        var password = document.getElementById("password").value;
-        
-        signin(router_spec.replace(/<host>/, nice_hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
-            function(api_object, communicator, router, session, adapter, server_state) {
-                // globals:
-                logging_in = false;
-                api = api_object;
-                instrument_id = server_state.instrumentID;
-                devicesMonitor = new DevicesMonitorI();
-                fileMonitor = new FileMonitorI();
-                experimentMonitor = new ExperimentMonitorI();
-                return Promise.all(
-                    subscribe(devicesMonitor, 'devices'),
-                    subscribe(fileMonitor, 'file'),
-                    subscribe(experimentMonitor, 'experiment'),
-                    fileMonitor.subscribed, // check to make sure the subscribe event is complete on this end
-                    experimentMonitor.subscribed,
-                    devicesMonitor.subscribed
-                ).then(function() { trajectory_editor.refreshBoth(); experimentMonitor.postSwitchedHooks = [trajectory_editor.refreshBoth]; })
-        }).exception(
-            function(ex) {
-                console.log(ex);
-            }
-        );
-        
-        if (localStorage) {
-            localStorage.nice_hostname = nice_hostname;
-        }
-        document.getElementById("login").close();
-    }
-    window.onload = function () { 
-	    //$('body').layout({ applyDemoStyles: true });
-	    var dialog = document.getElementById("login");
-        if (!dialog.show) {
-            dialogPolyfill.registerDialog(dialog);
-        }
-        document.getElementById("instrument_ip").value = nice_hostname;
-	    //hostname = document.getElementById("instrument_ip").value;
-	    $(window).on('niceServerShutdown', function(ev) {
-            $('#top_panel').removeClass('connected', 4000)
-                .find('#status')
-                .find('.instrument-name').text('Server shut down: Not connected');
-        }).on('niceServerConnected', function(ev) {
-            var logopath = 'css/';
-            var instrumentID = ev.originalEvent.detail.instrumentID.toLowerCase();
-            var virtual = ev.originalEvent.detail.testDeployment;
-            if (instrumentID in INSTRUMENT_LOGOS) {
-              logopath += INSTRUMENT_LOGOS[instrumentID];
-            } else {
-              logopath += INSTRUMENT_LOGOS['default'];
-            }
-            $('#top_panel').addClass('connected')
-              .find('.instrument-name').text("Instrument connected: " + ((virtual)? "VIRTUAL " : "") + instrumentID)
-              .parent().find('.instrument-logo').attr("src", logopath);
-              
-            //$('#top_panel').addClass('connected')
-            //    .find('#status')
-            //    .find('.instrument-name').text("Instrument connected: " + nice_hostname);
+    var ExperimentMonitorI = class extends nice.api.experiment.ExperimentMonitor {
+      constructor() {
+        super();
+        var _resolve, _reject;
+        this.subscribed = new Promise(function(resolve, reject) {
+            _resolve = resolve;
+            _reject = reject;
+        })
+        this.postSubscribeHooks = [function() { _resolve() }];
+      }
+      onSubscribe(all_experiments, current_experiment, __current) {
+        this.all_experiments = all_experiments;
+        this.current_experiment = current_experiment;
+        this.postSwitchedHooks = (this.postSwitchedHooks == null) ? [] : this.postSwitchedHooks;
+        this.postSwitchedHooks.forEach(function(callback) {
+          callback(current_experiment);
         });
-	    
-	    dialog.show();
-        logging_in = true;
-        
-	    var layout = $('body').layout({
-			west__size:			300
-		,	east__size:			0
-		,   south__size:        "auto"
-			// RESIZE Accordion widget when panes resize
-		,	west__onresize:		$.layout.callbacks.resizePaneAccordions
-		,	east__onresize:		$.layout.callbacks.resizePaneAccordions
-		,	south__onresize:		$.layout.callbacks.resizePaneAccordions
-		});
-		
-		var eb = $('#catalog');
+        (this.postSubscribeHooks || []).forEach(function(callback) { callback(current_experiment) });
+      }
+      switchedCurrentExperiment(current_experiment, __current) {
+        this.current_experiment = current_experiment;
+        this.postSwitchedHooks.forEach(function(callback) {
+          callback(current_experiment);
+        });
+      }
+      modifiedCurrentExperiment(data, __current) {
+        this._last_modified = data;
+      }
+      createdExperiment(data, __current) {
+        this._last_created = data;
+      }
+      HashMapToObject(m) {
+        var obj = {};
+        m.forEach(function(dn) {
+          obj[dn] = m.get(dn);
+        });
+        return obj
+      }
+    };
+    dialog_login = function() {
+      // set the global hostname
+      var hostname = document.getElementById("instrument_ip").value;
+      // ok we're just going to put this here.
+      //var username = document.getElementById("username").value;
+      //var password = document.getElementById("password").value;
+      var username = "user",
+        password = "";
+
+      signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
+        function(signin_objs) {
+          //api_obj, comm_obj, router_obj, session_obj, adapter_obj) {
+          // globals:
+          logging_in = false;
+          api = signin_objs[0];
+          server_state = signin_objs[5];
+          instrument_id = server_state.instrumentID;
+          devicesMonitor = new DevicesMonitorI();
+          fileMonitor = new FileMonitorI();
+          experimentMonitor = new ExperimentMonitorI();
+          return Promise.all([
+            subscribe(devicesMonitor, 'devices'),
+            subscribe(fileMonitor, 'file'),
+            subscribe(experimentMonitor, 'experiment'),
+            fileMonitor.subscribed, // check to make sure the subscribe event is complete on this end
+            experimentMonitor.subscribed,
+            devicesMonitor.subscribed
+          ]).then(function() {
+            trajectory_editor.refreshBoth();
+            experimentMonitor.postSwitchedHooks = [trajectory_editor.refreshBoth];
+          })
+        }).catch(
+        function(ex) {
+          console.log(ex);
+        }
+      );
+
+      if (localStorage) {
+        localStorage.instrument_name = $("select#instrument_selector option:selected").text();
+      }
+      document.getElementById("login").close();
+    }
+    window.onload = function() {
+      var servers = Object.keys(servers_available);
+      var instrument_selector = $("select#instrument_selector");
+      servers.forEach(function(s) {
+        instrument_selector.append($("<option />", {
+          value: servers_available[s],
+          name: s,
+          text: s
+        }));
+      });
+      var change_instrument = function() {
+        $("input#instrument_ip").val(this.value);
+      }
+      instrument_selector.on("change", change_instrument);
+      instrument_selector.find('option[name="' + instrument_name + '"]').prop('selected', 'selected');
+      $("input#instrument_ip")[0].value = servers_available[instrument_name];
+
+      var dialog = document.getElementById("login");
+      if (!dialog.show) {
+        dialogPolyfill.registerDialog(dialog);
+      }
+
+      $(window).on('niceServerShutdown', function(ev) {
+        $('#top_panel').removeClass('connected', 4000)
+          .find('#status')
+          .find('.instrument-name').text('Server shut down: Not connected');
+      }).on('niceServerConnected', function(ev) {
+        var logopath = 'css/';
+        var instrumentID = ev.originalEvent.detail.instrumentID.toLowerCase();
+        var virtual = ev.originalEvent.detail.testDeployment;
+        if (instrumentID in INSTRUMENT_LOGOS) {
+          logopath += INSTRUMENT_LOGOS[instrumentID];
+        } else {
+          logopath += INSTRUMENT_LOGOS['default'];
+        }
+        $('#top_panel').addClass('connected')
+          .find('.instrument-name').text("Instrument connected: " + ((virtual) ? "VIRTUAL " : "") + instrumentID)
+          .parent().find('.instrument-logo').attr("src", logopath);
+
+        //$('#top_panel').addClass('connected')
+        //    .find('#status')
+        //    .find('.instrument-name').text("Instrument connected: " + nice_hostname);
+      });
+
+      dialog.show();
+      logging_in = true;
+
+      var layout = $('body').layout({
+        west__size: 300,
+        east__size: 0,
+        south__size: "auto"
+          // RESIZE Accordion widget when panes resize
+          ,
+        west__onresize: $.layout.callbacks.resizePaneAccordions,
+        east__onresize: $.layout.callbacks.resizePaneAccordions,
+        south__onresize: $.layout.callbacks.resizePaneAccordions
+      });
+
+      var eb = $('#catalog');
 
     };
   </script>
   <style type="text/css">
     #top_panel {
-        background-color: LightYellow;
-        height: 30px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        font-weight: normal;
-        /* font-family: 'Open Sans'; */
-        /* font-variant: small-caps; */
+      background-color: LightYellow;
+      height: 30px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+      font-weight: normal;
+      /* font-family: 'Open Sans'; */
+      /* font-variant: small-caps; */
     }
+
     #top_panel.connected {
-        background-color: LightGreen;
+      background-color: LightGreen;
     }
+
     #top_panel h3 {
-        display: inline-block;
-        margin: 0px;
+      display: inline-block;
+      margin: 0px;
     }
+
     .instrument-name {
-        color: DarkGreen;
+      color: DarkGreen;
     }
+
     .instrument-logo {
-        height: 3em;
-        padding-left: 1em;
-        padding-right: 1em;
-        border: 0px;
-        vertical-align: middle;
+      height: 3em;
+      padding-left: 1em;
+      padding-right: 1em;
+      border: 0px;
+      vertical-align: middle;
     }
+
     #login {
-        top: 28%;
-        position: absolute;
-        z-index: 10;
+      top: 28%;
+      position: absolute;
+      z-index: 10;
     }
+
     .estimated-time {
-        float: right;
-        color: red;
+      float: right;
+      color: red;
     }
+
     .numPoints {
-        float: right;
-        color: green;
+      float: right;
+      color: green;
     }
+
     .remove-button {
-        width: 2em;
-        height: 2em;
+      width: 2em;
+      height: 2em;
     }
   </style>
 </head>
+
 <body>
-<dialog id="login">
-  <h2>Login</h2>
-  <label for="instrument_ip">Instrument address</label>
-  <input type="text" id="instrument_ip" value="happy.home">
-  <br>
-  <label for="username">Username:</label>
-  <input type="text" id="username" value="" placeholder="username">
-  <br>
-  <label for="password">Password:</label>
-  <input type="password" id="password" placeholder="password">
-  <br>
-  <input type="button" onclick="dialog_login()" value="Go">
-</dialog>
-<div id="files" class="ui-layout-wrapper ui-layout-west">
-     <h3 class="ui-widget-header" style="display:block;">Trajectories</h3>
-     <div id="filelist" tabindex=1> 
-     <ol id="filelist_ol" tabindex=2></ol>
-     </div>
-</div>
-<div id="bottom_panel" class="ui-layout-south">
+  <dialog id="login">
+    <h2>Login</h2>
+    <table>
+      <tr>
+        <td><label for="instrument_ip">Instrument address</label></td>
+        <td><select id="instrument_selector"></select><input type="text" id="instrument_ip"></td>
+      </tr>
+    </table>
+    <input type="button" onclick="dialog_login()" value="Connect">
+  </dialog>
+  <div id="files" class="ui-layout-wrapper ui-layout-west">
+    <h3 class="ui-widget-header" style="display:block;">Trajectories</h3>
+    <div id="filelist" tabindex=1>
+      <ol id="filelist_ol" tabindex=2></ol>
+    </div>
+  </div>
+  <div id="bottom_panel" class="ui-layout-south">
     <div id="buttons" style="display:inline-block;"></div>
     <div id="bulk_edit_buttons" style="display: inline-block;"></div>
-</div>
-<div id="top_panel" class="ui-layout-north">
+  </div>
+  <div id="top_panel" class="ui-layout-north">
     <div id="status">
-        <span id="statusline">Trajectory Editor</span>
-        <h3 class="instrument-name">Instrument: </h3>
-        <img src="css/appicon.png" class="instrument-logo">
+      <span id="statusline">Trajectory Editor</span>
+      <h3 class="instrument-name">Instrument: </h3>
+      <img src="css/appicon.png" class="instrument-logo">
     </div>
-</div>
- 
-<div id="editor" class="ui-layout-center">
-</div>
+  </div>
+
+  <div id="editor" class="ui-layout-center">
+  </div>
 
 </body>
+
 </html>
