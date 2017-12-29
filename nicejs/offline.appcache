@@ -49,5 +49,10 @@ generated/clientapi.js
 connect_zeroc.js
 servers_available.js
 
+sprintf.js
+webtraj_base_prototype.js
+webtraj_interactive_inplace.js
+dryrun_client_worker4.js
+
 NETWORK:
 *
