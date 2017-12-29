@@ -12,6 +12,11 @@ https://code.jquery.com/ui/1.10.4/jquery-ui.min.js
 jquery.layout-latest.js
 https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css
 
+https://cdn.datatables.net/1.10.7/js/jquery.dataTables.min.js
+https://cdn.datatables.net/1.10.7/css/jquery.dataTables.min.css
+
+https://ncnr.nist.gov/instruments/magik/js/ims_fullcal.js
+
 css/jstree_style.min.css
 css/main.css
 jstree.js
