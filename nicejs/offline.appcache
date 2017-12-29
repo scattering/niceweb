@@ -58,6 +58,8 @@ webtraj_interactive_inplace.js
 webtraj_page_websocket.js
 dryrun_client_worker4.js
 css/webtraj.css
+tv4.js
+tv4.async-jquery.js
 
 NETWORK:
 *
