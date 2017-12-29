@@ -2,6 +2,8 @@
 
 var trajectory_editor = window.trajectory_editor || {};
 
+// using worker v4
+
 $(function() {
     
     var TRAJECTORY_PATH = "trajectories";
