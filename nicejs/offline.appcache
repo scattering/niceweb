@@ -50,6 +50,7 @@ connect_zeroc.js
 servers_available.js
 
 # specific to traj editor
+https://code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css
 sprintf.js
 webtraj_base_prototype.js
 webtraj_interactive_inplace.js
