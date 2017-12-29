@@ -1,5 +1,7 @@
 CACHE MANIFEST
 
+#version 2017-12-29A
+
 css/appicon.png
 css/layout-default-latest.css
 https://fonts.googleapis.com/css?family=Open+Sans
@@ -11,6 +13,7 @@ jquery.layout-latest.js
 https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css
 
 css/jstree_style.min.css
+css/main.css
 jstree.js
 jstree.dnd_outside.js
 
