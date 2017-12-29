@@ -49,10 +49,13 @@ generated/clientapi.js
 connect_zeroc.js
 servers_available.js
 
+# specific to traj editor
 sprintf.js
 webtraj_base_prototype.js
 webtraj_interactive_inplace.js
+webtraj_page_websocket.js
 dryrun_client_worker4.js
+css/webtraj.css
 
 NETWORK:
 *

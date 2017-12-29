@@ -422,7 +422,7 @@ $(function() {
                 //myEF = monitorEstimateExpressionFunc;
                 //var ctx = newContext(live_state, monitorEstimateExpressionFunc, primaryNodeIDMap);
                 if (!window.webworker) {
-                    window.webworker = new Worker('dryrun_client_worker.js');
+                    window.webworker = new Worker('dryrun_client_worker4.js');
                     window.webworker.onerror = function(e) { console.log('error in fastTimeEstimate:', e) };
                     window.webworker.onmessage = function(msg) { callback(msg.data.totalTime, msg.data.numPoints, msg.data.path, msg.data.filename); } 
                 }
