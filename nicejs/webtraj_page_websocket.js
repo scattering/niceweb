@@ -11,7 +11,7 @@ $(function() {
     var NICE_HOST = window.NICE_HOST ? window.NICE_HOST : "h123062.ncnr.nist.gov";
     
     var EMPTY_TRAJ = "{'init': {}, 'loops': [{'vary': []}]}";
-    var MONITOR_RATE_ESTIMATE_EXPRESSION = 'slitAperture1.softPosition / 1000.0 * <cached_monitor>';
+    var MONITOR_RATE_ESTIMATE_EXPRESSION = 'slitAperture1.softPosition * <cached_monitor>';
     var device_list;
     
     // add buttons for functionality
