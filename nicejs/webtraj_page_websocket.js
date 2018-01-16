@@ -279,11 +279,12 @@ $(function() {
     
     function server_dry_run() {
         var filename = wt.filename;
-        return api.console("dryRunTrajectory " + filename).then(
-            function(data) {
-                alert("result:" + JSON.stringify(data));
-            }
-        );
+        api.dryrunJsonTrajectoryFile(filename);
+        //return api.console("dryRunTrajectory " + filename).then(
+        //    function(data) {
+        //        //alert("result:" + JSON.stringify(data));
+        //    }
+        //);
     }
     
     var getPrimaryNodeIDMap = function() {

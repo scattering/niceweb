@@ -77,7 +77,7 @@
         instrument_name = localStorage.instrument_name
     }
     var api;
-    var experimentMonitor, fileMonitor, devicesMonitor;
+    var experimentMonitor, fileMonitor, devicesMonitor, dryRunMonitor;
     
     /* Example validation:
     tv4.validate(editor.getValue(), 'trajectory_schemas/trajectory-schema.json', function(s) {console.log(s)});
@@ -192,6 +192,32 @@
             return obj
         } 
     });
+    
+    var DryRunMonitorI = Ice.Class(nice.api.dryrun.DryrunMonitor, {
+        __init__: function() {
+            this.subscribed = new Promise();
+        },
+        onSubscribe: function(name, __current) {
+            //console.log('subscribed to: ', name)
+        },
+        update: function(dryRunData, __current) {
+            var estimate = dryRunData.estimatedTime.knownTimeInSeconds;
+            var hours = Math.floor(estimate / 3600);
+            var minutes = Math.floor( (estimate / 60) % 60 );
+            var seconds = estimate % 60;
+            result = dryRunData.filePath; 
+            result += "\n";
+            result += hours.toFixed() + "h " + minutes.toFixed() + "m " + seconds.toFixed() + "s ";
+            alert(result);
+            //console.log('dryrun update: ', dryRunData);
+        },
+        dryrunApiResults(resultID, errorMessage, dryRunData, __current) {
+            // this is an Ice Long:
+            var id = resultID.toNumber();
+            console.log('id: ', id, 'message: ', errorMessage, 'data: ', dryrunData);
+        }
+    });
+    
     dialog_login = function() {
         // set the global hostname
         var hostname = document.getElementById("instrument_ip").value;
@@ -210,10 +236,12 @@
                 devicesMonitor = new DevicesMonitorI();
                 fileMonitor = new FileMonitorI();
                 experimentMonitor = new ExperimentMonitorI();
+                dryRunMonitor = new DryRunMonitorI();
                 return Promise.all(
                     subscribe(devicesMonitor, 'devices'),
                     subscribe(fileMonitor, 'file'),
                     subscribe(experimentMonitor, 'experiment'),
+                    subscribe(dryRunMonitor, 'dryrun'),
                     fileMonitor.subscribed, // check to make sure the subscribe event is complete on this end
                     experimentMonitor.subscribed,
                     devicesMonitor.subscribed
