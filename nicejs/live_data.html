@@ -1,0 +1,349 @@
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" href="css/appicon.png" />
+  <link rel="stylesheet" href="css/layout-default-latest.css" />
+  <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans" />
+  <link href="https://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css"
+            type="text/css" rel="Stylesheet" />
+  <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script> 
+  <script src="https://code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+  <script src="jquery.layout-latest.js"></script>
+  <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/jstree_style.min.css"/>
+  <script type="text/javascript" src="jstree.js"></script>
+  <script type="text/javascript" src="jstree.dnd_outside.js"></script>
+  <script src="bzip2_bytes.js"></script>
+
+  <!-- dialog support -->
+  <link rel="stylesheet" href="../static/dialog-polyfill.css" />
+  <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceGrid.min.js"></script>
+
+  <script src="generated/data.js"></script>
+  <script src="generated/file.js"></script>
+  <script src="generated/system.js"></script>
+  <script src="generated/devices.js"></script>
+  <script src="generated/console.js"></script>
+  <script src="generated/dryrun.js"></script>
+  <script src="generated/exceptions.js"></script>
+  <script src="generated/nice.js"></script>
+  <script src="generated/events.js"></script>
+  <script src="generated/experiment.js"></script>
+  <script src="generated/queue.js"></script>
+  <script src="generated/sampleAlignment.js"></script>
+  <script src="generated/clientapi.js"></script>
+  <script src="connect_zeroc.js"></script>
+  <script src="ExperimentMonitorI.js"></script>
+  <script type="text/javascript" src="servers_available.js"></script>
+  <script src="serviceworker_cache.js"></script>
+  <script type="text/javascript">
+    var Promise = Ice.Promise;
+    var RouterPrx = Glacier2.RouterPrx;
+    var logging_in = false;
+    
+    var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
+    var ice_protocol_version = "1.1";
+    var logging_in = false;
+
+    var INSTRUMENT_LOGOS = {
+        'pbr': 'pbr_logo_main.svg',
+        'pbr.ncnr.nist.gov': 'pbr_logo_main.svg',
+        'magik': 'magik_logo_red.svg', 
+        'magik.ncnr.nist.gov': 'magik_logo_red.svg',
+        'sans:ngb': 'nSoftlogo_mission.png',
+        'ngbsans.ncnr.nist.gov': 'nSoftlogo_mission.png',
+        'cts.ncnr.nist.gov': 'phades_logo.svg',
+        'phades': 'phades_logo.svg',
+        'bt4.ncnr.nist.gov': 'wurtzite_trans.gif',
+        'bt4': 'wurtzite_trans.gif',
+        'default': 'appicon.png'
+    }
+    var instrument_name = "local"; // default NICE host
+    var port = '9999';
+    if (localStorage && localStorage.instrument_name) {
+        instrument_name = localStorage.instrument_name
+    }
+    var dataMonitor, experimentMonitor;
+
+
+    function type (object) {
+        if (object === null) {
+            return 'null';
+        }
+        if (object === undefined) {
+            return 'undefined';
+        }
+        if ((object instanceof Number) || (typeof object === 'number')) {
+            return 'number';
+        }
+        if ((object instanceof String) || (typeof object === 'string')) {
+            return 'string';
+        }
+        if ((object instanceof Boolean) || (typeof object === 'boolean')) {
+            return 'boolean';
+        }
+        if ((object instanceof RegExp) || (typeof object === 'regexp')) {
+            return 'regexp';
+        }
+        if (Array.isArray(object)) {
+            return 'array';
+        }
+
+        return 'object';
+    };
+
+        
+    var DataMonitorI = Ice.Class(nice.api.data.DataMonitor, {
+        __init__: function() {
+        },
+        onSubscribe: function(rawRecordList, fits, __current) {
+            // Called when we initially subscribe to the data topic
+            var converter = this.__recordToJSON;
+            this._recordList = rawRecordList.map(converter);
+            this._fits = fits;
+            this.__updatePrevious();
+        },
+        emit: function(rawRecord, __current) {
+            var record = this.__recordToJSON(rawRecord);
+            this._latest = record;
+            if (record.command == "Configure") {
+                // then we're starting a new scan... pull the metadata for previous scans
+                this.__updatePrevious();
+            }
+        },
+        peakFit: function(peak, __current) {
+            this._latest_fit = peak;
+        },
+        __recordToJSON: function(record) {
+            let str_array = [];
+            for (let i=0; i<record.length; i++) {
+                str_array[i] = String.fromCharCode(record[i]);
+            }
+            let str = str_array.join("");
+            // need eval because of Infinity, NaN
+            return eval("_=" + str);
+        }, 
+        __updatePrevious: function() {
+            var self = this;
+            var experiment_id = experimentMonitor.current_experiment.numericID.toNumber();
+            api.getTrajectoryMetaData(experiment_id)
+              .then(function(metadata) { self._previous_scans = deice(metadata) });
+        }
+    });
+        
+    
+    function getStream(id) {
+        // assumes that the stream is available in the current experiment;
+        return api.readFileAsBinary("streams/" + String(id) + ".stream.bz2").then(function(raw_bzipped) {
+            var raw_string = bzip2.simple(bzip2.array(raw_bzipped));
+            var stream_parts = raw_string.split("\n").filter(function(p) { return p.length > 1 });
+            //stream_parts.forEach(function(p) { console.log(p.length) });
+            var stream = stream_parts.map(function(p) { return eval("_=" + p) });            
+            return stream
+        })
+    }
+    
+    function deice(value) {
+        var output_value;
+        if (value instanceof Array) {
+            output_value = value.map(deice);
+        }
+        else if (value instanceof Ice.Class || value instanceof Ice.Object ) {
+            output_value = {};
+            for (var k in value) {
+                if (k != "__address" && value.hasOwnProperty(k)) {
+                    output_value[k] = deice(value[k]);
+                }
+            }
+        }
+        else if (value instanceof Ice.HashMap) {
+            output_value = {}; 
+            value.forEach( function(dn) { 
+                output_value[dn]=deice(value.get(dn));
+            });
+        }
+        else if (value instanceof Ice.EnumBase) {
+            output_value = "'" + value._name + "'";
+        }
+        else if (value.toNumber) {
+            // for Ice.Long type
+            output_value = value.toNumber();
+        }
+        else if (typeof value != 'object') {
+            output_value = value;
+        }
+        else {
+            output_value = {};
+            for (var k in value) {
+                if (value.hasOwnProperty(k)) {
+                    output_value[k] = deice(value[k]);
+                }
+            }
+        }
+        return output_value;
+    }
+    
+    function padded(number) {
+        var output = number.toFixed(0);
+        if (output.length < 2) { output = "0" + output }
+        return output
+    }
+
+    dialog_login = function() {
+        // set the global hostname
+        var hostname = document.getElementById("instrument_ip").value;
+        // ok we're just going to put this here.
+        //var username = document.getElementById("username").value;
+        //var password = document.getElementById("password").value;
+        var username = "user",
+            password = "";
+        
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
+            function(api_obj, comm_obj, router_obj) {
+                // globals:
+                logging_in = false;
+                api = api_obj;
+                communicator = comm_obj;
+                router = router_obj;
+                dataMonitor = new DataMonitorI();
+                experimentMonitor = new ExperimentMonitorI();
+                return subscribe(experimentMonitor, 'experiment')
+                  .then(function() { return subscribe(dataMonitor, 'data') })
+        });
+        if (localStorage) {
+            localStorage.instrument_name = $("select#instrument_selector option:selected").text();
+        }
+        document.getElementById("login").close();
+    }
+      
+  window.onload = function() {
+    var servers = Object.keys(servers_available);
+	var instrument_selector = $("select#instrument_selector");
+	servers.forEach(function(s) { 
+	  instrument_selector.append($("<option />", {value: servers_available[s], name: s, text: s}));
+	});
+	var change_instrument = function() {
+	  $("input#instrument_ip").val(this.value);
+	}
+	instrument_selector.on("change", change_instrument);
+	instrument_selector.find('option[name="'+instrument_name+'"]').prop('selected', 'selected');
+	$("input#instrument_ip")[0].value = servers_available[instrument_name];
+    
+    var dialog = document.getElementById("login");
+    if (!dialog.show) {
+        dialogPolyfill.registerDialog(dialog);
+    }
+    
+    $(window).on('niceServerShutdown', function(ev) {
+        $('#top_panel').removeClass('connected', 4000)
+            .find('.instrument-name').text('Server shut down: Not connected');
+    }).on('niceServerConnected', function(ev) {
+        var logopath = 'css/';
+        var instrumentID = ev.originalEvent.detail.instrumentID.toLowerCase();
+        var virtual = ev.originalEvent.detail.testDeployment;
+        if (instrumentID in INSTRUMENT_LOGOS) {
+          logopath += INSTRUMENT_LOGOS[instrumentID];
+        } else {
+          logopath += INSTRUMENT_LOGOS['default'];
+        }
+        $('#top_panel').addClass('connected')
+          .find('.instrument-name').text("Instrument connected: " + ((virtual)? "VIRTUAL " : "") + instrumentID)
+          .parent().find('.instrument-logo').attr("src", logopath);
+    });
+    
+    dialog.show();
+    logging_in = true;
+    
+    myLayout = $('body').layout({
+		east__size:			400
+	,	west__size:			0
+	,   south__size:        "auto"
+	,   north_size:         "auto"
+		// RESIZE Accordion widget when panes resize
+	,	west__onresize:		$.layout.callbacks.resizePaneAccordions
+	,	east__onresize:		$.layout.callbacks.resizePaneAccordions
+	,	south__onresize:    $.layout.callbacks.resizePaneAccordions
+	,	north__onresize:    $.layout.callbacks.resizePaneAccordions
+	});
+    
+    var bump = {38: -1, 40: 1};
+    
+    
+  }
+  </script>
+  <style type="text/css">
+    body {
+        font-family: 'Open Sans' !important;
+    }
+    #login {
+        top: 28%;
+        position: absolute;
+        z-index: 10;
+    }
+    
+    #top_panel {
+        background-color: LightYellow;
+        height: 30px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-weight: normal;
+        /* font-family: 'Open Sans'; */
+        /* font-variant: small-caps; */
+    }
+    #top_panel.connected {
+        background-color: LightGreen;
+    }
+    #top_panel h3 {
+        display: inline-block;
+    }
+    
+    .instrument-logo {
+        height: 3em;
+        padding-left: 1em;
+        padding-right: 1em;
+    }
+    
+    .control-buttons {
+        float: right;
+        font-size: 14pt;
+        font-weight: bold;
+    }
+    .control-buttons .stop-button {
+        background-color: red;
+        color: white;
+    }
+  </style>
+  <link rel="stylesheet" type="text/css" href="css/main.css">
+  <title>NICE live data</title>
+</head>
+<body>
+<dialog id="login">
+  <h2>Login</h2>
+  <table>
+    <tr>
+      <td><label for="instrument_ip">Instrument address</label></td>
+      <td><select id="instrument_selector"></select><input type="text" id="instrument_ip"></td>
+    </tr>
+  </table>
+  <input type="button" onclick="dialog_login()" value="Connect">
+</dialog>
+
+<div id="top_panel" class="ui-layout-north">
+    <h3 class="instrument-name">Instrument: </h3>
+    <img src="css/appicon.png" class="instrument-logo">
+    <div id="control_buttons" class="control-buttons">
+    <span id="queue_state"></span>
+    <input type="button" onclick="api.suspend();" value="Pause" class="pause-button" id="pause_button">
+    <input type="button" onclick="api.resume();" value="Resume" class="resume-button" id="resume_button">
+    <input type="button" onclick="api.stop();" value="Stop" class="stop-button">
+    </div>
+</div>
+
+<div id="console" class="ui-layout-wrapper ui-layout-center"></div>
+
+</body>
+</html>
