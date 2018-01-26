@@ -23,6 +23,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceStorm.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceGrid.min.js"></script>
 
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.20.1/math.min.js"></script>
+  <script type="text/javascript" src="datastreamState.js"></script>
+  
   <script src="generated/data.js"></script>
   <script src="generated/file.js"></script>
   <script src="generated/system.js"></script>
@@ -96,24 +99,81 @@
         return 'object';
     };
 
+
+    class QueueProcessor {
+        constructor(state) {
+            this.state = state;
+        }
+        handle_record(record) {
+            var command = record.command;
+            this.state.record = record;            
+            if (command == "Configure") {
+                // then we're starting a new scan... pull the metadata for previous scans
+                this.state.update_config();
+            }
+            if (["Configure", "Open", "State", "Counts"].indexOf(command) > -1) {
+                this.state.update_data();
+            }
+            if (command == "State") {
+                this.state.clear_sensor_logs();
+            }
+            if (command == "Log") {
+                this.state.track_sensors();
+            }
+            if (command == "Counts") {
+                let counters = this.state.counters;
+                for (var k in counters) {
+                    counters[k] = this.state.data[k];
+                }
+                
+                console.log("new counts: ", JSON.stringify(this.state.counters), record.time);
+            }
+            if (command == "End") {
+                this.state.reset();
+            }
+        }
+    }
+        
         
     var DataMonitorI = Ice.Class(nice.api.data.DataMonitor, {
         __init__: function() {
+            this._state = new State();
+            this.subscribed = new Promise();
+            this.promise = new Promise(); // keep things ordered;
+            this._queueProcessor = new QueueProcessor(this._state);
+            //WorkerQueue.createQueue('dataRecord', this._queueProcessor.handle_record);
         },
         onSubscribe: function(rawRecordList, fits, __current) {
             // Called when we initially subscribe to the data topic
             var converter = this.__recordToJSON;
-            this._recordList = rawRecordList.map(converter);
+            var recordList = rawRecordList.map(converter);
+            var processor = this._queueProcessor;
+            this._currentScanRecords = recordList;
+            for (var i=0; i<recordList.length; i++) {
+                let record = recordList[i];
+                processor.handle_record(record);
+            }
+            //WorkerQueue.pushItem('dataRecord', r);
             this._fits = fits;
             this.__updatePrevious();
+            this.subscribed.succeed();
+            this.promise.succeed();
         },
-        emit: function(rawRecord, __current) {
+        emit: function (rawRecord, __current) {
             var record = this.__recordToJSON(rawRecord);
-            this._latest = record;
-            if (record.command == "Configure") {
-                // then we're starting a new scan... pull the metadata for previous scans
-                this.__updatePrevious();
-            }
+            var processor = this._queueProcessor;
+            var recordList = this._currentScanRecords;
+            //this._latest = record;
+            this.promise = Promise.all(
+              this.subscribed,
+              this.promise
+            ).then(function() {
+                if (record.command == "Configure") {
+                    recordList.splice(0);
+                }                    
+                recordList.push(record);
+                return processor.handle_record(record);
+            });
         },
         peakFit: function(peak, __current) {
             this._latest_fit = peak;
