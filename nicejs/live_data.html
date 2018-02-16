@@ -209,7 +209,10 @@
     
     function deice(value) {
         var output_value;
-        if (value instanceof Array) {
+        if (value == null) {
+            output_value = value;
+        }
+        else if (value instanceof Array) {
             output_value = value.map(deice);
         }
         else if (value instanceof Ice.Class || value instanceof Ice.Object ) {

@@ -1,21 +1,23 @@
+// requires deice.js
+
 (function(Ice, nice){
     DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
          __init__: function() {
             this.subscribed = new Promise();
         },
         onSubscribe: function(devices, nodes, staticNodeData, groups, __current) {
-            this.devices = this.HashMapToObject(devices);
-            this.nodes = this.HashMapToObject(nodes);
+            this.devices = deice(devices);
+            this.nodes = deice(nodes);
             var changed = this.nodes;
-            this.groups = this.HashMapToObject(groups);
-            this.staticNodeData = this.HashMapToObject(staticNodeData);
+            this.groups = deice(groups);
+            this.staticNodeData = deice(staticNodeData);
             this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
             this.postChangedHooks.forEach( function(callback) { callback(changed); });
             this.subscribed.succeed();
         },
         
         changed: function(nodes, __current) {
-            var changed = this.HashMapToObject(nodes);
+            var changed = deice(nodes);
             jQuery.extend(this.nodes, changed);
             this._lastChanged = changed;
             this.postChangedHooks.forEach( function(callback) { callback(changed); });
@@ -27,12 +29,12 @@
             //alert('device removed: ' + addRemoveID);
         },
         removed: function(devices, nodes, __current) {
-            this._lastDevicesRemoved = this.HashMapToObject(devices);
-            this._lastNodesRemoved = this.HashMapToObject(nodes);
+            this._lastDevicesRemoved = deice(devices);
+            this._lastNodesRemoved = deice(nodes);
         },
         added: function(devices, nodes, __current) {
-            this._lastDevicesAdded = this.HashMapToObject(devices);
-            this._lastNodesAdded = this.HashMapToObject(nodes);
+            this._lastDevicesAdded = deice(devices);
+            this._lastNodesAdded = deice(nodes);
         },
         getAllDeviceNames: function() {
             var devices = [];
