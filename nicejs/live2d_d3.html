@@ -3,7 +3,7 @@
     <!-- Reference the theme's stylesheet on the Google CDN -->
     
     <link rel="icon" type="image/png" href="css/appicon.png" />
-    <link rel="stylesheet" type="text/css" href="../../niceclient/static/css/layout-default-latest.css" />
+    <link rel="stylesheet" type="text/css" href="css/layout-default-latest.css" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Special+Elite" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Love+Ya+Like+A+Sister" />
@@ -11,7 +11,7 @@
             type="text/css" rel="Stylesheet" />
     <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
     <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
-    <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
+    <script type="text/javascript" src="jquery.layout-latest.js"></script>
 <!--    Moved this to local host because it loads so slowly.-->
 <!--    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>-->
     <script type="text/javascript" src="d3.v3.min.js"></script>
@@ -472,7 +472,7 @@
             window.refreshRequested = true;
         }
         if ('areaDetector.roiShape' in nodes) {
-            var shape = devicesMonitor.HashMapToObject(nodes['areaDetector.roiShape'].currentValue.userVal.val);
+            var shape = deice(nodes['areaDetector.roiShape'].currentValue.userVal.val);
             if (shape.name == 'rect') {
                 detectors.areaDetector.roi = shape;
             } else {
