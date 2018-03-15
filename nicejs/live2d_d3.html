@@ -14,11 +14,11 @@
     <script type="text/javascript" src="jquery.layout-latest.js"></script>
 <!--    Moved this to local host because it loads so slowly.-->
 <!--    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>-->
-    <script type="text/javascript" src="d3.v3.min.js"></script>
+    <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
     <script type="text/javascript" src="plot_d3_rz.js"></script>
     <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>
 <!--    <script src="/~bbm/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>-->
-    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/rectangle-interactor.js"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/lib/rectangle-interactor.js"></script>
     
     <!-- dialog support -->
     <link rel="stylesheet" href="../static/dialog-polyfill.css" />
@@ -222,6 +222,7 @@
 		            color2: '#ffdddd',
                 fill: "none",
                 fixed: true,
+                show_lines: true,
                 show_center: false,
                 show_points: false,
                 show: false,
@@ -231,7 +232,7 @@
                 ymax: 6
             }
             
-            roi_rectangle = new rectangleInteractor(roi_rectangle_opts);
+            roi_rectangle = new rectangleInteractor.default(roi_rectangle_opts);
             var shape = data.roi;
             if (shape) {
                 var ys = [parseFloat(shape.y1), parseFloat(shape.y2)],
@@ -255,13 +256,15 @@
               fill: "none",
               show_center: true,
               show: false,
+              show_lines: true,
+              show_points: true,
               xmin: 10, 
               ymin: 10,
               xmax: data.dims.xmax - 10, 
               ymax: data.dims.ymax - 10
             }
             
-            selector_rectangle = new rectangleInteractor(selector_opts);
+            selector_rectangle = new rectangleInteractor.default(selector_opts);
             plot.interactors(selector_rectangle);
             
             cumsums = {x: null, y: null};
@@ -284,7 +287,7 @@
             
             var maxbutton = document.createElement('input');
             maxbutton.setAttribute('type', 'button');
-            maxbutton.setAttribute('value', 'Maximize to data');
+            maxbutton.setAttribute('value', 'Maximize');
             var maximize = function () {
                 selector_rectangle.state.xmin = data.dims.xmin;
                 selector_rectangle.state.xmax = data.dims.xmax;
@@ -294,6 +297,19 @@
             }
             maxbutton.onclick = maximize;            
             document.getElementById('slicecontrols').appendChild(maxbutton);
+            
+            var snapbutton = document.createElement('input');
+            snapbutton.setAttribute('type', 'button');
+            snapbutton.setAttribute('value', 'Snap to ROI');
+            var snapto = function () {
+                selector_rectangle.state.xmin = roi_rectangle.state.xmin;
+                selector_rectangle.state.xmax = roi_rectangle.state.xmax;
+                selector_rectangle.state.ymin = roi_rectangle.state.ymin;
+                selector_rectangle.state.ymax = roi_rectangle.state.ymax;
+                selector_rectangle.update();
+            }
+            snapbutton.onclick = snapto;            
+            document.getElementById('slicecontrols').appendChild(snapbutton);
             
             var setNewBoxButton = document.createElement('input');
             setNewBoxButton.setAttribute('type', 'button');
@@ -308,6 +324,19 @@
             };
             setNewBoxButton.onclick = submitChanges;
             document.getElementById('slicecontrols').appendChild(setNewBoxButton);
+            
+            var showROILabel = document.createElement('label');
+            var showROI = document.createElement('input');
+            showROI.setAttribute('type', 'checkbox');
+            showROI.setAttribute('checked', 'checked');
+            showROILabel.textContent = 'show ROI';
+            showROILabel.appendChild(showROI);
+            showROI.onchange = function() {
+                d3.select("g.interactor-roi_rectangle").style("display", (this.checked) ? null : "none" );
+            };
+            document.getElementById('slicecontrols').appendChild(showROILabel);
+            
+            
             document.getElementById('slicecontrols').appendChild(document.createElement('hr'));
             var roiDisplay = document.createElement('div');
             roiDisplay.setAttribute('class', 'roi-display');
@@ -635,10 +664,12 @@
         display: inline-block;
         text-align: center;
     }
+    #slicecontrols input[type="button"] {
+        margin-left: 20px;
+    }    
     .set-new-roi {
         background-color: #dd0000;
         color: white;
-        margin-left: 30px;
         font-weight: bold;
     }
     label.transform {
@@ -721,7 +752,9 @@
 </div>
 <div id="xplot" class="ui-layout-south">
     <div id="xplot_plot"></div>
-    <div id="slicecontrols" class="controls"></div>
+    <div id="slicecontrols" class="controls">
+        <h2>ROI</h2>
+    </div>
 </div>
 <div id="yplot" class="ui-layout-east">
     <div id="yplot_plot"></div>

@@ -2,13 +2,19 @@
 
 // requires Ice 3.5 to 3.6 libraries (not needed in Ice 3.7?)
 
+var recurse_on_array = true;
+
 function deice(value) {
     var output_value;
     if (value == null) {
         output_value = value;
     }
     else if (value instanceof Array) {
-        output_value = value.map(deice);
+        if (recurse_on_array) {
+            output_value = value.map(deice);
+        } else {
+            output_value = value;
+        }
     }
     else if (value instanceof Ice.Class || value instanceof Ice.Object ) {
         output_value = {};
