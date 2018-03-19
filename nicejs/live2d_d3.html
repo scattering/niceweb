@@ -14,11 +14,12 @@
     <script type="text/javascript" src="jquery.layout-latest.js"></script>
 <!--    Moved this to local host because it loads so slowly.-->
 <!--    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>-->
-    <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
-    <script type="text/javascript" src="plot_d3_rz.js"></script>
-    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>
-<!--    <script src="/~bbm/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>-->
-    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/lib/rectangle-interactor.js"></script>
+    <script src="//d3js.org/d3.v4.min.js" charset="utf-8"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/jquery-extend.js" charset="utf-8"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/heat-chart.js"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/colormap.js" charset="utf-8"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/xy-chart.js"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/rectangle-interactor.js"></script>
     
     <!-- dialog support -->
     <link rel="stylesheet" href="../static/dialog-polyfill.css" />
@@ -76,20 +77,6 @@
         function capitalize(string) {
             return string.charAt(0).toUpperCase() + string.slice(1);
         }
-
-        var plottableX = {
-            "options": {
-                "series": [{"label": "x-slice"}]
-            },
-            "data": [[[1,2], [3,4], [5,6]]]
-            
-        }
-        var plottableY = {
-            "options": {
-                "series": [{"label": "y-slice"}]
-            },
-            "data": [[[1,2], [3,4], [5,6]]] 
-        }
         
         var plottable2d = {
             "dims": {
@@ -143,17 +130,16 @@
                 zmintemp = Math.min.apply(Math, row);
                 zmax = Math.max(zmax, zmaxtemp);
                 zmin = Math.min(zmin, zmintemp);
-                z.push(row);
             }
             var plottable = {};
             jQuery.extend(true, plottable, plottable2d);
-            plottable.z = [z];
+            plottable.z = [zdata];
             plottable.dims.xdim = plottable.dims.xmax = dims[0];
             plottable.dims.ydim = plottable.dims.ymax = dims[1];
             plottable.dims.zmin = zmin;
             plottable.dims.zmax = zmax;
             if (roi) {
-                jQuery.extend(true, plottable.roi, roi);
+                jqueryExtend.default(true, plottable.roi, roi);
             }
             return plottable;
         }
@@ -202,10 +188,11 @@
             var ztransform = $('<label />', {'class': 'transform', 'axis': 'zaxis'}).text('logZ').append($('<input />', {'type': 'checkbox', 'id': 'ztransform', 'checked': true}));
             plotbox.append(ztransform);
             ztransform.prop('checked', true).change(updateTransform);
-            var plot = heatChart({
+            var plot = new heatChart.default({
               "ztransform": transform,
               "dims": data.dims,
               "aspect_ratio": 1.0})
+            plot
               .autoscale(true);
             mydata = data;
             c = d3.select("#" + next_target)
@@ -377,25 +364,33 @@
                     var zislog = document.getElementById('ztransform').checked;
                     var intensity_label = (zislog) ? "Log counts" : "counts";
                     
-                    plottableX.data = [xdata];
                     $("#xplot_plot").empty();
-                    xplot = plotD3("xplot_plot", plottableX, {
-                        log_y: zislog, 
+                    xplot = new xyChart.default({
+                        ytransform: (zislog) ? "log" : "linear", 
                         showline: true, 
                         show_points: false, 
-                        vcursor: true, 
+                        //vcursor: true, 
                         ylabel: intensity_label,
-                        position_cursor: true});
-                    
-                    plottableY.data = [ydata];
+                        position_cursor: true
+                    });
+                    d3.select("#xplot_plot")
+                        .data([[xdata]])
+                        .call(xplot);
+                    xplot.zoomRect(true);
+                        
                     $("#yplot_plot").empty();
-                    yplot = plotD3("yplot_plot", plottableY,  {
-                        log_x: zislog, 
+                    yplot = new xyChart.default({
+                        xtransform: (zislog) ? "log" : "linear", 
                         showline: true, 
                         show_points: false, 
-                        hcursor: true, 
+                        //hcursor: true, 
                         xlabel: intensity_label,
-                        position_cursor: true});
+                        position_cursor: false
+                    });
+                    d3.select("#yplot_plot")
+                        .data([[ydata]])
+                        .call(yplot);
+                    yplot.zoomRect(true);
 
                 };
                 return this;  
@@ -449,7 +444,7 @@
             interactor.update();
         }
         interactor.dispatch.on("update." + key, function() {textbox.value = interactor.state[key].toFixed(precision)});
-        interactor.dispatch.update();
+        interactor.dispatch.call("update");
         return this;
     }
     
@@ -727,10 +722,15 @@
     }
     
     rect {
-      fill: #fff;
-      user-select: none; 
-      -webkit-user-select: none; 
-      -moz-user-select: none;
+        fill: none;
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+    }
+
+    rect.zoom {
+        stroke: steelblue;
+        fill-opacity: 0.5;
     }
 
   </style>
