@@ -35,6 +35,7 @@
   <script src="generated/sampleAlignment.js"></script>
   <script src="generated/clientapi.js"></script>
   <script src="connect_zeroc.js"></script>
+  <script src="deice.js"></script>
   <script type="text/javascript" src="servers_available.js"></script>
   <script src="serviceworker_cache.js"></script>
   <script type="text/javascript">
@@ -68,7 +69,7 @@
         this.postCreatedHooks = (postCreatedHooks == null) ? [] : postCreatedHooks;
       },
       onSubscribe: function(all_experiments, current_experiment, __current) {
-        var all_experiments = this.HashMapToObject(all_experiments);
+        var all_experiments = deice(all_experiments);
         this.all_experiments = all_experiments;
         this.current_experiment = current_experiment;
         this.postSubscribeHooks.forEach(function(callback) {
@@ -76,6 +77,7 @@
         });
       },
       switchedCurrentExperiment: function(current_experiment, __current) {
+        var current_experiment = deice(current_experiment);
         this.current_experiment = current_experiment;
         this.postSwitchedHooks.forEach(function(callback) {
           callback(current_experiment);
@@ -85,6 +87,7 @@
         this._last_modified = data;
       },
       createdExperiment: function(new_experiment, __current) {
+        var new_experiment = deice(new_experiment);
         this._last_created = new_experiment;
         this.all_experiments[new_experiment.id] = new_experiment;
         var all = this.all_experiments;
@@ -146,6 +149,11 @@
                     render: renderTimestamps
                   },
                   {
+                    data: 'openTimeStamps',
+                    title: 'Open Timestamp',
+                    render: renderOpenTimeStamps
+                  },
+                  {
                     data: 'participants',
                     title: 'Participants'
                   },
@@ -190,7 +198,6 @@
     }
 
     function renderTimestamps(data, type, row) {
-      var data = data.toNumber();
       if (type !== 'display') {
         return data;
       }
@@ -203,7 +210,57 @@
       day = (day.length < 2) ? "0" + day : day;
       return year + "-" + month + "-" + day;
     }
-
+    
+    function renderOpenTimeStamps(data, type, row) {
+      if ( type !== 'display' ) {
+          return data.slice(-1)[0] || 0;
+      }
+	
+      var rdata = data.slice().reverse();
+      var min_experiment_days = 0.1; // minimum time between open and closed, in days
+      var oc = openClosePairs(row.openTimeStamps, row.closeTimeStamps, min_experiment_days);
+      //return oc.map(function(o) {
+      return oc.map(function(o) {
+          if (o[0]) {
+        var d = new Date(o[0]);
+        var year = d.getFullYear().toFixed(0);
+        var month = (d.getMonth() + 1).toFixed(0);
+        var day = d.getDate().toFixed(0);
+        month = (month.length < 2) ? "0" + month : month;
+        day = (day.length < 2) ? "0" + day : day;
+        var dlength = (o[1]) ? ((o[1] - o[0]) / (1000*60*60*24)).toFixed(1) : "?";
+        return year + "-" + month + "-" + day + " (" + dlength + ")";
+          }
+          else {
+        return ""
+          }
+      }).join('<br>')
+    }
+    
+    function openClosePairs(ots, cts, min_days) {
+      // opentimestamps, closetimestamps
+      var min_days = min_days || 0.0;
+      var pairs = [];
+      var min_t = min_days * 1000 * 60 * 60 * 24; // days to ms
+      var oi, o, ci=-1, c = null;
+      for (var oi=0; oi<ots.length; oi++) {
+          o = ots[oi];
+          while (!(c >= o) && ci < (cts.length - 1)) {
+        c = cts[++ci];
+          }
+          var onext = ots[oi+1] || Infinity;
+          if (c == null  || c > onext) {
+        pairs.push([o, null])
+          } else if ((c - o) >= 0) {
+        if ((c - o) >= min_t) {
+            pairs.push([o, c])
+        }
+        c = null;
+          }
+      }
+      return pairs;
+    }
+    
     function renderID(data, type, row) {
       if (type !== 'display') {
         return data;
