@@ -1,3 +1,5 @@
+// requires deice.js
+
 var ExperimentMonitorI = Ice.Class(nice.api.experiment.ExperimentMonitor, {
   __init__: function(postSubscribeHooks, postSwitchedHooks, postCreatedHooks) {
     this.postSubscribeHooks = (postSubscribeHooks == null) ? [] : postSubscribeHooks;
@@ -5,7 +7,7 @@ var ExperimentMonitorI = Ice.Class(nice.api.experiment.ExperimentMonitor, {
     this.postCreatedHooks = (postCreatedHooks == null) ? [] : postCreatedHooks;
   },
   onSubscribe: function(all_experiments, current_experiment, __current) {
-    var all_experiments = this.HashMapToObject(all_experiments);
+    var all_experiments = deice(all_experiments);
     this.all_experiments = all_experiments;
     this.current_experiment = current_experiment;
     this.postSubscribeHooks.forEach(function(callback) {
