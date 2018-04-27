@@ -417,6 +417,7 @@
             }
             cumsums = plot.generate_cumsums();
             roi_rectangle.update();
+            selector_rectangle.dispatch.call('update');
             document.getElementById('roi_display').innerHTML = JSON.stringify(shape);
         }
         
