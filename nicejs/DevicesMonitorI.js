@@ -1,15 +1,15 @@
-// requires deice.js
-
 (function(Ice, nice){
     DevicesMonitorI = class extends nice.api.devices.DevicesMonitor {
-        constructor() {
+        constructor(postSubscribeHooks, postChangedHooks) {
             super();
             var _resolve, _reject;
             this.subscribed = new Promise(function(resolve, reject) {
                 _resolve = resolve;
                 _reject = reject;
             })
-            this.postSubscribeHooks = [function() { _resolve(); }]                
+            this.postSubscribeHooks = (postSubscribeHooks == null) ? [] : postSubscribeHooks;
+            this.postChangedHooks = (postChangedHooks == null) ? [] : postChangedHooks;
+            this.postSubscribeHooks.push(function() { _resolve() });       
         }
         
         onSubscribe(devices, nodes, staticNodeData, groups, __current) {
@@ -18,9 +18,8 @@
             var changed = this.nodes;
             this.groups = groups;
             this.staticNodeData = staticNodeData;
-            this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
             this.postChangedHooks.forEach( function(callback) { callback(changed) });
-            (this.postSubscribeHooks || []).forEach(function(callback) { callback(changed) });
+            this.postSubscribeHooks.forEach(function(callback) { callback(changed) });
         }
         
         changed(nodes, __current) {
@@ -57,14 +56,6 @@
             }
             return devices;
         }
-        
-        HashMapToObject(m) {
-            var obj={}; 
-            m.forEach( function(dn) { 
-                obj[dn]=m.get(dn);
-            }); 
-            return obj
-        } 
     };
 })(Ice, nice);
 

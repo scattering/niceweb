@@ -26,10 +26,10 @@
     <link rel="stylesheet" href="../static/dialog-polyfill.css" />
     <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
     
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Ice.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Glacier2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceStorm.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceGrid.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/IceGrid.min.js"></script>
 
     <script src="generated/data.js"></script>
     <script src="generated/devices.js"></script>
@@ -51,7 +51,6 @@
     <script src="testdata.js"></script>
     <script src="serviceworker_cache.js"></script>
     <script type="text/javascript">
-        var Promise = Ice.Promise;
         var RouterPrx = Glacier2.RouterPrx;
         var PHI_STEP = 2.0;
         
@@ -79,52 +78,6 @@
         function capitalize(string) {
             return string.charAt(0).toUpperCase() + string.slice(1);
         }
-
-        var DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
-            onSubscribe: function(devices, nodes, groups, __current) {
-                this.devices = this.HashMapToObject(devices);
-                this.nodes = this.HashMapToObject(nodes);
-                var changed = this.nodes;
-                this.groups = this.HashMapToObject(groups);
-                this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
-                this.postChangedHooks.forEach( function(callback) { callback(changed); });
-            },
-            
-            changed: function(nodes, __current) {
-                var changed = this.HashMapToObject(nodes);
-                jQuery.extend(this.nodes, changed);
-                this._lastChanged = changed;
-                this.postChangedHooks.forEach( function(callback) { callback(changed); });
-            },
-            dynamicDevicesAdded: function(addRemoveID, childDeviceIDs, __current) {
-                //alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
-            },
-            dynamicDevicesRemoved: function(addRemoveID, __current) {
-                //alert('device removed: ' + addRemoveID);
-            },
-            removed: function(devices, nodes, __current) {
-                this._lastDevicesRemoved = this.HashMapToObject(devices);
-                this._lastNodesRemoved = this.HashMapToObject(nodes);
-            },
-            added: function(devices, nodes, __current) {
-                this._lastDevicesAdded = this.HashMapToObject(devices);
-                this._lastNodesAdded = this.HashMapToObject(nodes);
-            },
-            getAllDeviceNames: function() {
-                var devices = [];
-                for (var d in this.devices) {
-                    devices.push(d); 
-                }
-                return devices;
-            },
-            HashMapToObject: function(m) {
-                var obj={}; 
-                m.forEach( function(dn) { 
-                    obj[dn]=m.get(dn);
-                }); 
-                return obj
-            } 
-        });
 
         var plottableX = {
             "options": {
@@ -313,11 +266,11 @@
             moveToButton.setAttribute('value', 'Move to beam center');
             var moveToBeamCenter = function() {
                 var x = null, y = null;
-                if ('areaDetector.beamCenterX' in devicesMonitor.nodes) {
-                    x = devicesMonitor.nodes['areaDetector.beamCenterX'].currentValue.userVal.val; 
+                if (devicesMonitor.nodes.has('areaDetector.beamCenterX')) {
+                    x = devicesMonitor.nodes.get('areaDetector.beamCenterX').currentValue.userVal.val; 
                 }
-                if ('areaDetector.beamCenterY' in devicesMonitor.nodes) {
-                    y = devicesMonitor.nodes['areaDetector.beamCenterY'].currentValue.userVal.val;
+                if (devicesMonitor.nodes.has('areaDetector.beamCenterY')) {
+                    y = devicesMonitor.nodes.get('areaDetector.beamCenterY').currentValue.userVal.val;
                 }
                 if (x != null && y != null) {
                     centerxctl.setValue(x);
@@ -545,19 +498,19 @@
     }
     
     var detectorNodesChanged = function(nodes) {
-        if ('areaDetector.dimension' in nodes) {
-            detectors.areaDetector.dims = nodes['areaDetector.dimension'].currentValue.userVal.val;
+        if (nodes.has('areaDetector.dimension')) {
+            detectors.areaDetector.dims = nodes.get('areaDetector.dimension').currentValue.userVal.val;
         }
-        if ('areaDetector.counts' in nodes) {
-            detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;
+        if (nodes.has('areaDetector.counts')) {
+            detectors.areaDetector.data = nodes.get('areaDetector.counts').currentValue.userVal.val;
 
             window.refreshRequested = window.updateOnData; // trigger refresh if updateOnData is true;
         }
-        if ('areaDetector.beamCenterX' in nodes) {
-            detectors.areaDetector.beamCenterX = nodes['areaDetector.beamCenterX'].currentValue.userVal.val;
+        if (nodes.has('areaDetector.beamCenterX')) {
+            detectors.areaDetector.beamCenterX = nodes.get('areaDetector.beamCenterX').currentValue.userVal.val;
         }
-        if ('areaDetector.beamCenterY' in nodes) {
-            detectors.areaDetector.beamCenterY = nodes['areaDetector.beamCenterY'].currentValue.userVal.val;
+        if (nodes.has('areaDetector.beamCenterY')) {
+            detectors.areaDetector.beamCenterY = nodes.get('areaDetector.beamCenterY').currentValue.userVal.val;
         }
         
     }
@@ -567,13 +520,13 @@
         var trackBeamCenterSelect = document.getElementById('track_beam_center');
         var trackBeamCenter = (trackBeamCenterSelect && trackBeamCenterSelect.checked);
         if (trackBeamCenter) {
-            if ('areaDetector.beamCenterX' in nodes) {
-                x = nodes['areaDetector.beamCenterX'].currentValue.userVal.val;
+            if (nodes.has('areaDetector.beamCenterX')) {
+                x = nodes.get('areaDetector.beamCenterX').currentValue.userVal.val;
                 centerxctl.setValue(x);
                 centerxctl.syncInteractorToValue();
             }
-            if ('areaDetector.beamCenterY' in nodes) {
-                y = nodes['areaDetector.beamCenterY'].currentValue.userVal.val;
+            if (nodes.has('areaDetector.beamCenterY')) {
+                y = nodes.get('areaDetector.beamCenterY').currentValue.userVal.val;
                 centeryctl.setValue(y);
                 centeryctl.syncInteractorToValue();
             }
@@ -590,16 +543,18 @@
             password = "";
         
         signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
-            function(api_object) {
-                // globals:
+            function(signin_objs) {
                 logging_in = false;
-                api = api_object;
+                api = signin_objs[0];
+                //communicator = signin_objs[1];
+                //router = signin_objs[2];
+                //adapter = signin_objs[4];
                 devicesMonitor = new DevicesMonitorI();
                 devicesMonitor.postChangedHooks = [detectorNodesChanged, beamCenterChanged];
-                return Promise.all(
+                return Promise.all([
                     subscribe(devicesMonitor, 'devices')
-                )
-        }).exception(
+                ])
+        }).catch(
             function(ex) {console.log(ex)}
         );
         
