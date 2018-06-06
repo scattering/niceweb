@@ -426,7 +426,7 @@
       var target_path = current_path + "/" + folder;
       var source_path = path + "/" + folder;
       var source_files, target_files;
-      var p = new Ice.Promise().succeed();
+      var p = Promise.resolve();
       api.ls(source_path, "*", false).then(function(f) {
         source_files = f;
         api.ls(target_path, "*", false).then(function(f) {
