@@ -12,10 +12,10 @@
   <link rel="stylesheet" href="../static/dialog-polyfill.css" />
   <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
   
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Ice.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Glacier2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceStorm.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceGrid.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/IceGrid.min.js"></script>
   
   <script src="//d3js.org/d3.v4.min.js" charset="utf-8"></script>
   <script src="//www.ncnr.nist.gov/ipeek/js/es6-promise.min.js"></script>
@@ -82,13 +82,12 @@
         password = "";
 
       signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
-        function(api_obj, comm_obj, router_obj, session_obj, adapter_obj) {
-          // globals:
+        function(signin_objs) {
           logging_in = false;
-          api = api_obj;
-          communicator = comm_obj;
-          router = router_obj;
-          adapter = adapter_obj;
+          api = signin_objs[0];
+          communicator = signin_objs[1];
+          router = signin_objs[2];
+          adapter = signin_objs[4];
         });
       if (localStorage) {
         localStorage.instrument_name = $("select#instrument_selector option:selected").text();
