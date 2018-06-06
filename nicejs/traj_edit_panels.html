@@ -259,7 +259,7 @@
         dryrunApiResults(resultID, errorMessage, dryRunData, __current) {
             // this is an Ice Long:
             var id = resultID.toNumber();
-            console.log('id: ', id, 'message: ', errorMessage, 'data: ', dryrunData);
+            console.log('id: ', id, 'message: ', errorMessage, 'data: ', dryRunData);
         }
     };
     
@@ -284,7 +284,7 @@
                 fileMonitor = new FileMonitorI();
                 experimentMonitor = new ExperimentMonitorI();
                 dryRunMonitor = new DryRunMonitorI();
-                return Promise.all(
+                return Promise.all([
                     subscribe(devicesMonitor, 'devices'),
                     subscribe(fileMonitor, 'file'),
                     subscribe(experimentMonitor, 'experiment'),
@@ -292,7 +292,7 @@
                     fileMonitor.subscribed, // check to make sure the subscribe event is complete on this end
                     experimentMonitor.subscribed,
                     devicesMonitor.subscribed
-                ).then(function() { 
+                ]).then(function() { 
                     trajectory_editor.refreshBoth(); 
                     experimentMonitor.postSwitchedHooks = [trajectory_editor.refreshBoth]; 
                 })
