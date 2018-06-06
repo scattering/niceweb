@@ -296,7 +296,7 @@ $(function() {
     }
     
     function server_dry_run() {
-        var filename = wt.filename;
+        var filename = wt.instance.filename;
         api.dryrunJsonTrajectoryFile(filename);
         //return api.console("dryRunTrajectory " + filename).then(
         //    function(data) {

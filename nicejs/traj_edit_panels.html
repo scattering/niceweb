@@ -249,7 +249,7 @@
             var hours = Math.floor(estimate / 3600);
             var minutes = Math.floor( (estimate / 60) % 60 );
             var seconds = estimate % 60;
-            result = dryRunData.filePath; 
+            var result = dryRunData.filePath; 
             result += "\n";
             result += hours.toFixed() + "h " + minutes.toFixed() + "m " + seconds.toFixed() + "s ";
             alert(result);
