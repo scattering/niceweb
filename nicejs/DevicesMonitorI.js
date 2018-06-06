@@ -56,6 +56,14 @@
             }
             return devices;
         }
+        
+        MapToObject(m) {
+            var obj={}; 
+            m.forEach( function(v,k) { 
+                obj[k]= v;
+            }); 
+            return obj
+        } 
     };
 })(Ice, nice);
 

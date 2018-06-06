@@ -25,10 +25,10 @@
     <link rel="stylesheet" href="../static/dialog-polyfill.css" />
     <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
     
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Ice.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Glacier2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceStorm.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceGrid.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/IceGrid.min.js"></script>
 
     <script src="generated/data.js"></script>
     <script src="generated/devices.js"></script>
@@ -50,7 +50,6 @@
     <script src="testdata.js"></script>
     <script src="serviceworker_cache.js"></script>
     <script type="text/javascript">
-        var Promise = Ice.Promise;
         var RouterPrx = Glacier2.RouterPrx;
         
         var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
@@ -489,17 +488,17 @@
     }
     
     var handleNodesChanged = function(nodes) {
-        if ('areaDetector.dimension' in nodes) {
-            detectors.areaDetector.dims = nodes['areaDetector.dimension'].currentValue.userVal.val;
+        if (nodes.has('areaDetector.dimension')) {
+            detectors.areaDetector.dims = nodes.get('areaDetector.dimension').currentValue.userVal.val;
         }
-        if ('areaDetector.counts' in nodes) {
-            detectors.areaDetector.data = nodes['areaDetector.counts'].currentValue.userVal.val;            
+        if (nodes.has('areaDetector.counts')) {
+            detectors.areaDetector.data = nodes.get('areaDetector.counts').currentValue.userVal.val;            
             window.refreshRequested = true;
         }
-        if ('areaDetector.roiShape' in nodes) {
-            var shape = deice(nodes['areaDetector.roiShape'].currentValue.userVal.val);
-            if (shape.name == 'rect') {
-                detectors.areaDetector.roi = shape;
+        if (nodes.has('areaDetector.roiShape')) {
+            var shape = nodes.get('areaDetector.roiShape').currentValue.userVal.val;
+            if (shape.get('name', '') == 'rect') {
+                detectors.areaDetector.roi = devicesMonitor.MapToObject(shape);
             } else {
                 detectors.areaDetector.roi = null;
             }
@@ -517,16 +516,18 @@
             password = "";
         
         signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
-            function(api_object) {
-                // globals:
+            function(signin_objs) {
                 logging_in = false;
-                api = api_object;
+                api = signin_objs[0];
+                //communicator = signin_objs[1];
+                //router = signin_objs[2];
+                //adapter = signin_objs[4];
                 devicesMonitor = new DevicesMonitorI();
                 devicesMonitor.postChangedHooks = [handleNodesChanged];
-                return Promise.all(
+                return Promise.all([
                     subscribe(devicesMonitor, 'devices')
-                )
-        }).exception(
+                ])
+        }).catch(
             function(ex) {console.log(ex)}
         );
         
