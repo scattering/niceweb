@@ -1,0 +1,436 @@
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" href="css/appicon.png" />
+  <link rel="stylesheet" href="css/layout-default-latest.css" />
+  <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans" />
+  <link href="http://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css" type="text/css" rel="Stylesheet" />
+  <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
+  <script src="jquery.layout-latest.js"></script>
+
+  <!-- dialog support -->
+  <link rel="stylesheet" href="../static/dialog-polyfill.css" />
+  <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceGrid.min.js"></script>
+  
+  <script src="//d3js.org/d3.v4.min.js" charset="utf-8"></script>
+  <script src="//www.ncnr.nist.gov/ipeek/js/es6-promise.min.js"></script>
+  <script src="//www.ncnr.nist.gov/ipeek/js/zip/zip.js"></script>
+  <script src="//www.ncnr.nist.gov/ipeek/js/zip/deflate.js"></script>
+  <script src="//www.ncnr.nist.gov/ipeek/js/zip/inflate.js"></script>
+  <script src="//www.ncnr.nist.gov/ipeek/js/zip/zip-fs.js"></script>
+  <script src="//www.ncnr.nist.gov/ipeek/js/DataStream.js"></script>
+  <script src="//www.ncnr.nist.gov/ipeek/js/nexus-zip.js"></script>
+  
+  <script src="generated/data.js"></script>
+  <script src="generated/file.js"></script>
+  <script src="generated/system.js"></script>
+  <script src="generated/devices.js"></script>
+  <script src="generated/console.js"></script>
+  <script src="generated/dryrun.js"></script>
+  <script src="generated/exceptions.js"></script>
+  <script src="generated/nice.js"></script>
+  <script src="generated/events.js"></script>
+  <script src="generated/experiment.js"></script>
+  <script src="generated/queue.js"></script>
+  <script src="generated/sampleAlignment.js"></script>
+  <script src="generated/clientapi.js"></script>
+  <script src="connect_zeroc.js"></script>
+  <script src="deice.js"></script>
+  <script type="text/javascript" src="servers_available.js"></script>
+  <script src="serviceworker_cache.js"></script>
+  <script type="text/javascript">
+    //var Promise = Ice.Promise;
+    var RouterPrx = Glacier2.RouterPrx;
+    var router_spec = "NiceGlacier2/router:ws -p <port> -h <host>";
+    var ice_protocol_version = "1.1";
+
+    var logging_in = false;
+
+    var datatable = [];
+    var col_keys = [];
+    var api;
+    
+    var instrument_canonical_name;
+    var instrument_name = "local"; // default NICE host
+    var port = '9999';
+    if (localStorage && localStorage.instrument_name) {
+      instrument_name = localStorage.instrument_name
+    }
+
+    function getEnumValues(ice_enum) {
+      var enumVals = [];
+      for (var i = 0; i <= ice_enum.maxValue; i++) {
+        enumVals[i] = ice_enum.valueOf(i)._name;
+      }
+      return enumVals;
+    }
+
+    
+
+    dialog_login = function() {
+      // set the global hostname
+      var hostname = document.getElementById("instrument_ip").value;
+      // ok we're just going to put this here.
+      //var username = document.getElementById("username").value;
+      //var password = document.getElementById("password").value;
+      var username = "user",
+        password = "";
+
+      signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
+        function(api_obj, comm_obj, router_obj, session_obj, adapter_obj) {
+          // globals:
+          logging_in = false;
+          api = api_obj;
+          communicator = comm_obj;
+          router = router_obj;
+          adapter = adapter_obj;
+        });
+      if (localStorage) {
+        localStorage.instrument_name = $("select#instrument_selector option:selected").text();
+      }
+      document.getElementById("login").close();
+    }
+    
+    function show_table(das) {
+      //console.log(config.get('key').then(getValue));
+      Promise.all([
+        das.get('configuration/map/key').then(getValue),
+        das.get('configuration/map/key2').then(getValue),
+        das.get('configuration/map/value').then(getValue),
+        das.get('configuration/key').then(getValue)
+      ]).then(function(v) {
+        var key = v[0], 
+            key2 = v[1],
+            value = v[2],
+            active_key = v[3];
+        make_table(key, key2, value, active_key);
+      });
+    }
+    
+    function make_table(key, key2, value, active_key) {
+      if (key == null) { return }
+      // set some globals for use later;
+      datatable = value;
+      col_keys = key2;
+      
+      var table = $("table#configurations")
+      var tbody = $("<tbody />");
+      $("div.scroller").css("margin-left", "0");
+      table.empty().append(tbody);
+      var header_row = $("<tr />");
+      header_row.append($("<th/>")); // blank upper left corner
+      for (var j=0; j<key2.length; j++) {
+        var h = key2[j][0];
+        var title = h.replace(".", "\n");
+        header_row.append($("<th />", {text: title, class: "device-name"}));
+      }
+      tbody.append(header_row);
+      for (var i=0; i<key.length; i++) {
+        var row = $("<tr />", {class: "data-row"});
+        var k = key[i][0];
+        if (k == active_key[0]) {
+          row.addClass("selected");
+        }
+        console.log(k);
+        var cn = $("<th />", {class: "config-name"});
+        var cni = $("<input />", {type: "text", value: k, class: "name"});
+        cn.append(cni);
+        row.append(cn);
+        for (var j=0; j<key2.length; j++) {
+          row.append($("<td />", {text: value[i][j], class: "value"}));
+        }
+        tbody.append(row);
+      }
+      var first_data_position = $("td.value").position();
+      $("th.config-name").css("position", "absolute");
+      $("th.config-name").css("left", "0");
+      $("th.config-name").width(first_data_position.left+2);
+      $("div.scroller").css("margin-left", first_data_position.left + 12 + "px");
+    }
+        
+    
+    function loadData() {
+      var file_input = document.getElementById('datafile');
+      var file = file_input.files[0]; // only one file allowed
+      datafilename = file.name;
+      zip.createReader(new zip.BlobReader(file), function(reader) {
+          // get all entries from the zip
+          reader.getEntries(function(entries) {
+            f = new nz.File().init(datafilename, entries);
+            var filelist = Object.keys(f.zipfiles);
+            var entryPromise = f.items()[0][1];
+            entryPromise.then(function(e) {
+              e.get("DAS_logs").then(function(das) {
+                  show_table(das);
+              });
+            });
+          })
+        })
+            
+      $("span#loaded_file").text(datafilename);
+      file_input.value = "";
+    }
+    
+    function save_selected() {
+      var selected_rows = [];
+      var value_string = "{";
+      $("table#configurations tr.data-row").each(function(i, r) {
+        if ($(this).hasClass("selected")) {
+          var label = $(this).find("input.name").val();
+          var s = '"' + label + '"={';
+          var d = datatable[i].map(function(d,di) {
+            return '"' + col_keys[di] + '"="' + d + '"';
+          })
+          value_string += (s + d.join(',') + '}');
+          selected_rows.push([i, label])
+        }
+      });
+      value_string += "}";
+      if (api && api.move && selected_rows.length > 0) {
+        api.move(["configuration.mapPut", value_string]);
+      }
+    }
+    
+    window.onload = function() {
+      zip.useWebWorkers = false;
+      var servers = Object.keys(servers_available);
+      var instrument_selector = $("select#instrument_selector");
+      servers.forEach(function(s) {
+        instrument_selector.append($("<option />", {
+          value: servers_available[s],
+          name: s,
+          text: s
+        }));
+      });
+      var change_instrument = function() {
+        $("input#instrument_ip").val(this.value);
+      }
+      instrument_selector.on("change", change_instrument);
+      instrument_selector.find('option[name="' + instrument_name + '"]').prop('selected', 'selected');
+      $("input#instrument_ip")[0].value = servers_available[instrument_name];
+
+      var dialogs = document.getElementsByTagName("dialog");
+      for (var di = 0; di < dialogs.length; di++) {
+        var d = dialogs[di];
+        if (!d.show) {
+          dialogPolyfill.registerDialog(d);
+        }
+      }
+
+      $("table#configurations").on('click', 'td', function() {
+        var row = $(this).parent();
+        if (row.hasClass('selected')) {
+          row.removeClass('selected');
+        } else {
+          //$(this).parent().find('tr.selected').removeClass('selected');
+          row.addClass('selected');
+        }
+      });
+      
+      $("button#start_login").click(function() {
+        document.getElementById('login').show();
+        logging_in = true;
+      });
+
+      $(window).on('niceServerShutdown', function(ev) {
+        $('#north_panel').removeClass('connected', 4000)
+          .find('.instrument-name').text('Server shut down: Not connected');
+      }).on('niceServerConnected', function(ev) {
+        instrument_canonical_name = ev.originalEvent.detail.instrumentID;
+        $('#north_panel').addClass('connected')
+          .find('.instrument-name').text("Instrument connected: " + instrument_canonical_name);
+      });
+
+      //document.getElementById('login').show();
+      //logging_in = true;
+
+      myLayout = $('body').layout({
+        east__size: null,
+        west__size: 300,
+        south__size: "auto",
+        north_size: "auto"
+          // RESIZE Accordion widget when panes resize
+          ,
+        west__onresize: $.layout.callbacks.resizePaneAccordions,
+        east__onresize: $.layout.callbacks.resizePaneAccordions,
+        south__onresize: $.layout.callbacks.resizePaneAccordions,
+        north__onresize: $.layout.callbacks.resizePaneAccordions,
+        center__onresize: function() {
+          mainTable.width(mainTable.parent().width());
+        }
+      });
+      
+      var save_button = document.getElementById('save_button');
+      save_button.onclick = save_selected;
+      
+      var fileinput = document.getElementById('datafile');
+      fileinput.onchange = loadData;
+    }
+  </script>
+  <style type="text/css">
+    body {
+      /*font-family: 'Open Sans' !important;*/
+    }
+
+    dialog {
+      top: 20%;
+      position: absolute;
+      z-index: 10;
+      text-align: center;
+    }
+
+    dialog input[type="text"],
+    dialog textarea {
+      float: right;
+      width: 45em;
+    }
+
+    dialog#new_confirm_participant {
+      background-color: yellow;
+      top: 50%
+    }
+
+    #north_panel {
+      background-color: LightYellow;
+      height: 30px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+      font-weight: normal;
+      /* font-family: 'Open Sans'; */
+      /* font-variant: small-caps; */
+    }
+
+    #north_panel.connected {
+      background-color: LightGreen;
+    }
+
+    #north_panel h3 {
+      display: inline-block;
+    }
+
+    .selected-buttons {
+      float: right;
+    }
+
+    table.dataTable thead tr {
+      font-weight: bold;
+    }
+
+    .ui-layout-north h3 {
+      padding-right: 1em;
+    }
+
+    .current-experiment-id {
+      text-decoration: underline !important;
+    }
+
+    .switch-button {
+      float: right;
+    }
+
+    label.disabled {
+      color: #c0c0c0;
+    }
+    
+    div.actions {
+      display: inline-block;
+      float: right;
+    }
+    
+    div.wrapper {
+      position: relative;
+    }
+    
+    div.scroller {
+      overflow-x: auto;
+      overflow-y: visible;
+    }
+    
+    table#configurations {
+      border-collapse: collapse;
+    }
+    
+    table#configurations th.device-name, table#configurations td { 
+      border: 2px solid blue;
+      
+    }
+    
+    table#configurations tr.selected, table#configurations tr.selected th {
+      background-color: yellow;
+    }
+    
+    table th, table td {
+      text-align: right;
+      padding-top: 5px;
+      padding-bottom: 5px;
+    }
+    
+    th.config-name {
+      border: 2px solid blue;
+      white-space: nowrap;
+      padding-right: 10px;
+      /*margin-right: 24px;*/
+    }
+    
+    th.config-name input.name {
+      box-sizing: border-box;
+      border: none;
+      text-align: right;
+    }
+    
+    th.config-name input.name-checkbox {
+      margin: 0 auto;
+      float: left;
+    }
+    
+    table td {
+      text-align: right;
+    }
+    .title-row {
+      font-weight: bold;
+    }
+    
+  </style>
+  <title>Configurations</title>
+</head>
+
+<body>
+  <dialog id="login">
+    <h2>Login</h2>
+    <table>
+      <tr>
+        <td><label for="instrument_ip">Instrument address</label></td>
+        <td><select id="instrument_selector"></select><input type="text" id="instrument_ip"></td>
+      </tr>
+    </table>
+    <input type="button" onclick="dialog_login()" value="Connect">
+  </dialog>
+
+  <div id="north_panel" class="ui-layout-north">
+    <h3 class="instrument-name">Instrument: </h3>
+    <button id="start_login">Login to Instrument</button>
+  </div>
+  <div id="east_panel" class="ui-layout-east-no">
+  </div>
+  <div id="center_panel" class="ui-layout-wrapper ui-layout-center">
+    <div class="wrapper">
+    <div class="scroller">
+        <table id="configurations" class="stripe cell-border compact hover order-column"></table>
+    </div>
+    </div>
+  </div>
+  <div id="south_panel" class="ui-layout-south">
+    Load nexus-zip file: <input type="file" id="datafile" style="display:inline-block;" />
+    <label>Loaded: <span class="loaded-file" id="loaded_file"></span></label>
+    <div id="actions" class="actions">
+      <button id="save_button">Save selected to server</button>
+    </div>
+  </div>
+</body>
+
+</html>

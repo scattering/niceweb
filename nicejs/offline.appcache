@@ -1,49 +1,42 @@
 CACHE MANIFEST
 
-# Created on 25 Aug 2015 ab
+#version 2017-12-29D
 
-CACHE:
-
-traj_edit_panels_offline.html
 css/appicon.png
 css/layout-default-latest.css
-//fonts.googleapis.com/css?family=Open+Sans
-//fonts.gstatic.com/s/opensans/v13/cJZKeOuBrn4kERxqtaUH3VtXRa8TVwTICgirnJhmVJw.woff2
-//fonts.googleapis.com/css?family=Special+Elite
-jquery-ui-1.11.4.custom/jquery-ui.theme.min.css
-jquery-ui-1.11.4.custom/jquery-ui.min.js
+https://fonts.googleapis.com/css?family=Open+Sans
+https://code.jquery.com/ui/1.8.2/themes/start/jquery-ui.css
+https://code.jquery.com/jquery-1.11.1.min.js
+https://code.jquery.com/ui/1.10.4/jquery-ui.min.js
 
-# jquery ui image items
-jquery-ui-1.11.4.custom/images/ui-bg_gloss-wave_75_2191c0_500x100.png
-jquery-ui-1.11.4.custom/images/ui-bg_inset-hard_100_fcfdfd_1x100.png
-jquery-ui-1.11.4.custom/images/ui-bg_glass_45_0078ae_1x400.png
-jquery-ui-1.11.4.custom/images/ui-bg_gloss-wave_45_e14f1c_500x100.png
-jquery-ui-1.11.4.custom/images/ui-icons_fcd113_256x240.png
-jquery-ui-1.11.4.custom/images/ui-icons_0078ae_256x240.png
-jquery-ui-1.11.4.custom/images/ui-icons_e0fdff_256x240.png
-
-#//code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css
-//code.jquery.com/jquery-1.11.1.min.js
-#//code.jquery.com/ui/1.10.4/jquery-ui.min.js
 jquery.layout-latest.js
-tv4.js
-tv4.async-jquery.js
+https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css
+
+https://cdn.datatables.net/1.10.7/js/jquery.dataTables.min.js
+https://cdn.datatables.net/1.10.7/css/jquery.dataTables.min.css
+
+https://ncnr.nist.gov/instruments/magik/js/ims_fullcal.js
+
+css/jstree_style.min.css
+css/main.css
+jstree.js
+jstree.dnd_outside.js
+
+# dialog support
 ../static/dialog-polyfill.css
 ../static/dialog-polyfill.js
-sprintf.js
-webtraj_base_prototype.js
-webtraj_interactive_inplace.js
-dryrun_client_worker.js
-icejs/Ice.js
-icejs/Glacier2.js
-icejs/IceStorm.js
-icejs/IceGrid.js
 
+https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Ice.min.js
+https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Glacier2.min.js
+https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceStorm.min.js
+https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceGrid.min.js
+
+# from slices...
 generated/data.js
-generated/devices.js
 generated/file.js
-generated/console.js
 generated/system.js
+generated/devices.js
+generated/console.js
 generated/dryrun.js
 generated/exceptions.js
 generated/nice.js
@@ -52,20 +45,21 @@ generated/experiment.js
 generated/queue.js
 generated/sampleAlignment.js
 generated/clientapi.js
-    
-DevicesMonitorI.js
+
 connect_zeroc.js
-css/webtraj.css
+servers_available.js
+DevicesMonitorI.js
+
+# specific to traj editor
+https://code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css
+sprintf.js
+webtraj_base_prototype.js
+webtraj_interactive_inplace.js
 webtraj_page_websocket.js
+dryrun_client_worker4.js
+css/webtraj.css
+tv4.js
+tv4.async-jquery.js
 
 NETWORK:
-
-#//code.jquery.com/jquery-1.11.1.min.js
-#//code.jquery.com/ui/1.10.4/themes/redmond/jquery-ui.css
-# offline.jpg will replace all images in the images folder
-
-# offline.html will replace all html pages if they cannot be found
-
-FALLBACK:
-
-# *.html offline.html
+*

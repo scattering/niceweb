@@ -30,14 +30,14 @@
   <script src="webtraj_base_prototype.js"></script>
   <script src="webtraj_interactive_inplace.js"></script>
   <script src="dryrun_client_worker4.js"></script>
+
 <!--  <script src="jsonpatch.js"></script> -->
 <!--  <script src="jsondiff.js"></script> -->
 <!--  <script src="//cdnjs.cloudflare.com/ajax/libs/require.js/2.1.20/require.min.js"></script>-->
-  
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Ice.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/Glacier2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/IceStorm.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.0/IceGrid.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/IceGrid.min.js"></script>
   
     <script src="generated/data.js"></script>
     <script src="generated/devices.js"></script>
@@ -53,10 +53,12 @@
     <script src="generated/sampleAlignment.js"></script>
     <script src="generated/clientapi.js"></script>
     
+    <script src="deice.js"></script>
     <script src="DevicesMonitorI.js"></script>
     <script src="connect_zeroc.js"></script>
     <script type="text/javascript" src="servers_available.js"></script>
-  <link rel="stylesheet" href="css/webtraj.css" />
+    <script src="serviceworker_cache.js"></script>
+    <link rel="stylesheet" href="css/webtraj.css" />
   <script type="text/javascript">
 
     var RouterPrx = Glacier2.RouterPrx;
@@ -85,7 +87,7 @@
       instrument_name = localStorage.instrument_name
     }
     var api;
-    var experimentMonitor, fileMonitor, devicesMonitor;
+    var experimentMonitor, fileMonitor, devicesMonitor, dryRunMonitor;
 
     /* Example validation:
     tv4.validate(editor.getValue(), 'trajectory_schemas/trajectory-schema.json', function(s) {console.log(s)});
@@ -226,47 +228,84 @@
         return obj
       }
     };
-    dialog_login = function() {
-      // set the global hostname
-      var hostname = document.getElementById("instrument_ip").value;
-      // ok we're just going to put this here.
-      //var username = document.getElementById("username").value;
-      //var password = document.getElementById("password").value;
-      var username = "user",
-        password = "";
-
-      signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
-        function(signin_objs) {
-          //api_obj, comm_obj, router_obj, session_obj, adapter_obj) {
-          // globals:
-          logging_in = false;
-          api = signin_objs[0];
-          server_state = signin_objs[5];
-          instrument_id = server_state.instrumentID;
-          devicesMonitor = new DevicesMonitorI();
-          fileMonitor = new FileMonitorI();
-          experimentMonitor = new ExperimentMonitorI();
-          return Promise.all([
-            subscribe(devicesMonitor, 'devices'),
-            subscribe(fileMonitor, 'file'),
-            subscribe(experimentMonitor, 'experiment'),
-            fileMonitor.subscribed, // check to make sure the subscribe event is complete on this end
-            experimentMonitor.subscribed,
-            devicesMonitor.subscribed
-          ]).then(function() {
-            trajectory_editor.refreshBoth();
-            experimentMonitor.postSwitchedHooks = [trajectory_editor.refreshBoth];
+    
+    var DryRunMonitorI = class extends nice.api.dryrun.DryrunMonitor {
+        constructor() {
+          super();
+          var _resolve, _reject;
+          this.subscribed = new Promise(function(resolve, reject) {
+              _resolve = resolve;
+              _reject = reject;
           })
-        }).catch(
-        function(ex) {
-          console.log(ex);
+          this.postSubscribeHooks = [function() { _resolve() }];
         }
-      );
-
-      if (localStorage) {
-        localStorage.instrument_name = $("select#instrument_selector option:selected").text();
-      }
-      document.getElementById("login").close();
+        
+        onSubscribe(name, __current) {
+            //console.log('subscribed to: ', name)
+        }
+        
+        update(dryRunData, __current) {
+            var estimate = dryRunData.estimatedTime.knownTimeInSeconds;
+            var hours = Math.floor(estimate / 3600);
+            var minutes = Math.floor( (estimate / 60) % 60 );
+            var seconds = estimate % 60;
+            result = dryRunData.filePath; 
+            result += "\n";
+            result += hours.toFixed() + "h " + minutes.toFixed() + "m " + seconds.toFixed() + "s ";
+            alert(result);
+            //console.log('dryrun update: ', dryRunData);
+        }
+        
+        dryrunApiResults(resultID, errorMessage, dryRunData, __current) {
+            // this is an Ice Long:
+            var id = resultID.toNumber();
+            console.log('id: ', id, 'message: ', errorMessage, 'data: ', dryrunData);
+        }
+    };
+    
+    dialog_login = function() {
+        // set the global hostname
+        var hostname = document.getElementById("instrument_ip").value;
+        // ok we're just going to put this here.
+        //var username = document.getElementById("username").value;
+        //var password = document.getElementById("password").value;
+        var username = "user",
+            password = "";
+        
+        signin(router_spec.replace(/<host>/, hostname).replace(/<port>/, port), ice_protocol_version, false, username, password).then(
+            function(signin_objs) {
+                //api_obj, comm_obj, router_obj, session_obj, adapter_obj) {
+                // globals:
+                logging_in = false;
+                api = signin_objs[0];
+                server_state = signin_objs[5];
+                instrument_id = server_state.instrumentID;
+                devicesMonitor = new DevicesMonitorI();
+                fileMonitor = new FileMonitorI();
+                experimentMonitor = new ExperimentMonitorI();
+                dryRunMonitor = new DryRunMonitorI();
+                return Promise.all(
+                    subscribe(devicesMonitor, 'devices'),
+                    subscribe(fileMonitor, 'file'),
+                    subscribe(experimentMonitor, 'experiment'),
+                    subscribe(dryRunMonitor, 'dryrun'),
+                    fileMonitor.subscribed, // check to make sure the subscribe event is complete on this end
+                    experimentMonitor.subscribed,
+                    devicesMonitor.subscribed
+                ).then(function() { 
+                    trajectory_editor.refreshBoth(); 
+                    experimentMonitor.postSwitchedHooks = [trajectory_editor.refreshBoth]; 
+                })
+        }).catch(
+            function(ex) {
+                console.log(ex);
+            }
+        );
+        
+        if (localStorage) {
+            localStorage.instrument_name = $("select#instrument_selector option:selected").text();
+        }
+        document.getElementById("login").close();
     }
     window.onload = function() {
       var servers = Object.keys(servers_available);

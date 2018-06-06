@@ -1,3 +1,5 @@
+// requires deice.js
+
 (function(Ice, nice){
     DevicesMonitorI = class extends nice.api.devices.DevicesMonitor {
         constructor() {

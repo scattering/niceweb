@@ -14,21 +14,22 @@
     <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
 <!--    Moved this to local host because it loads so slowly.-->
 <!--    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>-->
-    <script type="text/javascript" src="d3.v3.min.js"></script>
-    <script type="text/javascript" src="plot_d3_rz.js"></script>
-    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>
-<!--    <script src="/~bbm/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>-->
-    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/ellipse-interactor.js"></script>
-    <script type="text/javascript" src="circular_sums.js"></script>
+    <script src="//d3js.org/d3.v4.min.js" charset="utf-8"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/jquery-extend.js" charset="utf-8"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/heat-chart.js"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/colormap.js" charset="utf-8"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/xy-chart.js"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/ellipse-interactor.js"></script>
+    <script type="text/javascript" src="circular_sums_ravel.js"></script>
     
     <!-- dialog support -->
     <link rel="stylesheet" href="../static/dialog-polyfill.css" />
     <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
     
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Ice.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Glacier2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceStorm.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceGrid.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceGrid.min.js"></script>
 
     <script src="generated/data.js"></script>
     <script src="generated/devices.js"></script>
@@ -43,9 +44,12 @@
     <script src="generated/sampleAlignment.js"></script>
     <script src="generated/clientapi.js"></script>
     <script src="connect_zeroc.js"></script>
+    <script src="deice.js"></script>
+    <script src="DevicesMonitorI.js"></script>
     <script type="text/javascript" src="servers_available.js"></script>
     <script src="JSON.parseMore.js"></script>
     <script src="testdata.js"></script>
+    <script src="serviceworker_cache.js"></script>
     <script type="text/javascript">
         var Promise = Ice.Promise;
         var RouterPrx = Glacier2.RouterPrx;
@@ -181,11 +185,10 @@
                 zmintemp = Math.min.apply(Math, row);
                 zmax = Math.max(zmax, zmaxtemp);
                 zmin = Math.min(zmin, zmintemp);
-                z.push(row);
             }
             var plottable = {};
             jQuery.extend(true, plottable, plottable2d);
-            plottable.z = [z];
+            plottable.z = [zdata];
             plottable.dims.xdim = plottable.dims.xmax = dims[0];
             plottable.dims.ydim = plottable.dims.ymax = dims[1];
             plottable.dims.zmin = zmin;
@@ -234,11 +237,13 @@
             var ztransform = $('<label />', {'class': 'transform', 'axis': 'zaxis'}).text('logZ').append($('<input />', {'type': 'checkbox', 'id': 'ztransform', 'checked': true}));
             plotbox.append(ztransform);
             ztransform.prop('checked', true).change(updateTransform);
-            var plot = heatChart({
+            var plot = new heatChart.default({
               "ztransform": transform,
               "dims": data.dims,
               "aspect_ratio": 1.0})
+            plot
               .autoscale(true);
+              
             mydata = data;
             c = d3.select("#" + next_target)
               .data(data.z)
@@ -276,8 +281,8 @@
                 ry: 50
             }
             
-            roi_outer = new ellipseInteractor(circle2_opts);
-            roi_inner = new ellipseInteractor(circle1_opts);
+            roi_outer = new ellipseInteractor.default(circle2_opts);
+            roi_inner = new ellipseInteractor.default(circle1_opts);
             
             plot.interactors(roi_outer);
             plot.interactors(roi_inner);
@@ -368,15 +373,24 @@
                     var phisum = multiplySumArc(maskCanvas, plot.source_data(), data.dims, circle1.state.cx, circle1.state.cy, r1, r2);
                     plottableX.data = [phisum.xy];
                     $("#xplot_plot").empty();
-                    xplot = plotD3("xplot_plot", plottableX, {
-                        log_y: zislog, 
+                    xplot = new xyChart.default({
+                        ytransform: (zislog) ? "log" : "linear", 
                         showline: true, 
                         show_points: false, 
-                        vcursor: true, 
-                        ylabel: intensity_label, 
-                        xlabel: 'Phi (deg)',
-                        position_cursor: true});
-                    xplot.svg.select('.x.axis').call(xplot.xAxis.tickValues([0,45,90,135,180,225,270,315,360]));
+                        //vcursor: true, 
+                        axes: {
+                            yaxis: {label: intensity_label},
+                            xaxis: {label: "phi (degrees)"}
+                        },
+                        position_cursor: true
+                    });
+                    d3.select("#xplot_plot")
+                        .data([[phisum.xy]])
+                        .call(xplot);
+                    xplot.zoomRect(true);
+                    var xAxis = d3.axisBottom(xplot.x()).tickValues([0,45,90,135,180,225,270,315,360]);
+                    xplot.svg.select('.x.axis').call(xAxis);
+                    
                 }
                 return this;
             }
@@ -393,6 +407,25 @@
                     var rsum = multiplySumRadial(maskCanvas, plot.source_data(), data.dims, circle1.state.cx, circle1.state.cy);
                     plottableY.data = [rsum.xy];
                     $("#yplot_plot").empty();
+                    yplot = new xyChart.default({
+                        ytransform: (zislog) ? "log" : "linear", 
+                        xtransform: (zislog) ? "log" : "linear", 
+                        showline: true, 
+                        show_points: false, 
+                        //vcursor: true, 
+                        ylabel: intensity_label,
+                        position_cursor: true, 
+                        axes: {
+                            yaxis: {label: intensity_label},
+                            xaxis: {label: "pixel"}
+                        }
+                    });
+                    d3.select("#yplot_plot")
+                        .data([[rsum.xy]])
+                        .call(yplot);
+                    yplot.zoomRect(true);
+                    
+                    /*
                     yplot = plotD3("yplot_plot", plottableY, {
                         log_y: zislog, 
                         log_x: zislog, 
@@ -402,6 +435,7 @@
                         ylabel: intensity_label, 
                         xlabel: 'pixels from center',
                         position_cursor: true});
+                    */
                 }
                 return this;  
             };
@@ -474,7 +508,7 @@
         }
         textbox.onchange = this.syncInteractorToValue; 
         interactor.dispatch.on("update.r", syncValueToInteractor);
-        interactor.dispatch.update();
+        interactor.dispatch.call("update");
         return this;
     }
     
@@ -506,7 +540,7 @@
         }
         textbox.onchange = this.syncInteractorToValue;
         interactor.dispatch.on("update." + key, syncValueToInteractor);
-        interactor.dispatch.update();
+        interactor.dispatch.call("update");
         return this;
     }
     
@@ -752,6 +786,7 @@
     }
     .axis .axis-label {
         font-size: 14px;
+        fill: black;
         user-select: none; 
         -webkit-user-select: none; 
         -moz-user-select: none;
@@ -770,10 +805,15 @@
     }
     
     rect {
-      fill: #fff;
-      user-select: none; 
-      -webkit-user-select: none; 
-      -moz-user-select: none;
+        fill: none;
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+    }
+
+    rect.zoom {
+        stroke: steelblue;
+        fill-opacity: 0.5;
     }
 
   </style>

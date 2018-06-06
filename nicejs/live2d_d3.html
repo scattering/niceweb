@@ -3,7 +3,7 @@
     <!-- Reference the theme's stylesheet on the Google CDN -->
     
     <link rel="icon" type="image/png" href="css/appicon.png" />
-    <link rel="stylesheet" type="text/css" href="../../niceclient/static/css/layout-default-latest.css" />
+    <link rel="stylesheet" type="text/css" href="css/layout-default-latest.css" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Special+Elite" />
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Love+Ya+Like+A+Sister" />
@@ -11,23 +11,24 @@
             type="text/css" rel="Stylesheet" />
     <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script> 
     <script type="text/javascript" src="//code.jquery.com/ui/1.10.4/jquery-ui.min.js"></script>
-    <script type="text/javascript" src="../../niceclient/static/jquery.layout-latest.js"></script>
+    <script type="text/javascript" src="jquery.layout-latest.js"></script>
 <!--    Moved this to local host because it loads so slowly.-->
 <!--    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>-->
-    <script type="text/javascript" src="d3.v3.min.js"></script>
-    <script type="text/javascript" src="plot_d3_rz.js"></script>
-    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>
-<!--    <script src="/~bbm/d3-science/heat-chart-colorbar-typed-options.js" charset="utf-8"></script>-->
-    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science/rectangle-interactor.js"></script>
+    <script src="//d3js.org/d3.v4.min.js" charset="utf-8"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/jquery-extend.js" charset="utf-8"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/heat-chart.js"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/colormap.js" charset="utf-8"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/xy-chart.js"></script>
+    <script src="//www.ncnr.nist.gov/instruments/magik/d3-science-v4/lib/rectangle-interactor.js"></script>
     
     <!-- dialog support -->
     <link rel="stylesheet" href="../static/dialog-polyfill.css" />
     <script type="text/javascript" src="../static/dialog-polyfill.js"></script>
     
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Ice.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Glacier2.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceStorm.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/IceGrid.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceStorm.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.4/IceGrid.min.js"></script>
 
     <script src="generated/data.js"></script>
     <script src="generated/devices.js"></script>
@@ -42,9 +43,12 @@
     <script src="generated/sampleAlignment.js"></script>
     <script src="generated/clientapi.js"></script>
     <script src="connect_zeroc.js"></script>
+    <script src="deice.js"></script>
+    <script src="DevicesMonitorI.js"></script>
     <script type="text/javascript" src="servers_available.js"></script>
     <script src="JSON.parseMore.js"></script>
     <script src="testdata.js"></script>
+    <script src="serviceworker_cache.js"></script>
     <script type="text/javascript">
         var Promise = Ice.Promise;
         var RouterPrx = Glacier2.RouterPrx;
@@ -72,66 +76,6 @@
 
         function capitalize(string) {
             return string.charAt(0).toUpperCase() + string.slice(1);
-        }
-
-        var DevicesMonitorI = Ice.Class(nice.api.devices.DevicesMonitor, {
-            onSubscribe: function(devices, nodes, groups, __current) {
-                this.devices = this.HashMapToObject(devices);
-                this.nodes = this.HashMapToObject(nodes);
-                var changed = this.nodes;
-                this.groups = this.HashMapToObject(groups);
-                this.postChangedHooks = (this.postChangedHooks == null) ? [] : this.postChangedHooks;
-                this.postChangedHooks.forEach( function(callback) { callback(changed); });
-            },
-            
-            changed: function(nodes, __current) {
-                var changed = this.HashMapToObject(nodes);
-                jQuery.extend(this.nodes, changed);
-                this._lastChanged = changed;
-                this.postChangedHooks.forEach( function(callback) { callback(changed); });
-            },
-            dynamicDevicesAdded: function(addRemoveID, childDeviceIDs, __current) {
-                //alert('device added: ' + addRemoveID + '\n' + 'children: ' + childDeviceIDs);
-            },
-            dynamicDevicesRemoved: function(addRemoveID, __current) {
-                //alert('device removed: ' + addRemoveID);
-            },
-            removed: function(devices, nodes, __current) {
-                this._lastDevicesRemoved = this.HashMapToObject(devices);
-                this._lastNodesRemoved = this.HashMapToObject(nodes);
-            },
-            added: function(devices, nodes, __current) {
-                this._lastDevicesAdded = this.HashMapToObject(devices);
-                this._lastNodesAdded = this.HashMapToObject(nodes);
-            },
-            getAllDeviceNames: function() {
-                var devices = [];
-                for (var d in this.devices) {
-                    devices.push(d); 
-                }
-                return devices;
-            },
-            HashMapToObject: function(m) {
-                var obj={}; 
-                m.forEach( function(dn) { 
-                    obj[dn]=m.get(dn);
-                }); 
-                return obj
-            } 
-        });
-
-        var plottableX = {
-            "options": {
-                "series": [{"label": "x-slice"}]
-            },
-            "data": [[[1,2], [3,4], [5,6]]]
-            
-        }
-        var plottableY = {
-            "options": {
-                "series": [{"label": "y-slice"}]
-            },
-            "data": [[[1,2], [3,4], [5,6]]] 
         }
         
         var plottable2d = {
@@ -186,17 +130,16 @@
                 zmintemp = Math.min.apply(Math, row);
                 zmax = Math.max(zmax, zmaxtemp);
                 zmin = Math.min(zmin, zmintemp);
-                z.push(row);
             }
             var plottable = {};
             jQuery.extend(true, plottable, plottable2d);
-            plottable.z = [z];
+            plottable.z = [zdata];
             plottable.dims.xdim = plottable.dims.xmax = dims[0];
             plottable.dims.ydim = plottable.dims.ymax = dims[1];
             plottable.dims.zmin = zmin;
             plottable.dims.zmax = zmax;
             if (roi) {
-                jQuery.extend(true, plottable.roi, roi);
+                jqueryExtend.default(true, plottable.roi, roi);
             }
             return plottable;
         }
@@ -245,10 +188,11 @@
             var ztransform = $('<label />', {'class': 'transform', 'axis': 'zaxis'}).text('logZ').append($('<input />', {'type': 'checkbox', 'id': 'ztransform', 'checked': true}));
             plotbox.append(ztransform);
             ztransform.prop('checked', true).change(updateTransform);
-            var plot = heatChart({
+            var plot = new heatChart.default({
               "ztransform": transform,
               "dims": data.dims,
               "aspect_ratio": 1.0})
+            plot
               .autoscale(true);
             mydata = data;
             c = d3.select("#" + next_target)
@@ -265,6 +209,7 @@
 		            color2: '#ffdddd',
                 fill: "none",
                 fixed: true,
+                show_lines: true,
                 show_center: false,
                 show_points: false,
                 show: false,
@@ -274,7 +219,7 @@
                 ymax: 6
             }
             
-            roi_rectangle = new rectangleInteractor(roi_rectangle_opts);
+            roi_rectangle = new rectangleInteractor.default(roi_rectangle_opts);
             var shape = data.roi;
             if (shape) {
                 var ys = [parseFloat(shape.y1), parseFloat(shape.y2)],
@@ -298,13 +243,15 @@
               fill: "none",
               show_center: true,
               show: false,
+              show_lines: true,
+              show_points: true,
               xmin: 10, 
               ymin: 10,
               xmax: data.dims.xmax - 10, 
               ymax: data.dims.ymax - 10
             }
             
-            selector_rectangle = new rectangleInteractor(selector_opts);
+            selector_rectangle = new rectangleInteractor.default(selector_opts);
             plot.interactors(selector_rectangle);
             
             cumsums = {x: null, y: null};
@@ -327,7 +274,7 @@
             
             var maxbutton = document.createElement('input');
             maxbutton.setAttribute('type', 'button');
-            maxbutton.setAttribute('value', 'Maximize to data');
+            maxbutton.setAttribute('value', 'Maximize');
             var maximize = function () {
                 selector_rectangle.state.xmin = data.dims.xmin;
                 selector_rectangle.state.xmax = data.dims.xmax;
@@ -337,6 +284,19 @@
             }
             maxbutton.onclick = maximize;            
             document.getElementById('slicecontrols').appendChild(maxbutton);
+            
+            var snapbutton = document.createElement('input');
+            snapbutton.setAttribute('type', 'button');
+            snapbutton.setAttribute('value', 'Snap to ROI');
+            var snapto = function () {
+                selector_rectangle.state.xmin = roi_rectangle.state.xmin;
+                selector_rectangle.state.xmax = roi_rectangle.state.xmax;
+                selector_rectangle.state.ymin = roi_rectangle.state.ymin;
+                selector_rectangle.state.ymax = roi_rectangle.state.ymax;
+                selector_rectangle.update();
+            }
+            snapbutton.onclick = snapto;            
+            document.getElementById('slicecontrols').appendChild(snapbutton);
             
             var setNewBoxButton = document.createElement('input');
             setNewBoxButton.setAttribute('type', 'button');
@@ -351,6 +311,19 @@
             };
             setNewBoxButton.onclick = submitChanges;
             document.getElementById('slicecontrols').appendChild(setNewBoxButton);
+            
+            var showROILabel = document.createElement('label');
+            var showROI = document.createElement('input');
+            showROI.setAttribute('type', 'checkbox');
+            showROI.setAttribute('checked', 'checked');
+            showROILabel.textContent = 'show ROI';
+            showROILabel.appendChild(showROI);
+            showROI.onchange = function() {
+                d3.select("g.interactor-roi_rectangle").style("display", (this.checked) ? null : "none" );
+            };
+            document.getElementById('slicecontrols').appendChild(showROILabel);
+            
+            
             document.getElementById('slicecontrols').appendChild(document.createElement('hr'));
             var roiDisplay = document.createElement('div');
             roiDisplay.setAttribute('class', 'roi-display');
@@ -391,25 +364,33 @@
                     var zislog = document.getElementById('ztransform').checked;
                     var intensity_label = (zislog) ? "Log counts" : "counts";
                     
-                    plottableX.data = [xdata];
                     $("#xplot_plot").empty();
-                    xplot = plotD3("xplot_plot", plottableX, {
-                        log_y: zislog, 
+                    xplot = new xyChart.default({
+                        ytransform: (zislog) ? "log" : "linear", 
                         showline: true, 
                         show_points: false, 
-                        vcursor: true, 
+                        //vcursor: true, 
                         ylabel: intensity_label,
-                        position_cursor: true});
-                    
-                    plottableY.data = [ydata];
+                        position_cursor: true
+                    });
+                    d3.select("#xplot_plot")
+                        .data([[xdata]])
+                        .call(xplot);
+                    xplot.zoomRect(true);
+                        
                     $("#yplot_plot").empty();
-                    yplot = plotD3("yplot_plot", plottableY,  {
-                        log_x: zislog, 
+                    yplot = new xyChart.default({
+                        xtransform: (zislog) ? "log" : "linear", 
                         showline: true, 
                         show_points: false, 
-                        hcursor: true, 
+                        //hcursor: true, 
                         xlabel: intensity_label,
-                        position_cursor: true});
+                        position_cursor: false
+                    });
+                    d3.select("#yplot_plot")
+                        .data([[ydata]])
+                        .call(yplot);
+                    yplot.zoomRect(true);
 
                 };
                 return this;  
@@ -436,6 +417,7 @@
             }
             cumsums = plot.generate_cumsums();
             roi_rectangle.update();
+            selector_rectangle.dispatch.call('update');
             document.getElementById('roi_display').innerHTML = JSON.stringify(shape);
         }
         
@@ -463,7 +445,7 @@
             interactor.update();
         }
         interactor.dispatch.on("update." + key, function() {textbox.value = interactor.state[key].toFixed(precision)});
-        interactor.dispatch.update();
+        interactor.dispatch.call("update");
         return this;
     }
     
@@ -515,7 +497,7 @@
             window.refreshRequested = true;
         }
         if ('areaDetector.roiShape' in nodes) {
-            var shape = devicesMonitor.HashMapToObject(nodes['areaDetector.roiShape'].currentValue.userVal.val);
+            var shape = deice(nodes['areaDetector.roiShape'].currentValue.userVal.val);
             if (shape.name == 'rect') {
                 detectors.areaDetector.roi = shape;
             } else {
@@ -678,10 +660,12 @@
         display: inline-block;
         text-align: center;
     }
+    #slicecontrols input[type="button"] {
+        margin-left: 20px;
+    }    
     .set-new-roi {
         background-color: #dd0000;
         color: white;
-        margin-left: 30px;
         font-weight: bold;
     }
     label.transform {
@@ -739,10 +723,15 @@
     }
     
     rect {
-      fill: #fff;
-      user-select: none; 
-      -webkit-user-select: none; 
-      -moz-user-select: none;
+        fill: none;
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none;
+    }
+
+    rect.zoom {
+        stroke: steelblue;
+        fill-opacity: 0.5;
     }
 
   </style>
@@ -764,7 +753,9 @@
 </div>
 <div id="xplot" class="ui-layout-south">
     <div id="xplot_plot"></div>
-    <div id="slicecontrols" class="controls"></div>
+    <div id="slicecontrols" class="controls">
+        <h2>ROI</h2>
+    </div>
 </div>
 <div id="yplot" class="ui-layout-east">
     <div id="yplot_plot"></div>

@@ -2,6 +2,8 @@
 
 var trajectory_editor = window.trajectory_editor || {};
 
+// using worker v4
+
 $(function() {
     
     var TRAJECTORY_PATH = "trajectories";
@@ -10,11 +12,11 @@ $(function() {
     
     var EMPTY_TRAJ = "{'init': {}, 'loops': [{'vary': []}]}";
     var MONITOR_RATE_ESTIMATE_EXPRESSION = {
-        "PBR": '((slitAperture1.softPosition != null) ? slitAperture1.softPosition : live.slitAperture1.softPosition) / 1000.0 * <cached_monitor>',
-        "MAGIK": '((slitAperture1.softPosition != null) ? slitAperture1.softPosition : live.slitAperture1.softPosition) / 1000.0 * <cached_monitor>',
+        "PBR": '((slitAperture1.softPosition != null) ? slitAperture1.softPosition : live.slitAperture1.softPosition) * <cached_monitor>',
+        "MAGIK": '((slitAperture1.softPosition != null) ? slitAperture1.softPosition : live.slitAperture1.softPosition) * <cached_monitor>',
         "NG7:HGR": '<cached_monitor>'
     }
-        
+
     var device_list;
     
     // add buttons for functionality
@@ -294,12 +296,13 @@ $(function() {
     }
     
     function server_dry_run() {
-        var filename = wt.instance.filename;
-        return api.console("dryRunTrajectory " + filename).then(
-            function(data) {
-                alert("result:" + JSON.stringify(data));
-            }
-        );
+        var filename = wt.filename;
+        api.dryrunJsonTrajectoryFile(filename);
+        //return api.console("dryRunTrajectory " + filename).then(
+        //    function(data) {
+        //        //alert("result:" + JSON.stringify(data));
+        //    }
+        //);
     }
     
     var getPrimaryNodeIDMap = function() {
