@@ -114,9 +114,9 @@
       }
       onSubscribe(root, __current) {
         this._root = root;
-        this.added = [];
-        this.removed = [];
-        this.updated = [];
+        //this.added = [];
+        //this.removed = [];
+        //this.updated = [];
         this.contents = {};
         (this.postSubscribeHooks || []).forEach(function(callback) { callback(root) });
       }
@@ -126,10 +126,11 @@
           n = nodes[i];
           nodename = (n.name.slice(-1) == this.pathseparator) ? n.name.slice(0, -1) : n.name;
           ip = this._findInsertionPoint(nodename, this._root, 2);
-          ip.children.push(n)
+          ip.children.push(n);
+          //this.contents[n.name] = contents[i];
         };
         trajectory_editor.refreshBoth();
-        this.added.push([nodes]);
+        //this.added.push([nodes]);
       }
       filesRemoved(nodes, __current) {
         //if (nodes.length != contents.length) {
@@ -154,10 +155,10 @@
           }
         };
         trajectory_editor.refreshBoth();
-        this.removed.push([nodes]);
+        //this.removed.push([nodes]);
       }
       filesUpdated(nodes, contents, __current) {
-        this.updated.push([nodes, contents]);
+        //this.updated.push([nodes, contents]);
         let n = nodes.length;
         for (var i=0; i<n; i++) {
           this.contents[nodes[i].name] = contents[i];

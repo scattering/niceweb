@@ -99,7 +99,7 @@ $(function() {
 //        }
         if (wt.instance.raw) { // && wt.filename) {
             var filename = wt.filename;
-            var new_editor = set_data(wt.raw);
+            var new_editor = set_data(wt.instance.raw);
             new_editor.filename = filename;
         }
     }
@@ -572,35 +572,39 @@ $(function() {
                 getFastTimeEstimate("", nodes[i].name, live_state, primaryNodeIDMap, updateTimeEstimate);
             }
         }
+        
+        var reload_selection = function(nodes, contents) {
+            if (wt.instance.filename && wt.instance.path) {
+                // auto re-select currently selected file after save or refresh.
+                // first, scroll the window to the desired item:
+                $('#filelist ol li').removeClass("ui-selected");
+                var selection = $('#filelist ol [filename="' + wt.instance.filename + '"][path="' + wt.instance.path + '"]');
+                selection.addClass('ui-selected');
+                
+                if (selection && selection.parent && selection.position) {
+                    try {
+                        var parent_offset = selection.parent().position().top;
+                        var curr_position = selection.position().top;
+                        var grandparentdiv = selection.parent().parent();
+                        selection.parent().parent().scrollTop(curr_position - parent_offset);
+                    } catch (e) {
+                        // do nothing on error
+                    } 
+                    // optional: do the selection.  Will reload data from server.  Do we want this?
+                    // see http://stackoverflow.com/questions/5541601/trigger-jquery-ui-events-ui-selectable
+                    $('#filelist ol').data("ui-selectable")._mouseStop(null);
+                    //selection.trigger('click');
+                }  
+            }
+        }
             
-        fileMonitor.postContentsHooks = [timeEstimateHook];
+        fileMonitor.postContentsHooks = [timeEstimateHook, reload_selection];
          
         api.publishContents(trajectory_files);
         var labels = trajectory_files.map(function(x) { var pel = x.split('/'); return pel[pel.length - 1]});
         updateFileList(trajectories_path, labels, true, 'ui-widget-content local-trajectories');
         
-        if (wt.instance.filename && wt.instance.path) {
-            // auto re-select currently selected file after save or refresh.
-            // first, scroll the window to the desired item:
-            $('#filelist ol li').removeClass("ui-selected");
-            var selection = $('#filelist ol [filename="' + wt.instance.filename + '"][path="' + wt.instance.path + '"]');
-            selection.addClass('ui-selected');
-            
-            if (selection && selection.parent && selection.position) {
-                try {
-                    var parent_offset = selection.parent().position().top;
-                    var curr_position = selection.position().top;
-                    var grandparentdiv = selection.parent().parent();
-                    selection.parent().parent().scrollTop(curr_position - parent_offset);
-                } catch (e) {
-                    // do nothing on error
-                } 
-                // optional: do the selection.  Will reload data from server.  Do we want this?
-                // see http://stackoverflow.com/questions/5541601/trigger-jquery-ui-events-ui-selectable
-                $('#filelist ol').data("ui-selectable")._mouseStop(null);
-                //selection.trigger('click');
-            }  
-        }
+        
     }
     
     /*
