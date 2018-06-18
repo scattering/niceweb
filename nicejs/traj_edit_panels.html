@@ -163,6 +163,7 @@
         for (var i=0; i<n; i++) {
           this.contents[nodes[i].name] = contents[i];
         }
+        trajectory_editor.refreshBoth();
       }
       filesContents(nodes, contents, __current) {
         let n = nodes.length;

@@ -98,9 +98,11 @@ $(function() {
 //            eb.show();
 //        }
         if (wt.instance.raw) { // && wt.filename) {
-            var filename = wt.filename;
+            var filename = wt.instance.filename;
+            var path = wt.instance.path;
             var new_editor = set_data(wt.instance.raw);
-            new_editor.filename = filename;
+            new_editor.instance.filename = filename;
+            new_editor.instance.path = path;
         }
     }
     
@@ -213,7 +215,7 @@ $(function() {
         wt.instance.filename = filename;
         var trajectories_path = getTrajectoriesPath();
         wt.instance.path = trajectories_path;
-        $('#statusline').html('<b>Editing: ' + filename + '</b>');
+        $('#statusline').html('<b>Editing: ' + trajectories_path + filename + '</b>');
         var traj_obj = editor.getValue();
         var filecontents = JSON.stringify(traj_obj, null, "  ");
         var path = trajectories_path + filename;
@@ -238,7 +240,7 @@ $(function() {
             }
             else {
                 saveFile(filename, true);
-                refreshBoth();
+                //.then(function() { refreshBoth() });
                 //FileList(getFiles(TRAJECTORY_PATH, true).concat(getFiles(COMMON_PATH, true)));
             }
         });
@@ -600,9 +602,9 @@ $(function() {
             
         fileMonitor.postContentsHooks = [timeEstimateHook, reload_selection];
          
-        api.publishContents(trajectory_files);
+        api.publishContents(trajectory_files); // .then(function(r) { console.log(r) });
         var labels = trajectory_files.map(function(x) { var pel = x.split('/'); return pel[pel.length - 1]});
-        updateFileList(trajectories_path, labels, true, 'ui-widget-content local-trajectories');
+        updateFileList(trajectories_path, labels, true, 'ui -widget-content local-trajectories');
         
         
     }
