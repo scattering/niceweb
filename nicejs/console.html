@@ -344,10 +344,23 @@
                 this.jstree.redraw_node(nodeID);
             }
         }
+        nodeEstimatedTimeChanged(path, nodeID, estimatedTime, __current) {
+            console.log("node estimated time: ", nodeID, estimatedTime);
+        }
         stateChanged(queueState, __current) {
             //console.log('stateChanged:', queueState);
             this.state = queueState;
             this._update_controls(queueState);
+        }
+        switchedCurrentExperiment(state, root, __current) {
+            this.jstree.destroy();
+            this.onSubscribe(state, root, __current);
+        }
+        queueTimeRemainingResult(timeLeft, __current) {
+            console.log("remaining time: ", timeLeft.toNumber(), timeLeft);
+        }
+        queueEstimatedTimeChanged(estimatedTime, __current) {
+            console.log("estimated time changed: ", estimatedTime);
         }
         setQueueDryrunTime(timeLeft, __current) {
             this.timeLeft = timeLeft.toNumber();
