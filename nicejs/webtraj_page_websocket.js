@@ -100,7 +100,8 @@ $(function() {
         if (wt.instance.raw) { // && wt.filename) {
             var filename = wt.instance.filename;
             var path = wt.instance.path;
-            var new_editor = set_data(wt.instance.raw);
+            var current_value = editor.getValue();
+            var new_editor = set_data(null, current_value);
             new_editor.instance.filename = filename;
             new_editor.instance.path = path;
         }
@@ -119,8 +120,8 @@ $(function() {
         .each(resizeInput);
     
     
-    var set_data = function(raw) {
-        var parsed_data = eval('(function(){ var result =' + raw + '; return result})();')
+    var set_data = function(raw, parsed_data) {
+        var parsed_data = (parsed_data == null) ? eval('(function(){ var result =' + raw + '; return result})();') : parsed_data;
         $("#editor").empty();
         //loops = loopsList(parsed_data.loops);
         var interactive = document.getElementById('interactive').checked;
