@@ -12,8 +12,8 @@ $(function() {
     
     var EMPTY_TRAJ = "{'init': {}, 'loops': [{'vary': []}]}";
     var MONITOR_RATE_ESTIMATE_EXPRESSION = {
-        "PBR": '((slitAperture1.softPosition != null) ? slitAperture1.softPosition : live.slitAperture1.softPosition) * <cached_monitor>',
-        "MAGIK": '((slitAperture1.softPosition != null) ? slitAperture1.softPosition : live.slitAperture1.softPosition) * <cached_monitor>',
+        "PBR": '((slitAperture1.softPosition != null) ? slitAperture1.softPosition : live.slitAperture1.softPosition) * <cached_monitor> / 1000',
+        "MAGIK": '((slitAperture1.softPosition != null) ? slitAperture1.softPosition : live.slitAperture1.softPosition) * <cached_monitor> / 1000',
         "NG7:HGR": '<cached_monitor>'
     }
 
