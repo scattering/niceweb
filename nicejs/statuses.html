@@ -2,12 +2,12 @@
 <head>
   <title>Status of NICE servers at NCNR</title>
   <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Ice.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.6.2/Glacier2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/Ice.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ice/3.7.1/Glacier2.min.js"></script>
   <script type="text/javascript">
     window.onload = function() {
       communicator = Ice.initialize();
-      var polling_interval = 1000; // 1 second
+      var polling_interval = 5000; // 5 second
       var instruments = {
         "Magik": "129.6.120.90",
         //"MagikVM": "129.6.123.62",
@@ -18,7 +18,8 @@
         "PBR": "129.6.120.84",
         "NG7R": "129.6.120.111",
         "Test Station": "129.6.120.98",
-        "NG7 SANS": "129.6.120.19"
+        "NG7 SANS": "129.6.120.19",
+        "VSANS": "vsans.ncnr.nist.gov"
       };
       var instrument_names = Object.keys(instruments)
       var wasAlive = {};
@@ -36,7 +37,7 @@
         var value = document.createElement("td");
         value.classList.add("value");
         value.classList.add("stopped");
-        value.innerHTML = "STOPPED";
+        value.innerHTML = "PINGING...";
         el.appendChild(label);
         el.appendChild(value)
         status_elements[instrument_name] = el;
@@ -58,7 +59,7 @@
               value.classList.remove("stopped")
               value.classList.add("running")
             })
-          .exception(function(e) {
+          .catch(function(e) {
             //console.log(n, e);
             var value = el.getElementsByClassName("value")[0]
             value.innerHTML = "STOPPED";
@@ -69,7 +70,7 @@
         document.getElementById("timestamp").innerHTML = "last checked: " + (new Date()).toString();
       }
       
-      window.setInterval(checkAll, 1000);
+      window.setInterval(checkAll, polling_interval);
     }
   </script>
   <style type="text/css">
